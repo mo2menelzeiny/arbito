@@ -1,14 +1,16 @@
 cmake_minimum_required(VERSION 3.10)
-project(aeron_disruptor_arbitrage)
+project(arbito)
 
 set(CMAKE_CXX_STANDARD 11)
+set(HEADERS Configuration.h)
 
 include_directories(lib/aeron-client)
+include_directories(include)
 
 add_subdirectory(lib/aeron-client)
 
-add_executable(aeron_disruptor_arbitrage main.cpp)
+add_executable(arbito src/main.cpp)
 
-target_link_libraries(aeron_disruptor_arbitrage aeron_client)
+target_link_libraries(arbito aeron_client)
 
-install(TARGETS aeron_disruptor_arbitrage DESTINATION bin)
+install(TARGETS arbito DESTINATION bin)
