@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-echo "Installing Conan.."
-pip install conan
+echo "CONAN VERSION"
+conan --v
