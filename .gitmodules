@@ -1,0 +1,3 @@
+[submodule "lib/fix8"]
+	path = lib/fix8
+	url = https://github.com/fix8/fix8

@@ -1,0 +1,1 @@
+BUILDPACK_URL=https://github.com/Starkast/heroku-buildpack-cmake
