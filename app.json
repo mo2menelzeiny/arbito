@@ -1,7 +1,7 @@
 {
   "scripts": {
     "dokku": {
-      "predeploy": "make && make install",
+      "predeploy": "./install.sh",
       "postdeploy": "cd bin && ./arbito"
     }
   }
