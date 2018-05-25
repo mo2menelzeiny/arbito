@@ -1,18 +1,38 @@
 cmake_minimum_required(VERSION 3.10)
+
 project(arbito)
 
 set(CMAKE_CXX_STANDARD 11)
-set(HEADERS include/Configuration.h)
 
-include_directories(lib/aeron-client)
-include_directories(lib/fix8/LMAX-market-data)
-include_directories(lib/fix8/LMAX-trading)
+#add_subdirectory(lib/aeron-client)
+#add_subdirectory(lib/disruptor)
+
+
 include_directories(include)
 
-add_subdirectory(lib/aeron-client)
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 
-add_executable(arbito src/main.cpp)
+conan_basic_setup()
 
-target_link_libraries(arbito aeron_client)
+find_library(FIX8_LIB fix8)
 
-install(TARGETS arbito DESTINATION bin)
+if (NOT FIX8_LIB)
+    message(FATAL_ERROR "${FIX8_LIB}")
+endif ()
+
+FILE(COPY resources DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+
+add_executable(arbito
+        src/main.cpp
+        src/LMAX_FIXM_types.cpp
+        src/LMAX_FIXM_traits.cpp
+        src/LMAX_FIXM_classes.cpp
+        include/LMAX_FIXM_types.hpp
+        include/LMAX_FIXM_classes.hpp
+        include/LMAX_FIXM_router.hpp
+        include/LMAX_FIXM_session.hpp)
+
+target_link_libraries(arbito
+        ${CONAN_LIBS}
+        ${FIX8_LIB})
+
