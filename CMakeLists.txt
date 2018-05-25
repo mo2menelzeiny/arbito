@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.5)
 
 project(arbito)
 
@@ -10,9 +10,19 @@ set(CMAKE_CXX_STANDARD 11)
 
 include_directories(include)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+if (NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
+    message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
+    file(DOWNLOAD "https://raw.githubusercontent.com/conan-io/cmake-conan/v0.11/conan.cmake"
+            "${CMAKE_BINARY_DIR}/conan.cmake")
+endif ()
 
-conan_basic_setup()
+include(${CMAKE_BINARY_DIR}/conan.cmake)
+
+conan_cmake_run(CONANFILE conanfile.txt
+        BASIC_SETUP CMAKE_TARGETS
+        SETTINGS compiler=gcc
+        SETTINGS compiler.libcxx=libstdc++11
+        BUILD missing)
 
 find_library(FIX8_LIB fix8)
 
@@ -35,4 +45,3 @@ add_executable(arbito
 target_link_libraries(arbito
         ${CONAN_LIBS}
         ${FIX8_LIB})
-
