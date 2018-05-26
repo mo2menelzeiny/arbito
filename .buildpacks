@@ -1,2 +1,1 @@
-https://github.com/heroku/heroku-buildpack-python
-https://github.com/Starkast/heroku-buildpack-cmake
+https://github.com/heroku/heroku-buildpack-apt

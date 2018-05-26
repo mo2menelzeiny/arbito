@@ -1,1 +1,1 @@
-web: bin/arbito
+web: build/bin/arbito
