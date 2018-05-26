@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
 
-echo "CONAN VERSION"
-conan --v
+echo "Building executables.."
+mkdir build && cd build
+ls
+cmake ..
+make
