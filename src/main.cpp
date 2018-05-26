@@ -24,13 +24,14 @@ int main() {
         mc->start(false);
 
         while (!mc->has_given_up()) {
-            if(mc->session_ptr()->get_session_state() == FIX8::States::SessionStates::st_logon_received) {
+            if(mc->session_ptr()->get_session_state() == FIX8::States::SessionStates::st_continuous) {
                 mc->session_ptr()->send(generate_mdr());
+                std::cout << "Market data subscription sent" << std::endl;
                 break;
             }
         };
 
-        while(!mc->has_given_up());
+        while(!mc->has_given_up()){};
 
     } catch (FIX8::f8Exception &e) {
         std::cerr << e.what() << std::endl;
@@ -39,7 +40,6 @@ int main() {
     } catch (...) {
         std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
     }
-
     return EXIT_SUCCESS;
 }
 

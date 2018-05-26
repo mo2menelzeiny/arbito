@@ -1,9 +1,0 @@
-[requires]
-    Poco/1.9.0@pocoproject/stable
-    TBB/4.4.4@conan/stable
-[generators]
-    cmake
-[options]
-    Poco:shared=True
-    OpenSSL:shared=True
-    TBB:shared=True

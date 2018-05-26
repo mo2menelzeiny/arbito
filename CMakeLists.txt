@@ -1,30 +1,25 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.1)
 
 project(arbito)
 
 set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 #add_subdirectory(lib/aeron-client)
 #add_subdirectory(lib/disruptor)
 
-
 include_directories(include)
 
-if (NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
-    message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
-    file(DOWNLOAD "https://raw.githubusercontent.com/conan-io/cmake-conan/v0.11/conan.cmake"
-            "${CMAKE_BINARY_DIR}/conan.cmake")
-endif ()
-
-include(${CMAKE_BINARY_DIR}/conan.cmake)
-
-conan_cmake_run(CONANFILE conanfile.txt
-        BASIC_SETUP CMAKE_TARGETS
-        SETTINGS compiler=gcc
-        SETTINGS compiler.libcxx=libstdc++11
-        BUILD missing)
-
+find_library(PTHREAD_LIB pthread)
+find_library(TBB_LIB tbb)
+find_library(POCO_FOUNDATION_LIB PocoFoundation)
+find_library(POCO_NET_LIB PocoNet)
+find_library(POCO_SSL_LIB PocoNetSSL)
+find_library(POCO_CRYPTO_LIB PocoCrypto)
 find_library(FIX8_LIB fix8)
+
 
 if (NOT FIX8_LIB)
     message(FATAL_ERROR "${FIX8_LIB}")
@@ -43,5 +38,10 @@ add_executable(arbito
         include/LMAX_FIXM_session.hpp)
 
 target_link_libraries(arbito
-        ${CONAN_LIBS}
+        ${PTHREAD_LIB}
+        ${TBB_LIB}
+        ${POCO_FOUNDATION_LIB}
+        ${POCO_NET_LIB}
+        ${POCO_SSL_LIB}
+        ${POCO_CRYPTO_LIB}
         ${FIX8_LIB})
