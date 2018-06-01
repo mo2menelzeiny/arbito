@@ -12,5 +12,5 @@ NOTE: Before running f8c rebuild library cache using <code>sudo ldconfig</code>
 <code>f8c -p LMAX_FIXM -n LMAX_FIXM -c client -o /home/mo2menelzeiny/Desktop /home/mo2menelzeiny/Documents/HFT/LMAX-FIX-MarketData-API-QuickFix-DataDictionary.xml</code>
 <code>f8c -p LMAX_FIX -n LMAX_FIX -c client -o /home/mo2menelzeiny/Desktop /home/mo2menelzeiny/Documents/HFT/LMAX-FIX-Trading-API-QuickFix-DataDictionary.xml</code>
 
-5- Canon dependencies 
-<code>conan install .. -s compiler=gcc -s compiler.libcxx=libstdc++11 --build=missing</code>
+5- SBE TOOL 
+<code>java -Dsbe.validation.xsd=/home/mo2menelzeiny/Projects/arbito/resources/sbe.xsd -Dsbe.target.language=cpp -Dsbe.java.generate.interfaces=true -Dsbe.generate.ir=true -jar sbe-all-1.8.2-SNAPSHOT.jar /home/mo2menelzeiny/Projects/arbito/resources/LMAX_FIXM_SBE.xml</code>

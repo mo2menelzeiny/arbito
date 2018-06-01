@@ -113,6 +113,8 @@ public:
     // void state_change(const FIX8::States::SessionStates before, const FIX8::States::SessionStates after);
 
     bool handle_application(const unsigned seqnum, const FIX8::Message *&msg);
+
+    bool process(const FIX8::f8String &from);
     /* In your compilation unit, this should be implemented with something like the following:
     bool LMAX_FIXM_session_client::handle_application(const unsigned seqnum, const FIX8::Message *&msg)
     {

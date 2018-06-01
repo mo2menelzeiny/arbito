@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='ISO-8859-1'?>
+<fix8>
+    <session name="LMAX_FIX_DEMO"
+             role="initiator"
+             fix_version="4400"
+             no_chksum="true"
+             active="true"
+             ip="fix-order.london-demo.lmax.com"
+             port="443"
+             sender_comp_id="AhmedDEMO"
+             target_comp_id="LMXBD"
+             session_log="session_log"
+             protocol_log="protocol_log"
+             login_retry_interval="15000"
+             reset_sequence_numbers="true"
+             ignore_logon_sequence_check="false"
+             tcp_recv_buffer="1572864"
+             tcp_send_buffer="1572864"
+             login_retries="100"
+             process_model="pipelined"
+             silent_disconnect="false"
+             decoder="performance"
+             permissive_mode="false"
+             connect_timeout="10"
+             ssl_context="ssl"/>
+
+    <log name="session_log"
+         type="session"
+         filename="session_FIX.log"
+         rotation="0"
+         use_session_id="true"
+         delimiter="[]"
+         levels="info|warn|error|fatal"
+         flags="timestamp|sequence|compress|thread"/>
+
+    <log name="protocol_log"
+         type="protocol"
+         filename="protocol_FIX.log"
+         rotation="0"
+         use_session_id="true"
+         delimiter="[]"
+         flags="timestamp|sequence|append|direction|outbound|inbound|thread"/>
+
+    <ssl_context name="ssl" private_key_file="./resources/ssl-cli.pem" verification_mode="none"/>
+</fix8>

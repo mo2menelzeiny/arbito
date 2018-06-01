@@ -79,9 +79,9 @@ HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 #include <fix8/traits.hpp>
 #include <fix8/field.hpp>
 #include <fix8/message.hpp>
-#include "LMAX_FIXM_types.hpp"
-#include "LMAX_FIXM_router.hpp"
-#include "LMAX_FIXM_classes.hpp"
+#include "fix8/LMAX_FIXM_types.hpp"
+#include "fix8/LMAX_FIXM_router.hpp"
+#include "fix8/LMAX_FIXM_classes.hpp"
 //-------------------------------------------------------------------------------------------------
 namespace FIX8 {
     namespace LMAX_FIXM {

@@ -22,13 +22,11 @@
              decoder="performance"
              permissive_mode="false"
              connect_timeout="10"
-             username="AhmedDEMO"
-             password="password1"
              ssl_context="ssl"/>
 
     <log name="session_log"
          type="session"
-         filename="session_logs/session.log"
+         filename="session_FIXM.log"
          rotation="0"
          use_session_id="true"
          delimiter="[]"
@@ -37,7 +35,7 @@
 
     <log name="protocol_log"
          type="protocol"
-         filename="protocol_logs/protocol.log"
+         filename="protocol_FIXM.log"
          rotation="0"
          use_session_id="true"
          delimiter="[]"
