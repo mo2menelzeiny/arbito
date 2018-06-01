@@ -7,10 +7,14 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-#add_subdirectory(lib/aeron-client)
-#add_subdirectory(lib/disruptor)
+add_subdirectory(lib/aeron-client)
+add_subdirectory(lib/aeron-driver)
+add_subdirectory(lib/disruptor)
 
-include_directories(include)
+include_directories(
+        include
+        include/fix8
+        include/LMAX_FIXM_SBE)
 
 find_library(PTHREAD_LIB pthread)
 find_library(TBB_LIB tbb)
@@ -19,23 +23,18 @@ find_library(POCO_NET_LIB PocoNet)
 find_library(POCO_SSL_LIB PocoNetSSL)
 find_library(POCO_CRYPTO_LIB PocoCrypto)
 find_library(FIX8_LIB fix8)
-
-
-if (NOT FIX8_LIB)
-    message(FATAL_ERROR "${FIX8_LIB}")
-endif ()
+find_library(LIBTRADING_LIB libtrading)
 
 FILE(COPY resources DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+message(STATUS "Copied resources to binary directory")
 
-add_executable(arbito
-        src/main.cpp
-        src/LMAX_FIXM_types.cpp
-        src/LMAX_FIXM_traits.cpp
-        src/LMAX_FIXM_classes.cpp
-        include/LMAX_FIXM_types.hpp
-        include/LMAX_FIXM_classes.hpp
-        include/LMAX_FIXM_router.hpp
-        include/LMAX_FIXM_session.hpp)
+file(GLOB HEADERS
+        "include/*.h"
+        "include/fix8/*.hpp")
+
+file(GLOB SOURCES "src/*.cpp")
+
+add_executable(arbito ${HEADERS} ${SOURCES})
 
 target_link_libraries(arbito
         ${PTHREAD_LIB}
@@ -44,4 +43,5 @@ target_link_libraries(arbito
         ${POCO_NET_LIB}
         ${POCO_SSL_LIB}
         ${POCO_CRYPTO_LIB}
-        ${FIX8_LIB})
+        ${FIX8_LIB}
+        ${LIBTRADING_LIB})

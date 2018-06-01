@@ -9,3 +9,7 @@ libpocofoundation46
 libpococrypto46
 libpoconet46
 libpoconetssl46
+libz-dev
+libbsd-dev
+libuuid-dev
+libboost-all-dev
