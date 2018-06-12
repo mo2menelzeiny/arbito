@@ -7,11 +7,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(include)
 
-find_package(ZLIB REQUIRED)
-find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
+find_package(OpenSSL REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread)
+find_package(ZLIB REQUIRED)
 
+find_library(SSL_LIB ssl)
 find_library(DISRUPTOR_LIBRARIES Disruptor)
 find_library(AERON_CLIENT_LIB aeron_client)
 find_library(AERON_DRIVER_LIB aeron_driver)
@@ -33,11 +34,12 @@ add_executable(arbito
         ${SOURCES})
 
 target_link_libraries(arbito
-        ${ZLIB_LIBRARIES}
-        ${OPENSSL_LIBRARIES}
-        ${DISRUPTOR_LIBRARIES}
         ${CMAKE_THREAD_LIBS_INIT}
         ${Boost_LIBRARIES}
+        ${SSL_LIB}
+        ${OPENSSL_LIBRARIES}
+        ${ZLIB_LIBRARIES}
+        ${DISRUPTOR_LIBRARIES}
         ${AERON_DRIVER_LIB}
         ${AERON_CLIENT_LIB})
 
