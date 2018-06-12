@@ -35,6 +35,9 @@
 #include <Disruptor/AggregateEventHandler.h>
 
 #include <Aeron.h>
+#include <concurrent/BusySpinIdleStrategy.h>
+#include <Configuration.h>
+#include <FragmentAssembler.h>
 
 void benchmark() {
     std::string str("8=FIX.4.4 9=75 35=A 49=LMXBD 56=AhmedDEMO 34=1 52=20180531-04:52:25.328 98=0 108=30 141=Y 10=173");
@@ -350,33 +353,250 @@ private:
     std::shared_ptr<aeron::Aeron> m_aeron;
 };
 
-int main() {
-    auto taskScheduler = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
-    auto strategy = std::make_shared<Disruptor::BusySpinWaitStrategy>();
-    auto testEventFactory = []() {
-        return TestEvent();
-    };
-    auto disruptor = std::make_shared<Disruptor::disruptor<TestEvent>>(testEventFactory, 1024, taskScheduler,
-                                                                       Disruptor::ProducerType::Single,
-                                                                       strategy);
-    auto engineEventHandler = std::make_shared<EngineEventHandler>();
-    auto aeronEventHandler = std::make_shared<AeronEventHandler>();
+using namespace aeron;
+using namespace std::chrono;
 
-    disruptor->handleEventsWith(aeronEventHandler)->handleEventsWith(engineEventHandler);
-    taskScheduler->start();
-    disruptor->start();
+struct Settings
+{
+    std::string dirPrefix = "";
+    std::string pingChannel = samples::configuration::DEFAULT_PING_CHANNEL;
+    std::string pongChannel = samples::configuration::DEFAULT_PONG_CHANNEL;
+    std::int32_t pingStreamId = samples::configuration::DEFAULT_PING_STREAM_ID;
+    std::int32_t pongStreamId = samples::configuration::DEFAULT_PONG_STREAM_ID;
+    long numberOfMessages = samples::configuration::DEFAULT_NUMBER_OF_MESSAGES;
+    int messageLength = samples::configuration::DEFAULT_MESSAGE_LENGTH;
+    int fragmentCountLimit = samples::configuration::DEFAULT_FRAGMENT_COUNT_LIMIT;
+    long numberOfWarmupMessages = samples::configuration::DEFAULT_NUMBER_OF_MESSAGES;
+};
 
-    auto ringBuffer = disruptor->ringBuffer();
-    auto nextSeq = disruptor->ringBuffer()->next();
-    (*ringBuffer)[nextSeq].value = 1;
-    ringBuffer->publish(nextSeq);
+void sendPingAndReceivePong(
+        const fragment_handler_t& fragmentHandler,
+        Publication& publication,
+        Subscription& subscription,
+        const Settings& settings)
+{
+    std::unique_ptr<std::uint8_t[]> buffer(new std::uint8_t[settings.messageLength]);
+    concurrent::AtomicBuffer srcBuffer(buffer.get(), settings.messageLength);
+    BusySpinIdleStrategy idleStrategy;
 
-    std::cout << std::this_thread::get_id() << "\n";
-
-    while (true) {
-        usleep(100);
+    while (0 == subscription.imageCount())
+    {
+        std::this_thread::yield();
     }
 
-    //lmax_md_connect();
+    Image& image = subscription.imageAtIndex(0);
+
+    for (int i = 0; i < settings.numberOfMessages; i++)
+    {
+        std::int64_t position;
+
+        do
+        {
+            // timestamps in the message are relative to this app, so just send the timepoint directly.
+            std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+
+            srcBuffer.putBytes(0, (std::uint8_t*)&start, sizeof(std::chrono::steady_clock::time_point));
+        }
+        while ((position = publication.offer(srcBuffer, 0, settings.messageLength)) < 0L);
+
+        do
+        {
+            while (image.poll(fragmentHandler, settings.fragmentCountLimit) <= 0)
+            {
+                idleStrategy.idle();
+            }
+        }
+        while (image.position() < position);
+    }
+}
+
+std::shared_ptr<Subscription> findSubscription(std::shared_ptr<Aeron> aeron, std::int64_t id)
+{
+    std::shared_ptr<Subscription> subscription = aeron->findSubscription(id);
+
+    while (!subscription)
+    {
+        std::this_thread::yield();
+        subscription = aeron->findSubscription(id);
+    }
+
+    return subscription;
+}
+
+std::shared_ptr<Publication> findPublication(std::shared_ptr<Aeron> aeron, std::int64_t id)
+{
+    std::shared_ptr<Publication> publication = aeron->findPublication(id);
+
+    while (!publication)
+    {
+        std::this_thread::yield();
+        publication = aeron->findPublication(id);
+    }
+
+    return publication;
+}
+
+std::atomic<bool> running (true);
+
+int main() {
+
+    try
+    {
+        Settings settings;
+
+        std::cout << "Pong at " << settings.pongChannel << " on Stream ID " << settings.pongStreamId << std::endl;
+        std::cout << "Ping at " << settings.pingChannel << " on Stream ID " << settings.pingStreamId << std::endl;
+
+        aeron::Context context;
+        std::atomic<int> countDown(1);
+        std::int64_t pongSubscriptionId, pingPublicationId, pingSubscriptionId, pongPublicationId;
+
+        context.newSubscriptionHandler(
+                [](const std::string& channel, std::int32_t streamId, std::int64_t correlationId)
+                {
+                    std::cout << "Subscription: " << channel << " " << correlationId << ":" << streamId << std::endl;
+                });
+
+        context.newPublicationHandler(
+                [](const std::string& channel, std::int32_t streamId, std::int32_t sessionId, std::int64_t correlationId)
+                {
+                    std::cout << "Publication: " << channel << " " << correlationId << ":" << streamId << ":" << sessionId << std::endl;
+                });
+
+        context.availableImageHandler(
+                [&](Image &image)
+                {
+                    std::cout << "Available image correlationId=" << image.correlationId() << " sessionId=" << image.sessionId();
+                    std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
+
+                    if (image.subscriptionRegistrationId() == pongSubscriptionId)
+                    {
+                        countDown--;
+                    }
+                });
+
+        context.unavailableImageHandler([](Image &image)
+                                        {
+                                            std::cout << "Unavailable image on correlationId=" << image.correlationId() << " sessionId=" << image.sessionId();
+                                            std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
+                                        });
+
+        std::shared_ptr<Aeron> aeron = Aeron::connect(context);
+
+        pongSubscriptionId = aeron->addSubscription(settings.pongChannel, settings.pongStreamId);
+        pingPublicationId = aeron->addPublication(settings.pingChannel, settings.pingStreamId);
+        pingSubscriptionId = aeron->addSubscription(settings.pingChannel, settings.pingStreamId);
+        pongPublicationId = aeron->addPublication(settings.pongChannel, settings.pongStreamId);
+
+        std::shared_ptr<Subscription> pongSubscription, pingSubscription;
+        std::shared_ptr<Publication> pingPublication, pongPublication;
+
+        pongSubscription = findSubscription(aeron, pongSubscriptionId);
+        pingSubscription = findSubscription(aeron, pingSubscriptionId);
+        pingPublication = findPublication(aeron, pingPublicationId);
+        pongPublication = findPublication(aeron, pongPublicationId);
+
+        while (countDown > 0)
+        {
+            std::this_thread::yield();
+        }
+
+        Publication& pongPublicationRef = *pongPublication;
+        Subscription& pingSubscriptionRef = *pingSubscription;
+        BusySpinIdleStrategy idleStrategy;
+        BusySpinIdleStrategy pingHandlerIdleStrategy;
+        FragmentAssembler pingFragmentAssembler(
+                [&](AtomicBuffer& buffer, index_t offset, index_t length, const Header& header)
+                {
+                    if (pongPublicationRef.offer(buffer, offset, length) > 0L)
+                    {
+                        return;
+                    }
+
+                    while (pongPublicationRef.offer(buffer, offset, length) < 0L)
+                    {
+                        pingHandlerIdleStrategy.idle();
+                    }
+                });
+
+        fragment_handler_t ping_handler = pingFragmentAssembler.handler();
+
+        std::thread pongThread(
+                [&]()
+                {
+                    while (0 == pingSubscriptionRef.imageCount())
+                    {
+                        std::this_thread::yield();
+                    }
+
+                    Image& image = pingSubscriptionRef.imageAtIndex(0);
+
+                    while (running)
+                    {
+                        idleStrategy.idle(image.poll(ping_handler, settings.fragmentCountLimit));
+                    }
+                });
+
+        if (settings.numberOfWarmupMessages > 0)
+        {
+            Settings warmupSettings = settings;
+            warmupSettings.numberOfMessages = warmupSettings.numberOfWarmupMessages;
+
+            const steady_clock::time_point start = steady_clock::now();
+
+            std::cout << "Warming up the media driver with "
+                      << toStringWithCommas(warmupSettings.numberOfWarmupMessages) << " messages of length "
+                      << toStringWithCommas(warmupSettings.messageLength) << std::endl;
+
+            sendPingAndReceivePong(
+                    [](AtomicBuffer&, index_t, index_t, Header&){}, *pingPublication, *pongSubscription, warmupSettings);
+
+            std::int64_t nanoDuration = duration<std::int64_t, std::nano>(steady_clock::now() - start).count();
+
+            std::cout << "Warmed up the media driver in " << nanoDuration << " [ns]" << std::endl;
+        }
+
+        do
+        {
+            FragmentAssembler fragmentAssembler(
+                    [&](const AtomicBuffer& buffer, index_t offset, index_t length, const Header& header)
+                    {
+                        std::chrono::steady_clock::time_point end = steady_clock::now();
+                        steady_clock::time_point start;
+
+                        buffer.getBytes(offset, (std::uint8_t*)&start, sizeof(steady_clock::time_point));
+                        std::int64_t nanoRtt = duration<std::int64_t, std::nano>(end - start).count();
+
+                    });
+
+            std::cout << "Pinging "
+                      << toStringWithCommas(settings.numberOfMessages) << " messages of length "
+                      << toStringWithCommas(settings.messageLength) << " bytes" << std::endl;
+
+            steady_clock::time_point startRun = steady_clock::now();
+            sendPingAndReceivePong(fragmentAssembler.handler(), *pingPublication, *pongSubscription, settings);
+            steady_clock::time_point endRun = steady_clock::now();
+            fflush(stdout);
+
+            double runDuration = duration<double>(endRun - startRun).count();
+            std::cout << "Throughput of "
+                      << toStringWithCommas(settings.numberOfMessages / runDuration)
+                      << " RTTs/sec" << std::endl;
+        }
+        while (running && continuationBarrier("Execute again?"));
+        running = false;
+
+        pongThread.join();
+    }
+    catch (const SourcedException& e)
+    {
+        std::cerr << "FAILED: " << e.what() << " : " << e.where() << std::endl;
+        return -1;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "FAILED: " << e.what() << " : " << std::endl;
+        return -1;
+    }
     return EXIT_SUCCESS;
 }
