@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 
-echo "Installing FIX8 Runtime.."
-wget https://github.com/fix8/fix8/archive/1.4.0.tar.gz
-tar zvxf 1.4.0.tar.gz
-cd fix8-1.4.0
-./bootstrap && ./bootstrap
-./configure --prefix=/usr/local --with-mpmc=tbb --enable-tbbmalloc=yes --with-thread=stdthread --enable-preencode=yes \
- --enable-rawmsgsupport=yes --enable-ssl=yes --enable-codectiming=yes --enable-fillmetadata=no --enable-f8test=no \
- --enable-doxygen=no
+echo "Installing Installing Disruptor.."
+wget https://github.com/Abc-Arbitrage/Disruptor-cpp/archive/master.zip
+unzip master.zip
+cd Disruptor-cpp-master
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
 make
-make install
-cd ..
+make install PREFIX=/usr/local
+
+echo "Installing Installing Aeron.."
+wget https://github.com/real-logic/aeron/archive/1.9.3.tar.gz
+tar zvxf 1.9.3.tar.gz
+cd aeron-1.9.3
+mkdir -p cppbuild/Debug && cd cppbuild/Debug
+cmake -DBUILD_AERON_DRIVER=ON ../..
+make
+make install PREFIX=/usr/local
 
 echo "Building executables.."
 mkdir build && cd build

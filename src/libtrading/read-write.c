@@ -6,13 +6,16 @@
 #include <unistd.h>
 #include <errno.h>
 
-ssize_t sys_sendmsg(int fd, struct iovec *iov, size_t length, int flags)
+ssize_t sys_sendmsg(int fd, struct ssl_st *ssl, struct iovec *iov, size_t length, int flags)
 {
 	struct msghdr msg = (struct msghdr) {
 		.msg_iov	= iov,
 		.msg_iovlen	= length,
 	};
-	return sendmsg(fd, &msg, flags);
+	int ret_head = -1, ret_body = -1;
+	ret_head = SSL_write(ssl, msg.msg_iov[0].iov_base, msg.msg_iov[0].iov_len);
+    ret_body = SSL_write(ssl, msg.msg_iov[1].iov_base, msg.msg_iov[1].iov_len);
+    return ret_head + ret_body;
 }
 
 io_recv_t io_recv = &recv;

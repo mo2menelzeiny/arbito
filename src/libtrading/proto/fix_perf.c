@@ -203,12 +203,12 @@ static void fix_message_parse_benchmark(const int count, struct buffer *rx_buf, 
 	printf("%-10s %d %f µs/message\n", (flags & FIX_PARSE_FLAG_NO_CSUM ? "parse/fast  " : "parse       "), count, (double)elapsed_nsec/(double)count/1000.0);
 }
 
-int run()
+int run_tests()
 {
 	struct buffer *head_buf, *body_buf;
 	struct fix_message *rx_msg;
 	struct buffer *rx_buf;
-	int count = 10;
+	int count = 1000000;
 	head_buf = buffer_new(4096);
 	body_buf = buffer_new(4096);
 	rx_buf = buffer_new(4096);
