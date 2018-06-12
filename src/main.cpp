@@ -17,14 +17,16 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <math.h>
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
+
 #include <libtrading/proto/lmax_common.h>
 #include <libtrading/die.h>
 #include <libtrading/array.h>
 
-#include <memory>
+
 #include <Disruptor/Disruptor.h>
 #include <Disruptor/ThreadPerTaskScheduler.h>
 #include <Disruptor/BasicExecutor.h>
@@ -38,6 +40,7 @@
 #include <concurrent/BusySpinIdleStrategy.h>
 #include <Configuration.h>
 #include <FragmentAssembler.h>
+
 
 void benchmark() {
     std::string str("8=FIX.4.4 9=75 35=A 49=LMXBD 56=AhmedDEMO 34=1 52=20180531-04:52:25.328 98=0 108=30 141=Y 10=173");
@@ -178,9 +181,12 @@ int lmax_md_connect() {
     int ssl_err;
     SSL_CTX *ssl_ctx;
     SSL *ssl;
+    const SSL_METHOD *meth;
 
     InitializeSSL();
-    ssl_ctx = SSL_CTX_new(TLS_client_method());
+
+    meth = TLS_client_method();
+    ssl_ctx = SSL_CTX_new(meth);
     SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_SSLv3);
     SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_SSLv2);
     SSL_CTX_set_options(ssl_ctx, SSL_OP_SINGLE_DH_USE);
