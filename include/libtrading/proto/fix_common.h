@@ -1,6 +1,10 @@
 #ifndef TOOLS_FIX_SESSION_H
 #define TOOLS_FIX_SESSION_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "libtrading/proto/fix_session.h"
 #include "libtrading/array.h"
 
@@ -18,4 +22,7 @@ int fix_session_logout(struct fix_session *session, const char *text);
 int fix_session_test_request(struct fix_session *session);
 int fix_session_logon(struct fix_session *session);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

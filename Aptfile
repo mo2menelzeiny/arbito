@@ -1,14 +1,7 @@
 :repo:deb http://ppa.launchpad.net/gezakovacs/poco/ubuntu xenial main
 cmake
 libtool
-libtbb-dev
-libtbb2
 libpthread-stubs0-dev
-libpoco-dev
-libpocofoundation46
-libpococrypto46
-libpoconet46
-libpoconetssl46
 libz-dev
 libbsd-dev
 libuuid-dev
@@ -19,3 +12,5 @@ libglib2.0-dev
 libncurses5-dev
 libevent-dev
 zlib1g-dev
+openssl
+unzip

@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #include <libtrading/types.h>
-
+#include <openssl/ossl_typ.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/uio.h>	/* for struct iovec */
@@ -30,7 +30,7 @@ u8 buffer_sum_range(const char *start, const char *end);
 u8 buffer_sum(struct buffer *self);
 
 void buffer_append(struct buffer *dst, struct buffer *src);
-ssize_t buffer_recv(struct buffer *self, int sockfd, size_t size, int flags);
+ssize_t buffer_recv(struct buffer *self, int sockfd, struct ssl_st *ssl, size_t size, int flags);
 ssize_t buffer_xread(struct buffer *self, int fd);
 ssize_t buffer_nxread(struct buffer *buf, int fd, size_t size);
 ssize_t buffer_xwrite(struct buffer *self, int fd);

@@ -158,9 +158,9 @@ int fix_template_send(struct fix_template *self, int sockfd, int flags)
 
 	TRACE(LIBTRADING_FIX_MESSAGE_SEND(self, sockfd, flags));
 
-	if ((ret = io_sendmsg(sockfd, self->iov, ARRAY_SIZE(self->iov), flags)) < 0) {
+	/*if ((ret = io_sendmsg(sockfd, self->iov, ARRAY_SIZE(self->iov), flags)) < 0) {
 		return ret;
-	}
+	}*/
 
 	TRACE(LIBTRADING_FIX_MESSAGE_SEND_RET());
 

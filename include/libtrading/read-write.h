@@ -8,11 +8,13 @@ extern "C" {
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 typedef ssize_t (*io_recv_t)(int fd, void *buffer, size_t length, int flags);
-typedef ssize_t (*io_sendmsg_t)(int fd, struct iovec *iov, size_t length, int flags);
+typedef ssize_t (*io_sendmsg_t)(int fd, struct ssl_st *ssl, struct iovec *iov, size_t length, int flags);
 
-ssize_t sys_sendmsg(int fd, struct iovec *iov, size_t length, int flags);
+ssize_t sys_sendmsg(int fd, struct ssl_st *ssl, struct iovec *iov, size_t length, int flags);
 
 extern io_recv_t io_recv;
 extern io_sendmsg_t io_sendmsg;
