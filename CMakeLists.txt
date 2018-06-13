@@ -13,7 +13,7 @@ find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(ZLIB REQUIRED)
 
 find_library(SSL_LIB ssl)
-find_library(DISRUPTOR_LIBRARIES Disruptor)
+#find_library(DISRUPTOR_LIBRARIES Disruptor)
 find_library(AERON_CLIENT_LIB aeron_client)
 find_library(AERON_DRIVER_LIB aeron_driver)
 
@@ -39,7 +39,7 @@ target_link_libraries(arbito
         ${SSL_LIB}
         ${OPENSSL_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${DISRUPTOR_LIBRARIES}
+#        ${DISRUPTOR_LIBRARIES}
         ${AERON_DRIVER_LIB}
         ${AERON_CLIENT_LIB})
 
