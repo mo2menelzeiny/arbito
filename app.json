@@ -4,15 +4,5 @@
       "predeploy": "./install.sh",
       "postdeploy": ""
     }
-  },
-  "env": {
-    "SUB_CHANNEL": {
-      "description": "Aeron subscription URI",
-      "value": "aeron:udp?endpoint=0.0.0.0:50501"
-    },
-    "PUB_CHANNEL": {
-      "description": "Aeron publication URI",
-      "value": "aeron:udp?endpoint=localhost:50502"
-    }
   }
 }
