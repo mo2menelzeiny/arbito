@@ -437,8 +437,10 @@ int ping() {
     try {
         std::atomic<bool> running_ping(true);
         Settings settings = Settings();
-        settings.pingChannel = getenv("PING_CHANNEL") ? getenv("PING_CHANNEL") : "aeron:udp?endpoint=localhost:50501";
-        settings.pongChannel = getenv("PONG_CHANNEL") ? getenv("PONG_CHANNEL") : "aeron:udp?endpoint=localhost:50502";
+        //subscription channel
+        settings.pongChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=0.0.0.0:50501";
+        // publish channel
+        settings.pingChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50502";
 
         std::cout << "Subscribing Pong at " << settings.pongChannel << " on Stream ID " << settings.pongStreamId
                   << std::endl;
@@ -644,9 +646,10 @@ int pong() {
 int main() {
 
     try {
+        sleep(2);
         std::thread aeron_md_thread(aeron_driver);
-        sleep(1);
-        pong();
+        sleep(2);
+        ping();
         aeron_md_thread.join();
 
     }
