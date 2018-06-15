@@ -647,7 +647,7 @@ int main() {
 
     try {
         std::thread aeron_md_thread(aeron_driver);
-        ping();
+        pong();
     }
     catch (const SourcedException &e) {
         std::cerr << "FAILED: " << e.what() << " : " << e.where() << std::endl;
