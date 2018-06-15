@@ -438,9 +438,9 @@ int ping() {
         std::atomic<bool> running_ping(true);
         Settings settings = Settings();
         //subscription channel
-        settings.pongChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=0.0.0.0:50501";
+        settings.pongChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
         // publish channel
-        settings.pingChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50502";
+        settings.pingChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
 
         std::cout << "Subscribing Pong at " << settings.pongChannel << " on Stream ID " << settings.pongStreamId
                   << std::endl;
@@ -483,8 +483,8 @@ int ping() {
 
         Aeron aeron(context);
 
-        subscriptionId = aeron.addSubscription(settings.pongChannel, settings.pongStreamId);
-        publicationId = aeron.addPublication(settings.pingChannel, settings.pingStreamId);
+        subscriptionId = aeron.addSubscription(settings.pongChannel, 11);
+        publicationId = aeron.addPublication(settings.pingChannel, 10);
 
         std::shared_ptr<Subscription> pongSubscription = aeron.findSubscription(subscriptionId);
         while (!pongSubscription) {
@@ -556,9 +556,9 @@ int pong() {
         std::atomic<bool> running_pong(true);
         Settings settings = Settings();
         //subscription channel
-        settings.pingChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=0.0.0.0:50501";
+        settings.pingChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
         // publish channel
-        settings.pongChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50502";
+        settings.pongChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
 
         std::cout << "Subscribing Ping at " << settings.pingChannel << " on Stream ID " << settings.pingStreamId
                   << std::endl;
@@ -592,8 +592,8 @@ int pong() {
 
         Aeron aeron(context);
 
-        std::int64_t subscriptionId = aeron.addSubscription(settings.pingChannel, settings.pingStreamId);
-        std::int64_t publicationId = aeron.addPublication(settings.pongChannel, settings.pongStreamId);
+        std::int64_t subscriptionId = aeron.addSubscription(settings.pingChannel, 10);
+        std::int64_t publicationId = aeron.addPublication(settings.pongChannel, 11);
 
         std::shared_ptr<Subscription> pingSubscription = aeron.findSubscription(subscriptionId);
         while (!pingSubscription) {
@@ -646,12 +646,8 @@ int pong() {
 int main() {
 
     try {
-        sleep(2);
         std::thread aeron_md_thread(aeron_driver);
-        sleep(2);
         ping();
-        aeron_md_thread.join();
-
     }
     catch (const SourcedException &e) {
         std::cerr << "FAILED: " << e.what() << " : " << e.where() << std::endl;
