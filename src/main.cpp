@@ -757,10 +757,14 @@ int main() {
 
     try {
         std::thread aeron_md_thread(aeron_driver);
-        if (getenv("MODE") == "SUB") {
-            sub();
-        } else {
-            pub();
+
+        switch (atoi(getenv("MODE"))) {
+            case 0:
+                sub();
+                break;
+            case 1:
+                pub();
+                break;
         }
 
         aeron_md_thread.join();
