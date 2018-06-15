@@ -451,6 +451,7 @@ int ping() {
 
         aeron::Context context;
         std::atomic<int> countDown(1);
+
         std::int64_t subscriptionId;
         std::int64_t publicationId;
 
@@ -523,7 +524,7 @@ int ping() {
             std::cout << "Warmed up the media driver in " << nanoDuration << " [ns]" << std::endl;
         }
 
-        do {
+        /*do {
             FragmentAssembler fragmentAssembler(
                     [&](const AtomicBuffer &buffer, index_t offset, index_t length, const Header &header) {
                         steady_clock::time_point end = steady_clock::now();
@@ -538,7 +539,7 @@ int ping() {
                       << toStringWithCommas(settings.messageLength) << " bytes" << std::endl;
 
             sendPingAndReceivePong(fragmentAssembler.handler(), *pingPublication, *pongSubscription, settings);
-        } while (running_ping);
+        }*/ while (running_ping);
 
     }
     catch (const SourcedException &e) {
