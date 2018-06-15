@@ -437,10 +437,12 @@ int ping() {
     try {
         std::atomic<bool> running_ping(true);
         Settings settings = Settings();
-        //subscription channel
-        settings.pongChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
-        // publish channel
+
         settings.pingChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
+        settings.pongChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=localhost:50502|mtu=1500";
+
+        settings.pingStreamId = getenv("PUB_STREAM_ID") ? reinterpret_cast<int32_t>(getenv("PUB_STREAM_ID")) : 5;
+        settings.pongStreamId = getenv("SUB_STREAM_ID") ? reinterpret_cast<int32_t>(getenv("SUB_STREAM_ID")) : 10;
 
         std::cout << "Subscribing Pong at " << settings.pongChannel << " on Stream ID " << settings.pongStreamId
                   << std::endl;
@@ -483,8 +485,8 @@ int ping() {
 
         Aeron aeron(context);
 
-        subscriptionId = aeron.addSubscription(settings.pongChannel, 11);
-        publicationId = aeron.addPublication(settings.pingChannel, 10);
+        subscriptionId = aeron.addSubscription(settings.pongChannel, settings.pongStreamId);
+        publicationId = aeron.addPublication(settings.pingChannel, settings.pingStreamId);
 
         std::shared_ptr<Subscription> pongSubscription = aeron.findSubscription(subscriptionId);
         while (!pongSubscription) {
@@ -551,111 +553,20 @@ int ping() {
     return 0;
 }
 
-int pong() {
-    try {
-        std::atomic<bool> running_pong(true);
-        Settings settings = Settings();
-        //subscription channel
-        settings.pingChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
-        // publish channel
-        settings.pongChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
-
-        std::cout << "Subscribing Ping at " << settings.pingChannel << " on Stream ID " << settings.pingStreamId
-                  << std::endl;
-        std::cout << "Publishing Pong at " << settings.pongChannel << " on Stream ID " << settings.pongStreamId
-                  << std::endl;
-
-        aeron::Context context;
-
-        context.newSubscriptionHandler([](const std::string &channel, std::int32_t streamId,
-                                          std::int64_t correlationId) {
-            std::cout << "Subscription: " << channel << " " << correlationId << ":" << streamId << std::endl;
-        });
-
-        context.newPublicationHandler([](const std::string &channel, std::int32_t streamId, std::int32_t sessionId,
-                                         std::int64_t correlationId) {
-            std::cout << "Publication: " << channel << " " << correlationId << ":" << streamId << ":"
-                      << sessionId << std::endl;
-        });
-
-        context.availableImageHandler([](Image &image) {
-            std::cout << "Available image correlationId=" << image.correlationId() << " sessionId="
-                      << image.sessionId();
-            std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
-        });
-
-        context.unavailableImageHandler([](Image &image) {
-            std::cout << "Unavailable image on correlationId=" << image.correlationId() << " sessionId="
-                      << image.sessionId();
-            std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
-        });
-
-        Aeron aeron(context);
-
-        std::int64_t subscriptionId = aeron.addSubscription(settings.pingChannel, 10);
-        std::int64_t publicationId = aeron.addPublication(settings.pongChannel, 11);
-
-        std::shared_ptr<Subscription> pingSubscription = aeron.findSubscription(subscriptionId);
-        while (!pingSubscription) {
-            std::this_thread::yield();
-            pingSubscription = aeron.findSubscription(subscriptionId);
-        }
-
-        std::shared_ptr<Publication> pongPublication = aeron.findPublication(publicationId);
-        while (!pongPublication) {
-            std::this_thread::yield();
-            pongPublication = aeron.findPublication(publicationId);
-        }
-
-        Publication &pongPublicationRef = *pongPublication;
-        Subscription &pingSubscriptionRef = *pingSubscription;
-
-        BusySpinIdleStrategy idleStrategy;
-        BusySpinIdleStrategy pingHandlerIdleStrategy;
-        FragmentAssembler fragmentAssembler(
-                [&](AtomicBuffer &buffer, index_t offset, index_t length, const Header &header) {
-                    if (pongPublicationRef.offer(buffer, offset, length) > 0L) {
-                        return;
-                    }
-
-                    while (pongPublicationRef.offer(buffer, offset, length) < 0L) {
-                        pingHandlerIdleStrategy.idle();
-                    }
-                });
-
-        fragment_handler_t handler = fragmentAssembler.handler();
-
-        while (running_pong) {
-            idleStrategy.idle(pingSubscriptionRef.poll(handler, settings.fragmentCountLimit));
-        }
-
-        std::cout << "Shutting down...\n";
-    }
-    catch (const SourcedException &e) {
-        std::cerr << "FAILED: " << e.what() << " : " << e.where() << std::endl;
-        return -1;
-    }
-    catch (const std::exception &e) {
-        std::cerr << "FAILED: " << e.what() << " : " << std::endl;
-        return -1;
-    }
-
-    return 0;
-}
-
 int main() {
 
     try {
         std::thread aeron_md_thread(aeron_driver);
-        pong();
+        ping();
+        aeron_md_thread.join();
     }
     catch (const SourcedException &e) {
         std::cerr << "FAILED: " << e.what() << " : " << e.where() << std::endl;
-        return -1;
+        return EXIT_FAILURE;
     }
     catch (const std::exception &e) {
         std::cerr << "FAILED: " << e.what() << " : " << std::endl;
-        return -1;
+        return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
 }
