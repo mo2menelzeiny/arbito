@@ -438,8 +438,8 @@ int ping() {
         std::atomic<bool> running_ping(true);
         Settings settings = Settings();
 
-        settings.pingChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
-        settings.pongChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=localhost:50502|mtu=1500";
+        settings.pingChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501";
+        settings.pongChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=localhost:50502";
 
         settings.pingStreamId = getenv("PUB_STREAM_ID") ? atoi(getenv("PUB_STREAM_ID")) : 51;
         settings.pongStreamId = getenv("SUB_STREAM_ID") ? atoi(getenv("SUB_STREAM_ID")) : 52;
@@ -524,7 +524,7 @@ int ping() {
             std::cout << "Warmed up the media driver in " << nanoDuration << " [ns]" << std::endl;
         }
 
-        /*do {
+        do {
             FragmentAssembler fragmentAssembler(
                     [&](const AtomicBuffer &buffer, index_t offset, index_t length, const Header &header) {
                         steady_clock::time_point end = steady_clock::now();
@@ -539,7 +539,7 @@ int ping() {
                       << toStringWithCommas(settings.messageLength) << " bytes" << std::endl;
 
             sendPingAndReceivePong(fragmentAssembler.handler(), *pingPublication, *pongSubscription, settings);
-        }*/ while (running_ping);
+        } while (running_ping);
 
     }
     catch (const SourcedException &e) {
@@ -554,11 +554,215 @@ int ping() {
     return 0;
 }
 
+fragment_handler_t printStringMessage()
+{
+    return [&](const AtomicBuffer& buffer, util::index_t offset, util::index_t length, const Header& header)
+    {
+        std::cout << "Message to stream " << header.streamId() << " from session " << header.sessionId();
+        std::cout << "(" << length << "@" << offset << ") <<";
+        std::cout << std::string(reinterpret_cast<const char *>(buffer.buffer()) + offset, static_cast<std::size_t>(length)) << ">>" << std::endl;
+    };
+}
+
+void printEndOfStream(Image &image)
+{
+    std::cout << "End Of Stream image correlationId=" << image.correlationId()
+              << " sessionId=" << image.sessionId()
+              << " from " << image.sourceIdentity()
+              << std::endl;
+}
+std::atomic<bool> running (true);
+
+
+int sub() {
+
+    try
+    {
+        static const std::chrono::duration<long, std::milli> IDLE_SLEEP_MS(1);
+        std::cout << "Subscribing to channel " << getenv("SUB_CHANNEL") << " on Stream ID " << getenv("SUB_STREAM_ID") << std::endl;
+
+        aeron::Context context;
+
+        context.newSubscriptionHandler(
+                [](const std::string& channel, std::int32_t streamId, std::int64_t correlationId)
+                {
+                    std::cout << "Subscription: " << channel << " " << correlationId << ":" << streamId << std::endl;
+                });
+
+        context.availableImageHandler([](Image &image)
+                                      {
+                                          std::cout << "Available image correlationId=" << image.correlationId() << " sessionId=" << image.sessionId();
+                                          std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
+                                      });
+
+        context.unavailableImageHandler([](Image &image)
+                                        {
+                                            std::cout << "Unavailable image on correlationId=" << image.correlationId() << " sessionId=" << image.sessionId();
+                                            std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
+                                        });
+
+        std::shared_ptr<Aeron> aeron = Aeron::connect(context);
+
+        // add the subscription to start the process
+        std::int64_t id = aeron->addSubscription(getenv("SUB_CHANNEL"), atoi(getenv("SUB_STREAM_ID")));
+
+        std::shared_ptr<Subscription> subscription = aeron->findSubscription(id);
+        // wait for the subscription to be valid
+        while (!subscription)
+        {
+            std::this_thread::yield();
+            subscription = aeron->findSubscription(id);
+        }
+
+        const std::int64_t channelStatus = subscription->channelStatus();
+
+        std::cout << "Subscription channel status (id=" << subscription->channelStatusId() << ") "
+                  << ((channelStatus == ChannelEndpointStatus::CHANNEL_ENDPOINT_ACTIVE) ?
+                      "ACTIVE" : std::to_string(channelStatus))
+                  << std::endl;
+
+        fragment_handler_t handler = printStringMessage();
+        SleepingIdleStrategy idleStrategy(IDLE_SLEEP_MS);
+
+        bool reachedEos = false;
+
+        while (running)
+        {
+            const int fragmentsRead = subscription->poll(handler, 10);
+
+            if (0 == fragmentsRead)
+            {
+                if (!reachedEos && subscription->pollEndOfStreams(printEndOfStream) > 0)
+                {
+                    reachedEos = true;
+                }
+            }
+
+            idleStrategy.idle(fragmentsRead);
+        }
+
+    }
+    catch (const SourcedException& e)
+    {
+        std::cerr << "FAILED: " << e.what() << " : " << e.where() << std::endl;
+        return -1;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "FAILED: " << e.what() << " : " << std::endl;
+        return -1;
+    }
+
+    return 0;
+}
+
+typedef std::array<std::uint8_t, 256> buffer_t;
+int pub() {
+    try
+    {
+
+        std::cout << "Publishing to channel " << getenv("PUB_CHANNEL") << " on Stream ID " << getenv("PUB_STREAM_ID") << std::endl;
+
+        aeron::Context context;
+
+        context.newPublicationHandler(
+                [](const std::string& channel, std::int32_t streamId, std::int32_t sessionId, std::int64_t correlationId)
+                {
+                    std::cout << "Publication: " << channel << " " << correlationId << ":" << streamId << ":" << sessionId << std::endl;
+                });
+
+        std::shared_ptr<Aeron> aeron = Aeron::connect(context);
+
+        // add the publication to start the process
+        std::int64_t id = aeron->addPublication(getenv("PUB_CHANNEL"), atoi(getenv("PUB_STREAM_ID")));
+
+        std::shared_ptr<Publication> publication = aeron->findPublication(id);
+        // wait for the publication to be valid
+        while (!publication)
+        {
+            std::this_thread::yield();
+            publication = aeron->findPublication(id);
+        }
+
+        const std::int64_t channelStatus = publication->channelStatus();
+
+        std::cout << "Publication channel status (id=" << publication->channelStatusId() << ") "
+                  << ((channelStatus == ChannelEndpointStatus::CHANNEL_ENDPOINT_ACTIVE) ?
+                      "ACTIVE" : std::to_string(channelStatus))
+                  << std::endl;
+
+        AERON_DECL_ALIGNED(buffer_t buffer, 16);
+        concurrent::AtomicBuffer srcBuffer(&buffer[0], buffer.size());
+        char message[256];
+
+        do {
+
+
+            srcBuffer.putBytes(0, reinterpret_cast<const std::uint8_t *>("Hello World!"), sizeof("Hello World!"));
+
+            std::cout << "offering ";
+            std::cout.flush();
+
+            const std::int64_t result = publication->offer(srcBuffer, 0, sizeof("Hello World!"));
+
+            if (result < 0)
+            {
+                if (BACK_PRESSURED == result)
+                {
+                    std::cout << "Offer failed due to back pressure" << std::endl;
+                }
+                else if (NOT_CONNECTED == result)
+                {
+                    std::cout << "Offer failed because publisher is not connected to subscriber" << std::endl;
+                }
+                else if (ADMIN_ACTION == result)
+                {
+                    std::cout << "Offer failed because of an administration action in the system" << std::endl;
+                }
+                else if (PUBLICATION_CLOSED == result)
+                {
+                    std::cout << "Offer failed publication is closed" << std::endl;
+                }
+                else
+                {
+                    std::cout << "Offer failed due to unknown reason" << result << std::endl;
+                }
+            }
+            else
+            {
+                std::cout << "yay!" << std::endl;
+            }
+
+            if (!publication->isConnected())
+            {
+                std::cout << "No active subscribers detected" << std::endl;
+            }
+
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        } while (running);
+    }
+    catch (const SourcedException& e)
+    {
+        std::cerr << "FAILED: " << e.what() << " : " << e.where() << std::endl;
+        return -1;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "FAILED: " << e.what() << " : " << std::endl;
+        return -1;
+    }
+}
+
 int main() {
 
     try {
         std::thread aeron_md_thread(aeron_driver);
-        ping();
+        if (getenv("MODE") == "SUB") {
+            sub();
+        } else {
+            pub();
+        }
+
         aeron_md_thread.join();
     }
     catch (const SourcedException &e) {
