@@ -441,8 +441,8 @@ int ping() {
         settings.pingChannel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501|mtu=1500";
         settings.pongChannel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=localhost:50502|mtu=1500";
 
-        settings.pingStreamId = getenv("PUB_STREAM_ID") ? static_cast<unsigned int>(* getenv("PUB_STREAM_ID")) : 5;
-        settings.pongStreamId = getenv("SUB_STREAM_ID") ? static_cast<unsigned int>(* getenv("SUB_STREAM_ID")) : 10;
+        settings.pingStreamId = getenv("PUB_STREAM_ID") ? atoi(getenv("PUB_STREAM_ID")) : 51;
+        settings.pongStreamId = getenv("SUB_STREAM_ID") ? atoi(getenv("SUB_STREAM_ID")) : 52;
 
         std::cout << "Subscribing Pong at " << settings.pongChannel << " on Stream ID " << settings.pongStreamId
                   << std::endl;
