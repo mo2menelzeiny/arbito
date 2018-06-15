@@ -10,8 +10,8 @@ cd externals
 #mkdir build
 #cd build
 #cmake .. -DCMAKE_BUILD_TYPE=Release
-#make
-#make install PREFIX=/usr/local
+#make -j 4
+#make -j 4 install PREFIX=/usr/local
 #
 ##return to externals/
 #cd ../..
@@ -23,8 +23,8 @@ cd aeron-1.9.3
 mkdir -p cppbuild/Debug
 cd cppbuild/Debug
 cmake -DBUILD_AERON_DRIVER=ON ../..
-make
-make install PREFIX=/usr/local
+make -j 4
+make -j 4 install PREFIX=/usr/local
 
 #Leave to root
 cd ../../../..
@@ -33,4 +33,4 @@ echo "Building executables.."
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make
+make -j 4
