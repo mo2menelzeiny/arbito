@@ -433,13 +433,6 @@ int sub() {
             subscription = aeron->findSubscription(id);
         }
 
-        const std::int64_t channelStatus = subscription->channelStatus();
-
-        std::cout << "Subscription channel status (id=" << subscription->channelStatusId() << ") "
-                  << ((channelStatus == ChannelEndpointStatus::CHANNEL_ENDPOINT_ACTIVE) ?
-                      "ACTIVE" : std::to_string(channelStatus))
-                  << std::endl;
-
         fragment_handler_t handler = [&](const AtomicBuffer &buffer, util::index_t offset, util::index_t length,
                                          const Header &header) {
             steady_clock::time_point rec_time = steady_clock::now();
@@ -460,9 +453,9 @@ int sub() {
 
         BusySpinIdleStrategy idleStrategy;
 
-        do {
+        while (running) {
             idleStrategy.idle(subscription->poll(handler, 10));
-        } while (running);
+        }
 
     }
     catch (const SourcedException &e) {
@@ -491,6 +484,18 @@ int pub() {
                               << sessionId << std::endl;
                 });
 
+        context.availableImageHandler([](Image &image) {
+            std::cout << "Available image correlationId=" << image.correlationId() << " sessionId="
+                      << image.sessionId();
+            std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
+        });
+
+        context.unavailableImageHandler([](Image &image) {
+            std::cout << "Unavailable image on correlationId=" << image.correlationId() << " sessionId="
+                      << image.sessionId();
+            std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
+        });
+
         std::shared_ptr<Aeron> aeron = Aeron::connect(context);
 
         // add the publication to start the process
@@ -503,13 +508,6 @@ int pub() {
             publication = aeron->findPublication(id);
         }
 
-        const std::int64_t channelStatus = publication->channelStatus();
-
-        std::cout << "Publication channel status (id=" << publication->channelStatusId() << ") "
-                  << ((channelStatus == ChannelEndpointStatus::CHANNEL_ENDPOINT_ACTIVE) ?
-                      "ACTIVE" : std::to_string(channelStatus))
-                  << std::endl;
-
         std::unique_ptr<std::uint8_t[]> buffer(new std::uint8_t[256]);
         concurrent::AtomicBuffer srcBuffer(buffer.get(), 256);
 
@@ -521,6 +519,7 @@ int pub() {
             if (result < 0) {
                 if (BACK_PRESSURED == result) {
                     std::cout << "Offer failed due to back pressure" << std::endl;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
                 } else if (NOT_CONNECTED == result) {
                     std::cout << "Offer failed because publisher is not connected to subscriber" << std::endl;
                 } else if (ADMIN_ACTION == result) {
@@ -535,7 +534,7 @@ int pub() {
             if (!publication->isConnected()) {
                 std::cout << "No active subscribers detected" << std::endl;
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(atoi(getenv("RATE_MS"))));
         } while (running);
     }
     catch (const SourcedException &e) {
@@ -552,20 +551,25 @@ int main() {
 
     try {
         std::thread aeron_md_thread(aeron_driver);
-        std::thread mode;
+        std::thread subscription;
+        std::thread publication;
 
-        switch (atoi(getenv("MODE"))) {
+        switch (2) {
             case 0:
-                mode = std::thread(sub);
+                subscription = std::thread(sub);
                 break;
             case 1:
-                mode = std::thread(pub);
+                publication = std::thread(pub);
+                break;
+            case 2:
+                subscription = std::thread(sub);
+                publication = std::thread(pub);
                 break;
             default:
                 std::cout << "Invalid Mode\n";
         }
 
-        while(running) {
+        while (running) {
             std::this_thread::yield();
         }
     }
