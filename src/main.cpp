@@ -554,7 +554,7 @@ int main() {
         std::thread subscription;
         std::thread publication;
 
-        switch (2) {
+        switch (atoi(getenv("MODE"))) {
             case 0:
                 subscription = std::thread(sub);
                 break;
