@@ -552,13 +552,14 @@ int main() {
 
     try {
         std::thread aeron_md_thread(aeron_driver);
+        std::thread mode;
 
         switch (atoi(getenv("MODE"))) {
             case 0:
-                std::thread subscription(sub);
+                mode = std::thread(sub);
                 break;
             case 1:
-                std::thread publication(pub);
+                mode = std::thread(pub);
                 break;
             default:
                 std::cout << "Invalid Mode\n";
