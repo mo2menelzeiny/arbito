@@ -6,6 +6,7 @@ cd externals
 #echo "Installing Disruptor.."
 #wget https://github.com/Abc-Arbitrage/Disruptor-cpp/archive/master.zip
 #unzip master.zip
+#rm master.zip
 #cd Disruptor-cpp-master
 #mkdir build
 #cd build
@@ -19,6 +20,7 @@ cd externals
 echo "Installing Aeron.."
 wget https://github.com/real-logic/aeron/archive/1.9.3.tar.gz
 tar zvxf 1.9.3.tar.gz
+rm 1.9.3.tar.gz
 cd aeron-1.9.3
 mkdir -p cppbuild/Debug
 cd cppbuild/Debug
