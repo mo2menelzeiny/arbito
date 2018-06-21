@@ -319,7 +319,6 @@ inline bool aeron_is_running() {
     return result;
 }
 
-
 int aeron_driver() {
 
     int status = EXIT_FAILURE;
@@ -354,7 +353,6 @@ int aeron_driver() {
 
     return status;
 }
-
 
 }
 
