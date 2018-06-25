@@ -21,6 +21,7 @@ bool lmax_fix_session_admin(struct lmax_fix_session *session, struct lmax_fix_me
 int lmax_fix_session_logout(struct lmax_fix_session *session, const char *text);
 int lmax_fix_session_test_request(struct lmax_fix_session *session);
 int lmax_fix_session_logon(struct lmax_fix_session *session);
+int lmax_fix_session_marketdata_request(struct lmax_fix_session *session);
 
 #ifdef __cplusplus
 }
