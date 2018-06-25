@@ -52,8 +52,8 @@ enum lmax_fix_msg_type {
 /*
  * Maximum FIX message size
  */
-#define FIX_MAX_HEAD_LEN	256UL
-#define FIX_MAX_BODY_LEN	1024UL
+#define FIX_MAX_HEAD_LEN	128UL
+#define FIX_MAX_BODY_LEN	512UL
 #define FIX_MAX_MESSAGE_SIZE	(FIX_MAX_HEAD_LEN + FIX_MAX_BODY_LEN)
 
 /* Total number of elements of fix_tag type*/
@@ -130,7 +130,9 @@ enum lmax_fix_tag {
     NoRelatedSym = 146,
     ExecType = 150,
     LeavesQty = 151,
-    SubscriptionRequestType = 263,
+	MDReqID = 262,
+	SubscriptionRequestType = 263,
+	MarketDepth = 264,
     MDUpdateType = 265,
     NoMDEntryTypes = 267,
     NoMDEntries = 268,

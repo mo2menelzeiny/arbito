@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <openssl/ssl.h>
 
 static const char *begin_strings[] = {
 	[FIX_4_4]	= "FIX.4.4",
@@ -193,8 +194,6 @@ int lmax_fix_session_recv(struct lmax_fix_session *self, struct lmax_fix_message
 
 	self->failure_reason = FIX_SUCCESS;
 
-	size_t size;
-
 	TRACE(LIBTRADING_FIX_MESSAGE_RECV(msg, flags));
 
 	if (!lmax_fix_message_parse(msg, self->dialect, buffer, flags)) {
@@ -206,13 +205,9 @@ int lmax_fix_session_recv(struct lmax_fix_session *self, struct lmax_fix_message
 	if (fix_session_buffer_full(self))
 		buffer_compact(buffer);
 
-	size = buffer_remaining(buffer);
+	size_t size = buffer_remaining(buffer);
 	if (size > FIX_MAX_MESSAGE_SIZE) {
-		ssize_t nr;
-
-		size -= FIX_MAX_MESSAGE_SIZE;
-		nr = buffer_recv(buffer, self->sockfd, self->ssl, size, translate_recv_flags(flags));
-
+		ssize_t nr = buffer_recv(buffer, self->sockfd, self->ssl, SSL_pending(self->ssl), translate_recv_flags(flags));
 		if (nr <= 0) {
 			self->failure_reason = nr == 0 ? FIX_FAILURE_CONN_CLOSED : FIX_FAILURE_SYSTEM;
 			return -1;
@@ -226,7 +221,6 @@ int lmax_fix_session_recv(struct lmax_fix_session *self, struct lmax_fix_message
 	}
 
 	TRACE(LIBTRADING_FIX_MESSAGE_RECV_ERR());
-
 	return 0;
 
 parsed:

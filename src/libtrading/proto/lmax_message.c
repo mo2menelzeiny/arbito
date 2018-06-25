@@ -329,8 +329,12 @@ static enum lmax_fix_type lmax_fix_tag_type(int tag) {
             return FIX_TYPE_INT;
         case NoRelatedSym:
             return FIX_TYPE_INT;
+        case MDReqID:
+            return FIX_TYPE_STRING;
         case SubscriptionRequestType:
             return FIX_TYPE_CHAR;
+        case MarketDepth:
+            return FIX_TYPE_INT;
         case MDUpdateType:
             return FIX_TYPE_INT;
         case NoMDEntryTypes:
@@ -420,7 +424,7 @@ static void rest_of_message(struct lmax_fix_message *self, struct lmax_fix_diale
         case FIX_TYPE_CHECKSUM:
             break;
         case FIX_TYPE_MSGSEQNUM:
-            self->msg_seq_num = lmax_fix_uatoi(tag_ptr, NULL);
+            self->msg_seq_num = (unsigned long) lmax_fix_uatoi(tag_ptr, NULL);
             goto retry;
         default:
             goto retry;
@@ -817,7 +821,7 @@ int lmax_fix_message_send(struct lmax_fix_message *self, int sockfd, struct ssl_
 }
 
 struct lmax_fix_dialect lmax_fix_dialects[] = {
-        [FIX_4_4] = {
+        [FIX_4_4] = (struct lmax_fix_dialect){
                 .version	= FIX_4_4,
                 .tag_type	= lmax_fix_tag_type,
         }

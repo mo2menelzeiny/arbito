@@ -87,12 +87,12 @@ ssize_t buffer_recv(struct buffer *buf, int sockfd, struct ssl_st *ssl, size_t s
 	void *end;
 
 	end	= buffer_end(buf);
-	count	= buffer_remaining(buf);
+	count = buffer_remaining(buf);
 
 	if (count > size)
 		count = size;
 
-	len = SSL_read(ssl, end, count);
+	len = SSL_read(ssl, end, (int) count);
 	if (len < 0)
 		return len;
 
