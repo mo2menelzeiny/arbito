@@ -20,7 +20,9 @@ find_library(AERON_DRIVER_LIB aeron_driver)
 file(GLOB HEADERS
         include/*.h
         include/libtrading/*.h
-        include/libtrading/proto/*.h)
+        include/libtrading/proto/*.h
+        include/sbe/*.h
+        include/sbe/otf/*.h)
 
 file(GLOB SOURCES
         src/*.cpp

@@ -82,7 +82,7 @@ bool buffer_printf(struct buffer *buf, const char *format, ...)
 
 ssize_t buffer_recv(struct buffer *buf, int sockfd, struct ssl_st *ssl, size_t size, int flags)
 {
-	size_t count;
+	int count;
 	ssize_t len;
 	void *end;
 
@@ -92,7 +92,7 @@ ssize_t buffer_recv(struct buffer *buf, int sockfd, struct ssl_st *ssl, size_t s
 	if (count > size)
 		count = size;
 
-	len = SSL_read(ssl, end, (int) count);
+	len = SSL_read(ssl, end, count);
 	if (len < 0)
 		return len;
 

@@ -18,6 +18,7 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdexcept>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -34,31 +35,25 @@
 #include <Disruptor/IEventHandler.h>
 #include <Disruptor/ILifecycleAware.h>
 
+#include <Event.h>
+
 namespace LMAX {
 
-    struct DataEvent {
-        const char *value;
-    };
+    class MarketDataOffice {
 
-    struct PrintEventHandler : Disruptor::IEventHandler<DataEvent> {
-
-        void onEvent(DataEvent &data, std::int64_t sequence, bool endOfBatch) override;
-    };
-
-    class MarketDataClient {
     public:
-        MarketDataClient(const char *m_host, int m_port, const char *username, const char *password,
+        MarketDataOffice(const char *m_host, int m_port, const char *username, const char *password,
                          const char *sender_comp_id, const char *target_comp_id, int heartbeat);
+
+	    template <class T> void addConsumer(const std::shared_ptr<T> consumer) {
+		    m_disruptor->handleEventsWith(consumer);
+	    };
+
         void start();
 
-        void stop();
-
-        void handle();
-
-        void onData(lmax_fix_message *msg);
-
     private:
-        static int fstrncpy(char *dest, const char *src, int n) {
+
+	    static int fstrncpy(char *dest, const char *src, int n) {
             int i;
 
             for (i = 0; i < n && src[i] != 0x00 && src[i] != 0x01; i++)
@@ -139,6 +134,12 @@ namespace LMAX {
             return setsockopt(sockfd, level, optname, (void *) &optval, sizeof(optval));
         }
 
+        void initialize();
+
+	    void poll();
+
+	    void onData(lmax_fix_message *msg);
+
     private:
         int m_port;
         const char *m_host;
@@ -146,9 +147,10 @@ namespace LMAX {
         SSL *m_ssl;
         struct lmax_fix_session_cfg m_cfg;
         struct lmax_fix_session *m_session;
-        std::shared_ptr<Disruptor::disruptor<LMAX::DataEvent>> m_disruptor;
+        std::shared_ptr<Disruptor::disruptor<Event>> m_disruptor;
         std::shared_ptr<Disruptor::ThreadPerTaskScheduler> m_taskscheduler;
-        char m_buffer[256];
+	    std::thread m_polling_thread;
+	    char m_buffer[256];
     };
 }
 
