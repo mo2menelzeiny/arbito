@@ -28,8 +28,24 @@ cmake -DBUILD_AERON_DRIVER=ON ../..
 make -j 4
 make -j 4 install PREFIX=/usr/local
 
+##return to externals
+#cd ../../..
+#
+#echo "Installing SBE.."
+#wget https://github.com/real-logic/simple-binary-encoding/archive/1.8.1.tar.gz
+#tar zvxf simple-binary-encoding-1.8.1.tar.gz
+#rm simple-binary-encoding-1.8.1.tar.gz
+#cd simple-binary-encoding-1.8.1
+#./gradlew
+#mkdir -p cppbuild/Debug
+#cd cppbuild/Debug
+#cmake  ../..
+#make -j 4
+#make -j 4 install PREFIX=/usr/local
+
 #Leave to root
 cd ../../../..
+
 
 echo "Building executables.."
 mkdir build
