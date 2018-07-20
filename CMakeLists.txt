@@ -22,10 +22,14 @@ file(GLOB HEADERS
         include/libtrading/*.h
         include/libtrading/proto/*.h
         include/sbe/*.h
-        include/sbe/otf/*.h)
+        include/sbe/otf/*.h
+        include/lmax/*.h
+        include/swissquote/*.h)
 
 file(GLOB SOURCES
         src/*.cpp
+        src/lmax/*.cpp
+        src/swissquote/*.cpp
         src/libtrading/*.c
         src/libtrading/stringencoders/*.c
         src/libtrading/proto/*.c

@@ -10,6 +10,7 @@
 
 #include "Event.h"
 #include "OrderEvent.h"
+
 struct Deal {
 	unsigned long id;
 };
