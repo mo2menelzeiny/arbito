@@ -1,32 +1,37 @@
 
-#include <BusinessOffice.h>
-#include "lmax/MarketDataOffice.h"
-#include "CommunicationOffice.h"
+#include <Messenger.h>
+#include "lmax/MarketOffice.h"
+#include "lmax/TradeOffice.h"
 
 int main() {
 
 	try {
-		std::shared_ptr<BusinessOffice> business_office = std::make_shared<BusinessOffice>(10, 10, 10);
-
-		const char *pub_channel = getenv("PUB_CHANNEL"), *sub_channel = getenv("SUB_CHANNEL");
+		// Getting parameters from environment variables
+		double spread = atof(getenv("SPREAD"));
+		double bid_lot_size = atof(getenv("BID_LOT_SIZE")), offer_lot_size = atof(getenv("OFFER_LOT_SIZE"));
+		// double diff_open = atof(getenv("DIFF_OPEN")), diff_close = atof(getenv("DIFF_CLOSE"));
 		int pub_stream_id = atoi(getenv("PUB_STREAM_ID")), sub_stream_id = atoi(getenv("SUB_STREAM_ID"));
-
-		std::shared_ptr<CommunicationOffice> com_office =
-				std::make_shared<CommunicationOffice>(pub_channel, pub_stream_id, sub_channel, sub_stream_id);
-
-		com_office->addConsumer(business_office);
-		com_office->start();
-
-		const char *host = "fix-marketdata.london-demo.lmax.com", *username = "AhmedDEMO", *password = "password1",
-				*sender = "AhmedDEMO", *receiver = "LMXBDM";
+		const char *pub_channel = getenv("PUB_CHANNEL"), *sub_channel = getenv("SUB_CHANNEL");
+		const char *mo_host = "fix-marketdata.london-demo.lmax.com", *mo_username = "AhmedDEMO",
+				*mo_password = "password1", *mo_sender = "AhmedDEMO", *mo_receiver = "LMXBDM";
+		const char *to_host = "fix-order.london-demo.lmax.com", *to_username = "AhmedDEMO",
+				*to_password = "password1", *to_sender = "AhmedDEMO", *to_receiver = "LMXBD";
 		int port = 443, heartbeat = 15;
 
-		std::shared_ptr<LMAX::MarketDataOffice> md_office =
-				std::make_shared<LMAX::MarketDataOffice>(host, port, username, password, sender, receiver, heartbeat);
+		std::shared_ptr<Messenger> messenger = std::make_shared<Messenger>();
 
-		md_office->addConsumer(com_office);
-		md_office->addConsumer(business_office);
-		md_office->start();
+		std::shared_ptr<LMAX::MarketOffice> market_office =
+				std::make_shared<LMAX::MarketOffice>(mo_host, port, mo_username, mo_password, mo_sender, mo_receiver,
+				                                     heartbeat, spread, bid_lot_size, offer_lot_size);
+
+		/*std::shared_ptr<LMAX::TradeOffice> trade_office =
+				std::make_shared<LMAX::TradeOffice>(to_host, port, to_username, to_password, to_sender, to_receiver,
+				                                    heartbeat, pub_channel, pub_stream_id, sub_channel, sub_stream_id,
+				                                    diff_open, diff_close);
+*/
+		//market_office->addConsumer<LMAX::TradeOffice>(trade_office);
+		market_office->start();
+		//trade_office->start();
 
 		while (true) {
 			std::this_thread::yield();

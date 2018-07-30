@@ -12,7 +12,7 @@ int lmax_fix_session_sequence_reset(struct lmax_fix_session *session, unsigned l
 int lmax_fix_session_order_cancel_request(struct lmax_fix_session *session, struct lmax_fix_field *fields, long nr_fields);
 int lmax_fix_session_order_cancel_replace(struct lmax_fix_session *session, struct lmax_fix_field *fields, long nr_fields);
 int lmax_fix_session_execution_report(struct lmax_fix_session *session, struct lmax_fix_field *fields, long nr_fields);
-int lmax_fix_session_new_order_single(struct lmax_fix_session *session, struct lmax_fix_field* fields, long nr_fields);
+int lmax_fix_session_new_order_single(struct lmax_fix_session *session);
 int lmax_fix_session_resend_request(struct lmax_fix_session *session, unsigned long bgn, unsigned long end);
 int lmax_fix_session_reject(struct lmax_fix_session *session, unsigned long refseqnum, char *text);
 int lmax_fix_session_heartbeat(struct lmax_fix_session *session, const char *test_req_id);

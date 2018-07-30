@@ -416,3 +416,6 @@ int lmax_fix_session_marketdata_request(struct lmax_fix_session *session) {
 	return 0;
 }
 
+int lmax_fix_session_new_order_single(struct lmax_fix_session *session) {
+
+}
