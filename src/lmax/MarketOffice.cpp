@@ -1,11 +1,13 @@
 
-#include "lmax/MarketDataOffice.h"
+#include "lmax/MarketOffice.h"
 
 namespace LMAX {
 
-	MarketDataOffice::MarketDataOffice(const char *m_host, int m_port, const char *username, const char *password,
-	                                   const char *sender_comp_id, const char *target_comp_id, int heartbeat)
-			: m_host(m_host), m_port(m_port) {
+	MarketOffice::MarketOffice(const char *m_host, int m_port, const char *username, const char *password,
+	                           const char *sender_comp_id, const char *target_comp_id, int heartbeat, double spread,
+	                           double bid_lot_size, double offer_lot_size)
+			: m_host(m_host), m_port(m_port), m_spread(spread), m_bid_lot_size(bid_lot_size),
+			  m_offer_lot_size(offer_lot_size) {
 		// Session configurations
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[FIX_4_4];
@@ -15,17 +17,23 @@ namespace LMAX {
 		strncpy(m_cfg.sender_comp_id, sender_comp_id, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, target_comp_id, ARRAY_SIZE(m_cfg.target_comp_id));
 
-		// Disruptor
+		// Disruptor // TODO: optimize and test on ring buffer size
 		m_taskscheduler = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
-		m_disruptor = std::make_shared<Disruptor::disruptor<Event>>(
-				[]() { return Event(); },
+		m_disruptor = std::make_shared<Disruptor::disruptor<MarketDataEvent>>(
+				[]() { return MarketDataEvent(); },
 				1024,
 				m_taskscheduler,
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 	}
 
-	void MarketDataOffice::initialize() {
+	void MarketOffice::start() {
+		m_taskscheduler->start();
+		m_disruptor->start();
+		initialize();
+	}
+
+	void MarketOffice::initialize() {
 		// SSL options
 		SSL_load_error_strings();
 		SSL_library_init();
@@ -123,17 +131,13 @@ namespace LMAX {
 		fprintf(stdout, "Market data request OK\n");
 
 		// Polling thread loop
-		m_polling_thread = std::thread(&MarketDataOffice::poll, this);
-		m_polling_thread.detach();
+		m_broker_client_poller = std::thread(&MarketOffice::poll, this);
+		m_broker_client_poller.detach();
+		m_poller_test = std::thread(&MarketOffice::pollerTest, this);
+		m_poller_test.detach();
 	}
 
-	void MarketDataOffice::start() {
-		m_taskscheduler->start();
-		m_disruptor->start();
-		initialize();
-	}
-
-	void MarketDataOffice::poll() {
+	void MarketOffice::poll() {
 		struct timespec cur{}, prev{};
 		__time_t diff;
 
@@ -169,13 +173,10 @@ namespace LMAX {
 					continue;
 				}
 			}
-
+			fprintmsg(stdout, msg);
 			switch (msg->type) {
 				case LMAX_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH:
-					onData(msg);
-					continue;
-				case LMAX_FIX_MSG_TYPE_HEARTBEAT:
-					onData(msg);
+					onMarketData(msg);
 					continue;
 				default:
 					continue;
@@ -184,7 +185,7 @@ namespace LMAX {
 
 		// Reconnection condition
 		if (m_session->active) {
-			std::this_thread::sleep_for(std::chrono::seconds(30));
+			std::this_thread::sleep_for(std::chrono::seconds(60));
 			fprintf(stdout, "Market data client reconnecting..\n");
 			SSL_shutdown(m_cfg.ssl);
 			SSL_free(m_cfg.ssl);
@@ -193,25 +194,41 @@ namespace LMAX {
 			lmax_fix_session_free(m_session);
 			initialize();
 		}
+
 	}
 
-	void MarketDataOffice::onData(lmax_fix_message *msg) {
-		fprintmsg(stdout, msg);
+	bool MarketOffice::filterMarketData(lmax_fix_message *msg) {
+		return m_spread > // offer - bid = spread
+		       (lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value - lmax_fix_get_float(msg, MDEntryPx, 0.0))
+		       || m_bid_lot_size < lmax_fix_get_float(msg, MDEntrySize, 0.0)
+		       || m_offer_lot_size < lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value;
+	}
+
+	void MarketOffice::onMarketData(lmax_fix_message *msg) {
+		if (filterMarketData(msg)) {
+			return;
+		}
 
 		auto next_sequence = m_disruptor->ringBuffer()->next();
-
-		(*m_disruptor->ringBuffer())[next_sequence] = (Event) {
-				.event_type = MARKET_DATA,
-				.broker = BROKER_LMAX,
-				// First 2 fields are for bid - 0
+		(*m_disruptor->ringBuffer())[next_sequence] = (MarketDataEvent) {
 				.bid = lmax_fix_get_float(msg, MDEntryPx, 0.0),
-				.bid_qty = lmax_fix_get_float(msg, MDEntrySize, 0.0),
-				// last 2 fields are for offer - 1
+				.bid_qty = (lmax_fix_get_float(msg, MDEntrySize, 0.0)),
 				.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
 				.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value
 		};
-
 		m_disruptor->ringBuffer()->publish(next_sequence);
+	}
+
+	void MarketOffice::pollerTest() {
+		auto poller = m_disruptor->ringBuffer()->newPoller({});
+		auto handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+			fprintf(stdout, "TEST \n");
+			fprintf(stdout, "%lf \n", data.bid);
+
+		};
+		while(true) {
+			poller->poll(handler);
+		}
 
 	}
 }

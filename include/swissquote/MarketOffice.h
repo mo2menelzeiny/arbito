@@ -1,6 +1,6 @@
 
-#ifndef ARBITO_MARKETDATACLIENT_H
-#define ARBITO_MARKETDATACLIENT_H
+#ifndef ARBITO_SWISSQUOTE_MARKETDATACLIENT_H
+#define ARBITO_SWISSQUOTE_MARKETDATACLIENT_H
 
 #include <netinet/tcp.h>
 #include <netinet/in.h>
@@ -24,7 +24,7 @@
 #include <openssl/err.h>
 #include <openssl/bio.h>
 
-#include <libtrading/proto/lmax_common.h>
+#include <libtrading/proto/swissquote_common.h>
 #include <libtrading/die.h>
 #include <libtrading/array.h>
 
@@ -37,12 +37,12 @@
 
 #include <Event.h>
 
-namespace LMAX {
+namespace SWISSQUOTE {
 
-    class MarketDataOffice {
+    class MarketOffice {
 
     public:
-        MarketDataOffice(const char *m_host, int m_port, const char *username, const char *password,
+        MarketOffice(const char *m_host, int m_port, const char *username, const char *password,
                          const char *sender_comp_id, const char *target_comp_id, int heartbeat);
 
 	    template <class T> void addConsumer(const std::shared_ptr<T> consumer) {
@@ -62,9 +62,9 @@ namespace LMAX {
             return i;
         }
 
-        static void fprintmsg(FILE *stream, struct lmax_fix_message *msg) {
+        static void fprintmsg(FILE *stream, struct swissquote_fix_message *msg) {
             char buf[256];
-            struct lmax_fix_field *field;
+            struct swissquote_fix_field *field;
             int size = sizeof buf;
             char delim = '|';
             int len = 0;
@@ -138,15 +138,15 @@ namespace LMAX {
 
 	    void poll();
 
-	    void onData(lmax_fix_message *msg);
+	    void onData(swissquote_fix_message *msg);
 
     private:
         int m_port;
         const char *m_host;
         SSL_CTX *m_ssl_ctx;
         SSL *m_ssl;
-        struct lmax_fix_session_cfg m_cfg;
-        struct lmax_fix_session *m_session;
+        struct swissquote_fix_session_cfg m_cfg;
+        struct swissquote_fix_session *m_session;
         std::shared_ptr<Disruptor::disruptor<Event>> m_disruptor;
         std::shared_ptr<Disruptor::ThreadPerTaskScheduler> m_taskscheduler;
 	    std::thread m_polling_thread;
@@ -155,4 +155,4 @@ namespace LMAX {
 }
 
 
-#endif //ARBITO_MARKETDATACLIENT_H
+#endif //ARBITO_SWISSQUOTE_MARKETDATACLIENT_H
