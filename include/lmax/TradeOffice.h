@@ -82,7 +82,7 @@ namespace LMAX {
 		int sub_stream_id;
 	};
 
-	class TradeOffice : public Disruptor::IEventHandler<MarketDataEvent> {
+	class TradeOffice {
 
 	public:
 		TradeOffice(const char *m_host, int m_port, const char *username, const char *password,
@@ -96,8 +96,6 @@ namespace LMAX {
 		};
 
 		void start();
-
-		void onEvent(MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) override;
 
 	private:
 		static int fstrncpy(char *dest, const char *src, int n) {
@@ -210,8 +208,6 @@ namespace LMAX {
 		std::thread m_broker_client_poller;
 		std::thread m_media_driver;
 		std::thread m_messenger_client_poller;
-		uint8_t m_buffer[AERON_BUFFER_SIZE];
-		MarketDataEvent *last_market_data = nullptr;
 		double m_diff_open, m_diff_close;
 		double m_current_diff_one, m_current_diff_two;
 		MarketState m_market_state = NO_DEALS;

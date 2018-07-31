@@ -7,7 +7,7 @@ namespace LMAX {
 	                         const char *sender_comp_id, const char *target_comp_id, int heartbeat,
 	                         const char *pub_channel, const char *pub_stream_id, const char *sub_channel,
 	                         const char *sub_stream_id, double diff_open, double diff_close)
-			: m_host(m_host), m_port(m_port),m_aeron_config({}), m_diff_open(diff_open), m_diff_close(diff_close) {
+			: m_host(m_host), m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close) {
 		// Session configurations
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[FIX_4_4];
@@ -32,35 +32,6 @@ namespace LMAX {
 		m_disruptor->start();*/
 		initBrokerClient();
 		initMessengerClient();
-	}
-
-	void TradeOffice::onEvent(MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) {
-		// TODO: test if the pointer loses it's reference at some point or invalidates the memory access
-		last_market_data = &data;
-
-		// TODO: test and optimize variable declaration of sbe as global members
-		sbe::MessageHeader msgHeader;
-		msgHeader.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, AERON_BUFFER_SIZE)
-				.blockLength(sbe::MarketData::sbeBlockLength())
-				.templateId(sbe::MarketData::sbeTemplateId())
-				.schemaId(sbe::MarketData::sbeSchemaId())
-				.version(sbe::MarketData::sbeSchemaVersion());
-
-		sbe::MarketData marketData;
-		marketData.wrapForEncode(reinterpret_cast<char *>(m_buffer), msgHeader.encodedLength(), AERON_BUFFER_SIZE)
-				.bid(data.bid)
-				.bidQty(data.bid_qty)
-				.offer(data.offer)
-				.offerQty(data.offer_qty);
-
-		aeron::index_t len = msgHeader.encodedLength() + marketData.encodedLength();
-		aeron::concurrent::AtomicBuffer srcBuffer(m_buffer, AERON_BUFFER_SIZE);
-		srcBuffer.putBytes(0, reinterpret_cast<const uint8_t *>(m_buffer), len);
-		std::int64_t result;
-		do {
-			result = m_publication->offer(srcBuffer, 0, len);
-		} while (result < 0L);
-
 	}
 
 	void TradeOffice::initBrokerClient() {
@@ -324,7 +295,7 @@ namespace LMAX {
 
 	void TradeOffice::onMessengerMarketData(sbe::MarketData &marketData) {
 
-		switch (m_market_state) {
+		/*switch (m_market_state) {
 			case NO_DEALS:
 				// current difference 1 -> offer1 - bid2
 				if (last_market_data->offer - marketData.bid() >= m_diff_open) {
@@ -353,7 +324,7 @@ namespace LMAX {
 					// TODO: open new order
 				}
 				break;
-		}
+		}*/
 
 	}
 }
