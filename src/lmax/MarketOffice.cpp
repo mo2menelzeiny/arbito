@@ -23,7 +23,6 @@ namespace LMAX {
 		strncpy(m_cfg.password, password, ARRAY_SIZE(m_cfg.password));
 		strncpy(m_cfg.sender_comp_id, sender_comp_id, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, target_comp_id, ARRAY_SIZE(m_cfg.target_comp_id));
-		start();
 	}
 
 	void MarketOffice::start() {
@@ -35,7 +34,7 @@ namespace LMAX {
 	}
 
 	void MarketOffice::initMessengerChannel() {
-		printf("Initializing Market office messenger channel..\n");
+		printf("Initializing market office messenger channel..\n");
 
 		std::int64_t publication_id = m_messenger->aeronClient()->addPublication(m_messenger_config.pub_channel,
 		                                                                         m_messenger_config.pub_stream_id);
@@ -59,6 +58,7 @@ namespace LMAX {
 	}
 
 	void MarketOffice::initBrokerClient() {
+		printf("Initializing market office broker client..\n");
 		// SSL options
 		SSL_load_error_strings();
 		SSL_library_init();
@@ -163,11 +163,12 @@ namespace LMAX {
 	}
 
 	void MarketOffice::poll() {
-		MarketDataEvent messenger_market_data{};
-		MarketDataEvent broker_market_data{};
+		MarketDataEvent messenger_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
+		MarketDataEvent broker_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
 		aeron::BusySpinIdleStrategy messengerIdleStrategy;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
+			// TODO: implement on the fly decode
 			// decode header
 			sbe::MessageHeader msgHeader;
 			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
@@ -187,8 +188,8 @@ namespace LMAX {
 			// publish arbitrage data to arbitrage data disruptor
 			auto next_sequence = m_arbitrage_data_disruptor->ringBuffer()->next();
 			(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence] = (ArbitrageDataEvent) {
-					.L1 = broker_market_data,
-					.L2 = messenger_market_data
+					.l1 = broker_market_data,
+					.l2 = messenger_market_data
 			};
 			m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence);
 
@@ -259,8 +260,8 @@ namespace LMAX {
 					// publish arbitrage data to arbitrage data disruptor
 					auto next_sequence_2 = m_arbitrage_data_disruptor->ringBuffer()->next();
 					(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence_2] = (ArbitrageDataEvent) {
-							.L1 = broker_market_data,
-							.L2 = messenger_market_data
+							.l1 = broker_market_data,
+							.l2 = messenger_market_data
 					};
 					m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence_2);
 

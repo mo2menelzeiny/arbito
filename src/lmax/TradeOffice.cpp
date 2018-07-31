@@ -3,11 +3,13 @@
 
 namespace LMAX {
 
-	TradeOffice::TradeOffice(const char *m_host, int m_port, const char *username, const char *password,
+	TradeOffice::TradeOffice(const std::shared_ptr<Messenger> &messenger,
+	                         const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
+	                         const char *m_host, int m_port, const char *username, const char *password,
 	                         const char *sender_comp_id, const char *target_comp_id, int heartbeat,
-	                         const char *pub_channel, const char *pub_stream_id, const char *sub_channel,
-	                         const char *sub_stream_id, double diff_open, double diff_close)
-			: m_host(m_host), m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close) {
+	                         double diff_open, double diff_close)
+			: m_messenger(messenger), m_arbitrage_data_disruptor(arbitrage_data_disruptor), m_host(m_host),
+			  m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close) {
 		// Session configurations
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[FIX_4_4];
@@ -16,25 +18,14 @@ namespace LMAX {
 		strncpy(m_cfg.password, password, ARRAY_SIZE(m_cfg.password));
 		strncpy(m_cfg.sender_comp_id, sender_comp_id, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, target_comp_id, ARRAY_SIZE(m_cfg.target_comp_id));
-
-		// Disruptor // TODO: optimize and test on ring buffer size
-		/*m_taskscheduler = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
-		m_disruptor = std::make_shared<Disruptor::disruptor<Event>>(
-				[]() { return Event(); },
-				1024,
-				m_taskscheduler,
-				Disruptor::ProducerType::Single,
-				std::make_shared<Disruptor::BusySpinWaitStrategy>());*/
 	}
 
 	void TradeOffice::start() {
-		/*m_taskscheduler->start();
-		m_disruptor->start();*/
 		initBrokerClient();
-		initMessengerClient();
 	}
 
 	void TradeOffice::initBrokerClient() {
+		printf("Initializing traded office broker client..\n");
 		// SSL options
 		SSL_load_error_strings();
 		SSL_library_init();
@@ -125,14 +116,57 @@ namespace LMAX {
 		fprintf(stdout, "Client Logon OK\n");
 
 		// Polling thread loop
-		m_broker_client_poller = std::thread(&TradeOffice::pollBrokerClient, this);
-		m_broker_client_poller.detach();
+		poller = std::thread(&TradeOffice::poll, this);
+		poller.detach();
 
 	}
 
-	void TradeOffice::pollBrokerClient() {
+	void TradeOffice::poll() {
+
 		struct timespec cur{}, prev{};
 		__time_t diff;
+
+		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
+
+		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+			printf("ArbitrageDataEvent\n");
+
+			switch (m_open_state) {
+				case CURRENT_DIFFERENCE_1:
+					if (data.currentDifference2() >= m_diff_close) {
+						// TODO: close oldest order
+						return true;
+					}
+					if (deals.size() < MAX_DEALS && data.currentDifference1() >= m_diff_open) {
+						// TODO: open a new order
+						return true;
+					}
+					break;
+				case CURRENT_DIFFERENCE_2:
+					if (data.currentDifference1() >= m_diff_close) {
+						// TODO: close oldest order
+						return true;
+					}
+					if (deals.size() < MAX_DEALS && data.currentDifference2() >= m_diff_open) {
+						// TODO: open new order
+						return true;
+					}
+					break;
+				case NO_DEALS:
+					// current difference 1 -> offer1 - bid2
+					if (data.currentDifference1() >= m_diff_open) {
+						// TODO: open a new order
+						return true;
+					}
+					// current difference 2 -> offer2 - bid1
+					if (data.currentDifference2() >= m_diff_open) {
+						// TODO: open a new order
+						return true;
+					}
+					break;
+			}
+
+		};
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
@@ -156,6 +190,7 @@ namespace LMAX {
 				break;
 			}
 
+
 			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				if (!msg) {
@@ -166,8 +201,11 @@ namespace LMAX {
 					continue;
 				}
 			}
+
+			arbitrage_data_poller->poll(arbitrage_data_handler);
+
 			// TODO: Implement trade messages handling
-			fprintmsg(stdout, msg);
+			/*fprintmsg(stdout, msg);*/
 			switch (msg->type) {
 				case LMAX_FIX_MSG_TYPE_HEARTBEAT:
 					/*fprintmsg(stdout, msg);*/
@@ -180,7 +218,7 @@ namespace LMAX {
 		// Reconnection condition
 		if (m_session->active) {
 			std::this_thread::sleep_for(std::chrono::seconds(60));
-			fprintf(stdout, "Trade office client reconnecting..\n");
+			fprintf(stdout, "Trade office reconnecting..\n");
 			SSL_shutdown(m_cfg.ssl);
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
@@ -188,143 +226,5 @@ namespace LMAX {
 			lmax_fix_session_free(m_session);
 			initBrokerClient();
 		}
-	}
-
-	void TradeOffice::messengerMediaDriver() {
-		aeron_driver_context_t *context = nullptr;
-		aeron_driver_t *driver = nullptr;
-
-		if (aeron_driver_context_init(&context) < 0) {
-			fprintf(stderr, "ERROR: context init (%d) %s\n", aeron_errcode(), aeron_errmsg());
-			goto cleanup;
-		}
-
-		if (aeron_driver_init(&driver, context) < 0) {
-			fprintf(stderr, "ERROR: driver init (%d) %s\n", aeron_errcode(), aeron_errmsg());
-			goto cleanup;
-		}
-
-		if (aeron_driver_start(driver, true) < 0) {
-			fprintf(stderr, "ERROR: driver start (%d) %s\n", aeron_errcode(), aeron_errmsg());
-			goto cleanup;
-		}
-
-		loop:
-		aeron_driver_main_idle_strategy(driver, aeron_driver_main_do_work(driver));
-		goto loop;
-
-		cleanup:
-		aeron_driver_close(driver);
-		aeron_driver_context_close(context);
-	}
-
-	void TradeOffice::initMessengerClient() {
-		// Aeron media driver thread
-		m_media_driver = std::thread(&TradeOffice::messengerMediaDriver, this);
-		m_media_driver.detach();
-
-		// Aeron configurations
-		m_aeron_context.newSubscriptionHandler([](const std::string &channel, std::int32_t streamId,
-		                                          std::int64_t correlationId) {
-			std::cout << "Subscription: " << channel << " " << correlationId << ":" << streamId << std::endl;
-		});
-
-		m_aeron_context.newPublicationHandler([](const std::string &channel, std::int32_t streamId,
-		                                         std::int32_t sessionId, std::int64_t correlationId) {
-			std::cout << "Publication: " << channel << " " << correlationId << ":" << streamId << ":"
-			          << sessionId << std::endl;
-		});
-
-		m_aeron_context.availableImageHandler([&](aeron::Image &image) {
-			std::cout << "Available image correlationId=" << image.correlationId() << " sessionId="
-			          << image.sessionId();
-			std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
-		});
-
-		m_aeron_context.unavailableImageHandler([](aeron::Image &image) {
-			std::cout << "Unavailable image on correlationId=" << image.correlationId() << " sessionId="
-			          << image.sessionId();
-			std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
-		});
-
-		m_aeron = std::make_shared<aeron::Aeron>(m_aeron_context);
-
-		std::int64_t publication_id = m_aeron->addPublication(m_aeron_config.pub_channel, m_aeron_config.pub_stream_id);
-		std::int64_t subscription_id = m_aeron->addSubscription(m_aeron_config.sub_channel,
-		                                                        m_aeron_config.sub_stream_id);
-
-		m_publication = m_aeron->findPublication(publication_id);
-		while (!m_publication) {
-			std::this_thread::yield();
-			m_publication = m_aeron->findPublication(publication_id);
-		}
-		printf("Publication found!\n");
-
-		m_subscription = m_aeron->findSubscription(subscription_id);
-		while (!m_subscription) {
-			std::this_thread::yield();
-			m_subscription = m_aeron->findSubscription(subscription_id);
-		}
-		printf("Subscription found!\n");
-
-		// Polling thread
-		m_messenger_client_poller = std::thread(&TradeOffice::pollMessengerClient, this);
-		m_messenger_client_poller.detach();
-	}
-
-	void TradeOffice::pollMessengerClient() {
-		aeron::BusySpinIdleStrategy idleStrategy;
-		aeron::FragmentAssembler fragmentAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
-		                                               aeron::index_t length, const aeron::Header &header) {
-			sbe::MessageHeader msgHeader;
-			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, AERON_BUFFER_SIZE);
-
-			// TODO: refactor to only accepts market data messages and create another channel for ACK messages
-			sbe::MarketData marketData;
-			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
-			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
-			                         AERON_BUFFER_SIZE);
-
-			onMessengerMarketData(marketData);
-		});
-
-		while (true) {
-			idleStrategy.idle(m_subscription->poll(fragmentAssembler.handler(), 10));
-		}
-	}
-
-	void TradeOffice::onMessengerMarketData(sbe::MarketData &marketData) {
-
-		/*switch (m_market_state) {
-			case NO_DEALS:
-				// current difference 1 -> offer1 - bid2
-				if (last_market_data->offer - marketData.bid() >= m_diff_open) {
-					// TODO: open a new order
-					return;
-				}
-					// current difference 2 -> offer2 - bid1
-				if (marketData.offer() - last_market_data->bid >= m_diff_open) {
-					// TODO: open a new order
-					return;
-				}
-				break;
-			case CURRENT_DIFFERENCE_ONE:
-				if (last_market_data->offer - marketData.bid() >= m_diff_close) {
-					// TODO: close oldest order
-				}
-				if (deals.size() < MAX_DEALS && last_market_data->offer - marketData.bid() >= m_diff_open) {
-					// TODO: open a new order
-				}
-				break;
-			case CURRENT_DIFFERENCE_TWO:
-				if (marketData.offer() - last_market_data->bid >= m_diff_close) {
-					// TODO: close oldest order
-				}
-				if (deals.size() < MAX_DEALS && marketData.offer() - last_market_data->bid >= m_diff_open) {
-					// TODO: open new order
-				}
-				break;
-		}*/
-
 	}
 }

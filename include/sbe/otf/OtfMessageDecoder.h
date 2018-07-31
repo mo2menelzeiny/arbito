@@ -271,7 +271,6 @@ std::size_t decodeData(
             throw std::runtime_error("length too short for data length field");
         }
 
-        // TODO: is length always unsigned according to spec?
         std::uint64_t dataLength = isPresent ?
             lengthToken.encoding().getAsUInt(buffer + bufferIndex + lengthToken.offset())
             : 0;

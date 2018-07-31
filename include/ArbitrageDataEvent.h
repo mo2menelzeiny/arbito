@@ -5,7 +5,16 @@
 #include "MarketDataEvent.h"
 
 struct ArbitrageDataEvent {
-	MarketDataEvent L1, L2;
+	MarketDataEvent l1, l2;
+
+	double currentDifference1() {
+		return l1.offer - l2.bid;
+	};
+
+	double currentDifference2() {
+		return l2.offer - l1.bid;
+	}
+
 };
 
 #endif //ARBITO_ARBITRAGEDATAEVENT_H

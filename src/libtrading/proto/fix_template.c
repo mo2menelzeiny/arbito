@@ -40,7 +40,7 @@ char *fix_field_unparse_zpad(struct fix_field *self, int zpad, struct buffer *bu
 	}
 	case FIX_TYPE_FLOAT: {
 		// dtoa2 do not print leading zeros or .0, 7 digits needed sometimes
-		buffer->end += modp_dtoa2(self->float_value, buffer_end(buffer), 7); // @TODO: zero pad
+		buffer->end += modp_dtoa2(self->float_value, buffer_end(buffer), 7);
 		break;
 	}
 	case FIX_TYPE_INT: {
