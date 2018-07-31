@@ -3,11 +3,18 @@
 
 namespace LMAX {
 
-	MarketOffice::MarketOffice(const char *m_host, int m_port, const char *username, const char *password,
-	                           const char *sender_comp_id, const char *target_comp_id, int heartbeat, double spread,
+	MarketOffice::MarketOffice(const std::shared_ptr<Messenger> &messenger,
+	                           const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
+	                           const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
+	                           const char *m_host, int m_port,
+	                           const char *username, const char *password, const char *sender_comp_id,
+	                           const char *target_comp_id, int heartbeat, const char *pub_channel,
+	                           const int pub_stream_id, const char *sub_channel, const int sub_stream_id, double spread,
 	                           double bid_lot_size, double offer_lot_size)
-			: m_host(m_host), m_port(m_port), m_spread(spread), m_bid_lot_size(bid_lot_size),
-			  m_offer_lot_size(offer_lot_size) {
+			: m_messenger(messenger), m_broker_market_data_disruptor(broker_market_data_disruptor),
+			  m_arbitrage_data_disruptor(arbitrage_data_disruptor), m_host(m_host), m_port(m_port), m_spread(spread),
+			  m_bid_lot_size(bid_lot_size), m_offer_lot_size(offer_lot_size),
+			  m_messenger_config{pub_channel, pub_stream_id, sub_channel, sub_stream_id} {
 		// Session configurations
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[FIX_4_4];
@@ -16,24 +23,42 @@ namespace LMAX {
 		strncpy(m_cfg.password, password, ARRAY_SIZE(m_cfg.password));
 		strncpy(m_cfg.sender_comp_id, sender_comp_id, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, target_comp_id, ARRAY_SIZE(m_cfg.target_comp_id));
-
-		// Disruptor // TODO: optimize and test on ring buffer size
-		m_taskscheduler = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
-		m_disruptor = std::make_shared<Disruptor::disruptor<MarketDataEvent>>(
-				[]() { return MarketDataEvent(); },
-				1024,
-				m_taskscheduler,
-				Disruptor::ProducerType::Single,
-				std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		start();
 	}
 
 	void MarketOffice::start() {
-		m_taskscheduler->start();
-		m_disruptor->start();
-		initialize();
+		initMessengerChannel();
+		initBrokerClient();
+		// broker market data disruptor handler
+		m_broker_market_data_handler = std::make_shared<BrokerMarketDataHandler>(m_messenger_pub);
+		m_broker_market_data_disruptor->handleEventsWith(m_broker_market_data_handler);
 	}
 
-	void MarketOffice::initialize() {
+	void MarketOffice::initMessengerChannel() {
+		printf("Initializing Market office messenger channel..\n");
+
+		std::int64_t publication_id = m_messenger->aeronClient()->addPublication(m_messenger_config.pub_channel,
+		                                                                         m_messenger_config.pub_stream_id);
+		std::int64_t subscription_id = m_messenger->aeronClient()->addSubscription(m_messenger_config.sub_channel,
+		                                                                           m_messenger_config.sub_stream_id);
+
+		m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
+		while (!m_messenger_pub) {
+			std::this_thread::yield();
+			m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
+		}
+		printf("Publication found!\n");
+
+		m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
+		while (!m_messenger_sub) {
+			std::this_thread::yield();
+			m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
+		}
+		printf("Subscription found!\n");
+
+	}
+
+	void MarketOffice::initBrokerClient() {
 		// SSL options
 		SSL_load_error_strings();
 		SSL_library_init();
@@ -130,14 +155,45 @@ namespace LMAX {
 		}
 		fprintf(stdout, "Market data request OK\n");
 
+		// TODO: test messenger failing and reconnection
+		// TODO: investigate in moving this to initialize()
 		// Polling thread loop
-		m_broker_client_poller = std::thread(&MarketOffice::poll, this);
-		m_broker_client_poller.detach();
-		m_poller_test = std::thread(&MarketOffice::pollerTest, this);
-		m_poller_test.detach();
+		poller = std::thread(&MarketOffice::poll, this);
+		poller.detach();
 	}
 
 	void MarketOffice::poll() {
+		MarketDataEvent messenger_market_data{};
+		MarketDataEvent broker_market_data{};
+		aeron::BusySpinIdleStrategy messengerIdleStrategy;
+		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
+		                                                aeron::index_t length, const aeron::Header &header) {
+			// decode header
+			sbe::MessageHeader msgHeader;
+			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
+			// decode body
+			sbe::MarketData marketData;
+			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
+			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
+			                         MESSEGNER_BUFFER);
+			// allocate market data
+			messenger_market_data = (MarketDataEvent) {
+					.bid = marketData.bid(),
+					.bid_qty = marketData.bidQty(),
+					.offer = marketData.offer(),
+					.offer_qty = marketData.offerQty()
+			};
+
+			// publish arbitrage data to arbitrage data disruptor
+			auto next_sequence = m_arbitrage_data_disruptor->ringBuffer()->next();
+			(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence] = (ArbitrageDataEvent) {
+					.L1 = broker_market_data,
+					.L2 = messenger_market_data
+			};
+			m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence);
+
+		});
+
 		struct timespec cur{}, prev{};
 		__time_t diff;
 
@@ -163,6 +219,9 @@ namespace LMAX {
 				break;
 			}
 
+			// messenger subscription poller
+			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
+
 			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				if (!msg) {
@@ -173,11 +232,40 @@ namespace LMAX {
 					continue;
 				}
 			}
-			fprintmsg(stdout, msg);
+
+			// fprintmsg(stdout, msg);
 			switch (msg->type) {
-				case LMAX_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH:
-					onMarketData(msg);
+				case LMAX_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
+					// Filter market data based on spread, bid lot size and offer lot size
+					if (m_spread > (lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value -
+					                lmax_fix_get_float(msg, MDEntryPx, 0.0))
+					    || m_bid_lot_size > lmax_fix_get_float(msg, MDEntrySize, 0.0)
+					    || m_offer_lot_size > lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value) {
+						continue;
+					}
+					// allocate most recent prices
+					broker_market_data = (MarketDataEvent) {
+							.bid = lmax_fix_get_float(msg, MDEntryPx, 0.0),
+							.bid_qty = (lmax_fix_get_float(msg, MDEntrySize, 0.0)),
+							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
+							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value
+					};
+
+					// publish market data to broker disruptor
+					auto next_sequence_1 = m_broker_market_data_disruptor->ringBuffer()->next();
+					(*m_broker_market_data_disruptor->ringBuffer())[next_sequence_1] = broker_market_data;
+					m_broker_market_data_disruptor->ringBuffer()->publish(next_sequence_1);
+
+					// publish arbitrage data to arbitrage data disruptor
+					auto next_sequence_2 = m_arbitrage_data_disruptor->ringBuffer()->next();
+					(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence_2] = (ArbitrageDataEvent) {
+							.L1 = broker_market_data,
+							.L2 = messenger_market_data
+					};
+					m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence_2);
+
 					continue;
+				}
 				default:
 					continue;
 			}
@@ -186,48 +274,13 @@ namespace LMAX {
 		// Reconnection condition
 		if (m_session->active) {
 			std::this_thread::sleep_for(std::chrono::seconds(60));
-			fprintf(stdout, "Market data client reconnecting..\n");
+			fprintf(stdout, "Market office reconnecting..\n");
 			SSL_shutdown(m_cfg.ssl);
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();
 			lmax_fix_session_free(m_session);
-			initialize();
-		}
-
-	}
-
-	bool MarketOffice::filterMarketData(lmax_fix_message *msg) {
-		return m_spread > // offer - bid = spread
-		       (lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value - lmax_fix_get_float(msg, MDEntryPx, 0.0))
-		       || m_bid_lot_size < lmax_fix_get_float(msg, MDEntrySize, 0.0)
-		       || m_offer_lot_size < lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value;
-	}
-
-	void MarketOffice::onMarketData(lmax_fix_message *msg) {
-		if (filterMarketData(msg)) {
-			return;
-		}
-
-		auto next_sequence = m_disruptor->ringBuffer()->next();
-		(*m_disruptor->ringBuffer())[next_sequence] = (MarketDataEvent) {
-				.bid = lmax_fix_get_float(msg, MDEntryPx, 0.0),
-				.bid_qty = (lmax_fix_get_float(msg, MDEntrySize, 0.0)),
-				.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-				.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value
-		};
-		m_disruptor->ringBuffer()->publish(next_sequence);
-	}
-
-	void MarketOffice::pollerTest() {
-		auto poller = m_disruptor->ringBuffer()->newPoller({});
-		auto handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-			fprintf(stdout, "TEST \n");
-			fprintf(stdout, "%lf \n", data.bid);
-
-		};
-		while(true) {
-			poller->poll(handler);
+			initBrokerClient();
 		}
 
 	}
