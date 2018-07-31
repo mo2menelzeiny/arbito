@@ -83,4 +83,9 @@ static int socket_setopt(int sockfd, int level, int optname, int optval) {
 	return setsockopt(sockfd, level, optname, (void *) &optval, sizeof(optval));
 }
 
+static void generateId(char *id_container) {
+	srand(time(NULL));
+	sprintf(id_container, "%i", rand());
+}
+
 #endif //ARBITO_UTILITIES_H

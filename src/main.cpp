@@ -36,35 +36,22 @@ int main() {
 
 		std::shared_ptr<Messenger> messenger = std::make_shared<Messenger>();
 
-		/*std::shared_ptr<LMAX::TradeOffice> trade_office =
-				std::make_shared<LMAX::TradeOffice>(to_host, port, to_username, to_password, to_sender, to_receiver,
-				                                    heartbeat, pub_channel, pub_stream_id, sub_channel, sub_stream_id,
-				                                    diff_open, diff_close);*/
-		//market_office->addConsumer<LMAX::TradeOffice>(trade_office);
-		//trade_office->start();
+		std::shared_ptr<LMAX::TradeOffice> trade_office =
+				std::make_shared<LMAX::TradeOffice>(messenger, arbitrage_data_disruptor, to_host, port, to_username,
+				                                    to_password, to_sender, to_receiver, heartbeat, diff_open,
+				                                    diff_close);
 
 		std::shared_ptr<LMAX::MarketOffice> market_office =
 				std::make_shared<LMAX::MarketOffice>(messenger, broker_market_data_disruptor, arbitrage_data_disruptor,
 				                                     mo_host, port, mo_username, mo_password, mo_sender, mo_receiver,
 				                                     heartbeat, pub_channel, pub_stream_id, sub_channel, sub_stream_id,
 				                                     spread, bid_lot_size, offer_lot_size);
+		trade_office->start();
+		market_office->start();
 
 		task_scheduler->start();
 		broker_market_data_disruptor->start();
 		arbitrage_data_disruptor->start();
-
-
-
-		////////////////////////POLLER CODE/////////////////////////
-		/*auto poller = m_broker_market_data_disruptor->ringBuffer()->newPoller({});
-		auto handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-			fprintf(stdout, "TEST \n");
-			fprintf(stdout, "%lf \n", data.bid);
-
-		};
-		while (true) {
-			poller->poll(handler);
-		}*/
 
 		while (true) {
 			std::this_thread::yield();

@@ -76,9 +76,9 @@ namespace LMAX {
 		             const char *pub_channel, int pub_stream_id, const char *sub_channel,
 		             int sub_stream_id, double bid_lot_size, double spread, double offer_lot_size);
 
-	private:
-
 		void start();
+
+	private:
 
 		void initMessengerChannel();
 
@@ -101,8 +101,8 @@ namespace LMAX {
 		const std::shared_ptr<Messenger> m_messenger;
 		std::shared_ptr<aeron::Publication> m_messenger_pub;
 		std::shared_ptr<aeron::Subscription> m_messenger_sub;
-		std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> m_broker_market_data_disruptor;
-		std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> m_arbitrage_data_disruptor;
+		const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> m_broker_market_data_disruptor;
+		const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> m_arbitrage_data_disruptor;
 		std::shared_ptr<BrokerMarketDataHandler> m_broker_market_data_handler;
 	};
 }
