@@ -126,9 +126,7 @@ namespace LMAX {
 	void TradeOffice::poll() {
 		bool check_timeout = false;
 		time_t counter = time(0);
-		time_t timeout = 50;
-		struct timespec cur{}, prev{};
-		__time_t diff;
+		time_t timeout = DELAY_SECONDS;
 		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 
@@ -311,6 +309,9 @@ namespace LMAX {
 			return true;
 
 		};
+
+		struct timespec cur{}, prev{};
+		__time_t diff;
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
