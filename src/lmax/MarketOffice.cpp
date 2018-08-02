@@ -166,14 +166,14 @@ namespace LMAX {
 		MarketDataEvent messenger_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
 		MarketDataEvent broker_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
 		aeron::BusySpinIdleStrategy messengerIdleStrategy;
+		sbe::MessageHeader msgHeader;
+		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
 			// TODO: implement on the fly decode
 			// decode header
-			sbe::MessageHeader msgHeader;
 			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
 			// decode body
-			sbe::MarketData marketData;
 			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
 			                         MESSEGNER_BUFFER);

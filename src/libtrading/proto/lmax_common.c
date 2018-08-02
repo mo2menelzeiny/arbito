@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <lmax/Utilities.h>
 
 bool lmax_fix_session_keepalive(struct lmax_fix_session *session, struct timespec *now) {
 	int diff;
@@ -416,6 +417,33 @@ int lmax_fix_session_marketdata_request(struct lmax_fix_session *session) {
 	return 0;
 }
 
-int lmax_fix_session_new_order_single(struct lmax_fix_session *session) {
+int lmax_fix_session_new_order_single(struct lmax_fix_session *session, struct lmax_fix_field *fields, long nr_fields) {
+	struct lmax_fix_message *response;
+	struct lmax_fix_message order_msg = (struct lmax_fix_message) {
+			.type = LMAX_FIX_MSG_TYPE_NEW_ORDER_SINGLE,
+			.nr_fields = nr_fields,
+			.fields = fields
+	};
 
+	lmax_fix_session_send(session, &order_msg, 0);
+	session->active = true;
+
+	retry:
+	if (lmax_fix_session_recv(session, &response, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+		goto retry;
+
+	if (!fix_msg_expected(session, response)) {
+		if (fix_do_unexpected(session, response)) {
+			fprintf(stderr, "Order failed due to unexpected sequence number\n");
+			return -1;
+		}
+		goto retry;
+	}
+
+	if (!lmax_fix_message_type_is(response, LMAX_FIX_MSG_TYPE_EXECUTION_REPORT)) {
+		fprintf(stderr, "Order failed due to unexpected message\n");
+		return -1;
+	}
+
+	return 0;
 }

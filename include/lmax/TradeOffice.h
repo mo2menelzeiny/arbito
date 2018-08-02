@@ -69,11 +69,6 @@ namespace LMAX {
 		CURRENT_DIFFERENCE_2 = 2
 	};
 
-	struct Deal {
-		unsigned long id;
-		double slip;
-	};
-
 	class TradeOffice {
 
 	public:
@@ -81,7 +76,7 @@ namespace LMAX {
 		            const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
 		            const char *m_host, int m_port, const char *username, const char *password,
 		            const char *sender_comp_id, const char *target_comp_id, int heartbeat,
-		            double diff_open, double diff_close);
+		            double diff_open, double diff_close, double bid_lot_size, double offer_lot_size);
 
 		void start();
 
@@ -93,7 +88,8 @@ namespace LMAX {
 	private:
 		MarketState m_open_state = NO_DEALS;
 		double m_diff_open, m_diff_close;
-		std::stack<Deal> deals;
+		double m_bid_lot_size, m_offer_lot_size;
+		int m_deals_count = 0;
 		int m_port;
 		const char *m_host;
 		SSL_CTX *m_ssl_ctx;

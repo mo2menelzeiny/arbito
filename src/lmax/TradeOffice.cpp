@@ -7,9 +7,10 @@ namespace LMAX {
 	                         const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
 	                         const char *m_host, int m_port, const char *username, const char *password,
 	                         const char *sender_comp_id, const char *target_comp_id, int heartbeat,
-	                         double diff_open, double diff_close)
+	                         double diff_open, double diff_close, double bid_lot_size, double offer_lot_size)
 			: m_messenger(messenger), m_arbitrage_data_disruptor(arbitrage_data_disruptor), m_host(m_host),
-			  m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close) {
+			  m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close), m_bid_lot_size(bid_lot_size),
+			  m_offer_lot_size(offer_lot_size) {
 		// Session configurations
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[FIX_4_4];
@@ -18,6 +19,7 @@ namespace LMAX {
 		strncpy(m_cfg.password, password, ARRAY_SIZE(m_cfg.password));
 		strncpy(m_cfg.sender_comp_id, sender_comp_id, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, target_comp_id, ARRAY_SIZE(m_cfg.target_comp_id));
+		srand(static_cast<unsigned int>(time(nullptr)));
 	}
 
 	void TradeOffice::start() {
@@ -122,49 +124,191 @@ namespace LMAX {
 	}
 
 	void TradeOffice::poll() {
-
+		bool check_timeout = false;
+		time_t counter = time(0);
+		time_t timeout = 50;
 		struct timespec cur{}, prev{};
 		__time_t diff;
-
 		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
-
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-			printf("ArbitrageDataEvent\n");
 
+			if ( check_timeout && (time(0) - counter < timeout)) {
+				return true;
+			}
+			check_timeout = false;
+
+			if (!m_deals_count) {
+				m_open_state = NO_DEALS;
+			}
+			// current difference 1 -> offer1 - bid2
+			// current difference 2 -> offer2 - bid1
 			switch (m_open_state) {
-				case CURRENT_DIFFERENCE_1:
+				case CURRENT_DIFFERENCE_1: {
 					if (data.currentDifference2() >= m_diff_close) {
-						// TODO: close oldest order
+						char id[16];
+						sprintf(id, "%i", rand());
+
+						struct lmax_fix_field fields[] = {
+								FIX_STRING_FIELD(ClOrdID, id),
+								FIX_STRING_FIELD(SecurityID, "4001"),
+								FIX_STRING_FIELD(SecurityIDSource, "8"),
+								FIX_CHAR_FIELD(Side, '2'), // SELL
+								FIX_STRING_FIELD(TransactTime, m_session->str_now),
+								FIX_FLOAT_FIELD(OrderQty, m_bid_lot_size),
+								FIX_CHAR_FIELD(OrdType, '1') // Market
+						};
+
+						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+							fprintf(stderr, "Sell order %s FAILED\n", id);
+							return true;
+						};
+
+						fprintf(stdout, "Sell order %s OK\n", id);
+						--m_deals_count;
+						counter = time(0);
 						return true;
 					}
-					if (deals.size() < MAX_DEALS && data.currentDifference1() >= m_diff_open) {
-						// TODO: open a new order
+
+					if (m_deals_count < MAX_DEALS && data.currentDifference1() >= m_diff_open) {
+						char id[16];
+						sprintf(id, "%i", rand());
+
+						struct lmax_fix_field fields[] = {
+								FIX_STRING_FIELD(ClOrdID, id),
+								FIX_STRING_FIELD(SecurityID, "4001"),
+								FIX_STRING_FIELD(SecurityIDSource, "8"),
+								FIX_CHAR_FIELD(Side, '1'), // BUY
+								FIX_STRING_FIELD(TransactTime, m_session->str_now),
+								FIX_FLOAT_FIELD(OrderQty, m_bid_lot_size),
+								FIX_CHAR_FIELD(OrdType, '1') // Market
+						};
+
+						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+							fprintf(stderr, "Buy order %s FAILED\n", id);
+							return true;
+						};
+
+						fprintf(stdout, "Buy order %s OK\n", id);
+						++m_deals_count;
+						counter = time(0);
 						return true;
 					}
+				}
 					break;
-				case CURRENT_DIFFERENCE_2:
+				case CURRENT_DIFFERENCE_2: {
 					if (data.currentDifference1() >= m_diff_close) {
-						// TODO: close oldest order
+						char id[16];
+						sprintf(id, "%i", rand());
+
+						struct lmax_fix_field fields[] = {
+								FIX_STRING_FIELD(ClOrdID, id),
+								FIX_STRING_FIELD(SecurityID, "4001"),
+								FIX_STRING_FIELD(SecurityIDSource, "8"),
+								FIX_CHAR_FIELD(Side, '2'), // SELL
+								FIX_STRING_FIELD(TransactTime, m_session->str_now),
+								FIX_FLOAT_FIELD(OrderQty, m_bid_lot_size),
+								FIX_CHAR_FIELD(OrdType, '1') // Market
+						};
+
+						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+							fprintf(stderr, "Sell order %s FAILED\n", id);
+							return true;
+						};
+
+						fprintf(stdout, "Sell order %s OK\n", id);
+						--m_deals_count;
+						counter = time(0);
+						check_timeout = true;
 						return true;
 					}
-					if (deals.size() < MAX_DEALS && data.currentDifference2() >= m_diff_open) {
-						// TODO: open new order
+
+					if (m_deals_count < MAX_DEALS && data.currentDifference2() >= m_diff_open) {
+						char id[16];
+						sprintf(id, "%i", rand());
+
+						struct lmax_fix_field fields[] = {
+								FIX_STRING_FIELD(ClOrdID, id),
+								FIX_STRING_FIELD(SecurityID, "4001"),
+								FIX_STRING_FIELD(SecurityIDSource, "8"),
+								FIX_CHAR_FIELD(Side, '1'), // BUY
+								FIX_STRING_FIELD(TransactTime, m_session->str_now),
+								FIX_FLOAT_FIELD(OrderQty, m_bid_lot_size),
+								FIX_CHAR_FIELD(OrdType, '1') // Market
+						};
+
+						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+							fprintf(stderr, "Buy order %s FAILED\n", id);
+							return true;
+						};
+
+						fprintf(stdout, "Buy order %s OK\n", id);
+						++m_deals_count;
+						counter = time(0);
+						check_timeout = true;
 						return true;
 					}
+				}
 					break;
-				case NO_DEALS:
-					// current difference 1 -> offer1 - bid2
+
+				case NO_DEALS: {
 					if (data.currentDifference1() >= m_diff_open) {
-						// TODO: open a new order
+						char id[16];
+						sprintf(id, "%i", rand());
+
+						struct lmax_fix_field fields[] = {
+								FIX_STRING_FIELD(ClOrdID, id),
+								FIX_STRING_FIELD(SecurityID, "4001"),
+								FIX_STRING_FIELD(SecurityIDSource, "8"),
+								FIX_CHAR_FIELD(Side, '1'), // BUY
+								FIX_STRING_FIELD(TransactTime, m_session->str_now),
+								FIX_FLOAT_FIELD(OrderQty, m_bid_lot_size),
+								FIX_CHAR_FIELD(OrdType, '1') // Market
+						};
+
+						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+							fprintf(stderr, "Buy order %s FAILED\n", id);
+							return true;
+						};
+
+						fprintf(stdout, "Buy order %s OK\n", id);
+						m_open_state = CURRENT_DIFFERENCE_1;
+						++m_deals_count;
+						counter = time(0);
+						check_timeout = true;
 						return true;
 					}
-					// current difference 2 -> offer2 - bid1
+
 					if (data.currentDifference2() >= m_diff_open) {
-						// TODO: open a new order
+						char id[16];
+						sprintf(id, "%i", rand());
+
+						struct lmax_fix_field fields[] = {
+								FIX_STRING_FIELD(ClOrdID, id),
+								FIX_STRING_FIELD(SecurityID, "4001"),
+								FIX_STRING_FIELD(SecurityIDSource, "8"),
+								FIX_CHAR_FIELD(Side, '2'), // SELL
+								FIX_STRING_FIELD(TransactTime, m_session->str_now),
+								FIX_FLOAT_FIELD(OrderQty, m_bid_lot_size),
+								FIX_CHAR_FIELD(OrdType, '1') // Market
+						};
+
+						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+							fprintf(stderr, "Sell order %s FAILED\n", id);
+							return true;
+						};
+
+						fprintf(stdout, "Sell order %s OK\n", id);
+						m_open_state = CURRENT_DIFFERENCE_2;
+						++m_deals_count;
+						counter = time(0);
+						check_timeout = true;
 						return true;
 					}
+				}
 					break;
 			}
+
+			return true;
 
 		};
 
@@ -190,7 +334,6 @@ namespace LMAX {
 				break;
 			}
 
-
 			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				if (!msg) {
@@ -203,16 +346,6 @@ namespace LMAX {
 			}
 
 			arbitrage_data_poller->poll(arbitrage_data_handler);
-
-			// TODO: Implement trade messages handling
-			/*fprintmsg(stdout, msg);*/
-			switch (msg->type) {
-				case LMAX_FIX_MSG_TYPE_HEARTBEAT:
-					/*fprintmsg(stdout, msg);*/
-					continue;
-				default:
-					continue;
-			}
 		}
 
 		// Reconnection condition

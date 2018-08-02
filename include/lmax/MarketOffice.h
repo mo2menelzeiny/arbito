@@ -74,7 +74,7 @@ namespace LMAX {
 		             const char *m_host, int m_port, const char *username,
 		             const char *password, const char *sender_comp_id, const char *target_comp_id, int heartbeat,
 		             const char *pub_channel, int pub_stream_id, const char *sub_channel,
-		             int sub_stream_id, double bid_lot_size, double spread, double offer_lot_size);
+		             int sub_stream_id, double spread, double bid_lot_size, double offer_lot_size);
 
 		void start();
 
