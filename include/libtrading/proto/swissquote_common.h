@@ -12,7 +12,7 @@ int swissquote_fix_session_sequence_reset(struct swissquote_fix_session *session
 int swissquote_fix_session_order_cancel_request(struct swissquote_fix_session *session, struct swissquote_fix_field *fields, long nr_fields);
 int swissquote_fix_session_order_cancel_replace(struct swissquote_fix_session *session, struct swissquote_fix_field *fields, long nr_fields);
 int swissquote_fix_session_execution_report(struct swissquote_fix_session *session, struct swissquote_fix_field *fields, long nr_fields);
-int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, struct swissquote_fix_field* fields, long nr_fields);
+int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, struct swissquote_fix_field *fields, long nr_fields);
 int swissquote_fix_session_resend_request(struct swissquote_fix_session *session, unsigned long bgn, unsigned long end);
 int swissquote_fix_session_reject(struct swissquote_fix_session *session, unsigned long refseqnum, char *text);
 int swissquote_fix_session_heartbeat(struct swissquote_fix_session *session, const char *test_req_id);

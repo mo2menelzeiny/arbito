@@ -16,7 +16,7 @@ int main() {
 				*mo_password = "password1", *mo_sender = "AhmedDEMO", *mo_receiver = "LMXBDM";
 		const char *to_host = "fix-order.london-demo.lmax.com", *to_username = "AhmedDEMO",
 				*to_password = "password1", *to_sender = "AhmedDEMO", *to_receiver = "LMXBD";
-		int port = 443, heartbeat = 15;
+		int port = 443, heartbeat = 50;
 
 		auto task_scheduler = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
 
@@ -39,7 +39,7 @@ int main() {
 		std::shared_ptr<LMAX::TradeOffice> trade_office =
 				std::make_shared<LMAX::TradeOffice>(messenger, arbitrage_data_disruptor, to_host, port, to_username,
 				                                    to_password, to_sender, to_receiver, heartbeat, diff_open,
-				                                    diff_close);
+				                                    diff_close, bid_lot_size, offer_lot_size);
 
 		std::shared_ptr<LMAX::MarketOffice> market_office =
 				std::make_shared<LMAX::MarketOffice>(messenger, broker_market_data_disruptor, arbitrage_data_disruptor,
