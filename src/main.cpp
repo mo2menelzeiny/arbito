@@ -6,17 +6,31 @@
 int main() {
 
 	try {
-		// Getting parameters from environment variables
 		double spread = atof(getenv("SPREAD"));
-		double bid_lot_size = atof(getenv("BID_LOT_SIZE")), offer_lot_size = atof(getenv("OFFER_LOT_SIZE"));
-		double diff_open = atof(getenv("DIFF_OPEN")), diff_close = atof(getenv("DIFF_CLOSE"));
-		int pub_stream_id = atoi(getenv("PUB_STREAM_ID")), sub_stream_id = atoi(getenv("SUB_STREAM_ID"));
-		const char *pub_channel = getenv("PUB_CHANNEL"), *sub_channel = getenv("SUB_CHANNEL");
-		const char *mo_host = "fix-marketdata.london-demo.lmax.com", *mo_username = "AhmedDEMO",
-				*mo_password = "password1", *mo_sender = "AhmedDEMO", *mo_receiver = "LMXBDM";
-		const char *to_host = "fix-order.london-demo.lmax.com", *to_username = "AhmedDEMO",
-				*to_password = "password1", *to_sender = "AhmedDEMO", *to_receiver = "LMXBD";
-		int port = 443, heartbeat = 50;
+		double offer_lot_size = atof(getenv("OFFER_LOT_SIZE"));
+		double bid_lot_size = atof(getenv("BID_LOT_SIZE"));
+		double diff_open = atof(getenv("DIFF_OPEN"));
+		double diff_close = atof(getenv("DIFF_CLOSE"));
+
+		const char *pub_channel = getenv("PUB_CHANNEL");
+		int pub_stream_id = atoi(getenv("PUB_STREAM_ID"));
+		const char *sub_channel = getenv("SUB_CHANNEL");
+		int sub_stream_id = atoi(getenv("SUB_STREAM_ID"));
+
+		const char *mo_host = getenv("MO_HOST");
+		const char *mo_username = getenv("MO_USERNAME");
+		const char *mo_password = getenv("MO_PASSWORD");
+		const char *mo_sender = getenv("MO_SENDER");
+		const char *mo_receiver = getenv("MO_RECEIVER");
+
+		const char *to_host = getenv("TO_HOST");
+		const char *to_username = getenv("TO_USERNAME");
+		const char *to_password = getenv("TO_PASSWORD");
+		const char *to_sender = getenv("TO_SENDER");
+		const char *to_receiver = getenv("TO_RECEIVER");
+
+		int port = 443;
+		int heartbeat = 50;
 
 		auto task_scheduler = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
 

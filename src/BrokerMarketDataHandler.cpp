@@ -2,7 +2,6 @@
 #include "BrokerMarketDataHandler.h"
 
 void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) {
-// TODO: test and optimize variable declaration of sbe as global members
 	m_msg_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, PUB_BUFFER_SIZE)
 			.blockLength(sbe::MarketData::sbeBlockLength())
 			.templateId(sbe::MarketData::sbeTemplateId())
