@@ -2,6 +2,9 @@
 #ifndef ARBITO_SWISSQUOTE_UTILITIES_H
 #define ARBITO_SWISSQUOTE_UTILITIES_H
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 static int swissquote_fstrncpy(char *dest, const char *src, int n) {
 	int i;
 
