@@ -2,6 +2,9 @@
 #ifndef ARBITO_LMAX_UTILITIES_H
 #define ARBITO_LMAX_UTILITIES_H
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 static int lmax_fstrncpy(char *dest, const char *src, int n) {
 	int i;
 
