@@ -1,6 +1,3 @@
-//
-// Created by mo2menelzeiny on 6/7/18.
-//
 
 #include "libtrading/proto/swissquote_message.h"
 
@@ -248,301 +245,301 @@ static int parse_field(struct buffer *self, int *tag, const char **value) {
 
 static enum swissquote_fix_type swissquote_fix_tag_type(int tag) {
 	switch (tag) {
-		case CheckSum:
-			return FIX_TYPE_CHECKSUM;
-		case LastMsgSeqNumProcessed:
-			return FIX_TYPE_INT;
-		case MDPriceLevel:
-			return FIX_TYPE_INT;
-		case BeginSeqNo:
-			return FIX_TYPE_INT;
-		case RefSeqNum:
-			return FIX_TYPE_INT;
-		case EndSeqNo:
-			return FIX_TYPE_INT;
-		case NewSeqNo:
-			return FIX_TYPE_INT;
-		case RptSeq:
-			return FIX_TYPE_INT;
-		case GapFillFlag:
-			return FIX_TYPE_STRING;
-		case PossDupFlag:
-			return FIX_TYPE_STRING;
-		case SecurityID:
-			return FIX_TYPE_STRING;
-		case TestReqID:
-			return FIX_TYPE_STRING;
-		case QuoteID:
-			return FIX_TYPE_STRING;
-		case SettlCurrAmt:
-			return FIX_TYPE_STRING;
-		case SettlCurrency:
-			return FIX_TYPE_STRING;
-		case QuoteReqID:
-			return FIX_TYPE_STRING;
-		case BidPx:
-			return FIX_TYPE_FLOAT;
-		case OfferPx:
-			return FIX_TYPE_FLOAT;
-		case BidSize:
-			return FIX_TYPE_FLOAT;
-		case OfferSize:
-			return FIX_TYPE_FLOAT;
-		case MsgSeqNum:
-			return FIX_TYPE_MSGSEQNUM;
-		case MDEntrySize:
-			return FIX_TYPE_FLOAT;
-		case LastQty:
-			return FIX_TYPE_FLOAT;
-		case LeavesQty:
-			return FIX_TYPE_FLOAT;
-		case SettlCurrFxRate:
-			return FIX_TYPE_STRING;
-		case SettlCurrFxRateCalc:
-			return FIX_TYPE_CHAR;
-		case SecondaryOrderID:
-			return FIX_TYPE_STRING;
-		case IssueDate:
-			return FIX_TYPE_STRING;
-		case MDEntryPx:
-			return FIX_TYPE_FLOAT;
-		case OrderQty:
-			return FIX_TYPE_FLOAT;
-		case CumQty:
-			return FIX_TYPE_FLOAT;
-		case LastPx:
-			return FIX_TYPE_FLOAT;
-		case AvgPx:
-			return FIX_TYPE_FLOAT;
-		case Price:
-			return FIX_TYPE_FLOAT;
-		case TradingSessionID:
-			return FIX_TYPE_STRING;
-		case MDUpdateAction:
-			return FIX_TYPE_STRING;
-		case TransactTime:
-			return FIX_TYPE_STRING;
-		case ExecTransType:
-			return FIX_TYPE_STRING;
-		case OrigClOrdID:
-			return FIX_TYPE_STRING;
-		case MDEntryType:
-			return FIX_TYPE_STRING;
-		case OrdStatus:
-			return FIX_TYPE_STRING;
-		case ExecType:
-			return FIX_TYPE_STRING;
-		case Password:
-			return FIX_TYPE_STRING;
-		case Account:
-			return FIX_TYPE_STRING;
-		case ClOrdID:
-			return FIX_TYPE_STRING;
-		case OrderID:
-			return FIX_TYPE_STRING;
-		case OrdType:
-			return FIX_TYPE_STRING;
-		case ExecID:
-			return FIX_TYPE_STRING;
-		case Symbol:
-			return FIX_TYPE_STRING;
-		case Side:
-			return FIX_TYPE_STRING;
-		case Text:
-			return FIX_TYPE_STRING;
-		case OrdRejReason:
-			return FIX_TYPE_INT;
-		case SecurityDesc:
-			return FIX_TYPE_STRING;
-		case MultiLegReportingType:
-			return FIX_TYPE_CHAR;
-		case NoPartyIDs:
-			return FIX_TYPE_STRING;
-		case Username:
-			return FIX_TYPE_STRING;
-		case ExecInst:
-			return FIX_TYPE_CHAR;
-		case SecurityIDSource:
-			return FIX_TYPE_STRING;
-		case TimeInForce:
-			return FIX_TYPE_CHAR;
-		case SettlDate:
-			return FIX_TYPE_STRING;
-		case ListID:
-			return FIX_TYPE_STRING;
-		case ListSeqNo:
-			return FIX_TYPE_INT;
-		case TotNoOrders:
-			return FIX_TYPE_INT;
-		case NoOrders:
-			return FIX_TYPE_INT;
-		case TradeDate:
-			return FIX_TYPE_STRING;
-		case Signature:
-			return FIX_TYPE_STRING;
-		case SignatureLength:
-			return FIX_TYPE_INT;
-		case RawDataLength:
-			return FIX_TYPE_INT;
-		case RawData:
-			return FIX_TYPE_STRING;
-		case PossResend:
-			return FIX_TYPE_INT;
-		case StopPx:
-			return FIX_TYPE_FLOAT;
-		case ExDestination:
-			return FIX_TYPE_STRING;
-		case CXlRejReason:
-			return FIX_TYPE_INT;
-		case NoRelatedSym:
-			return FIX_TYPE_INT;
-		case MDReqID:
-			return FIX_TYPE_STRING;
-		case SubscriptionRequestType:
-			return FIX_TYPE_CHAR;
-		case MarketDepth:
-			return FIX_TYPE_INT;
-		case MDUpdateType:
-			return FIX_TYPE_INT;
-		case NoMDEntryTypes:
-			return FIX_TYPE_INT;
-		case NoMDEntries:
-			return FIX_TYPE_INT;
-		case MDEntryDate:
-			return FIX_TYPE_STRING;
-		case MDEntryTime:
-			return FIX_TYPE_STRING;
-		case MDReqRejReason:
-			return FIX_TYPE_CHAR;
-		case NoQuoteEntries:
-			return FIX_TYPE_INT;
-		case NoQuoteSets:
-			return FIX_TYPE_INT;
-		case QuoteStatus:
-			return FIX_TYPE_CHAR;
-		case QuoteCancelType:
-			return FIX_TYPE_CHAR;
-		case QuoteRejectReason:
-			return FIX_TYPE_STRING;
-		case QuoteSetId:
-			return FIX_TYPE_INT;
-		case QuoteEntries:
-			return FIX_TYPE_INT;
-		case EncodedTextLen:
-			return FIX_TYPE_INT;
-		case EncodedText:
-			return FIX_TYPE_STRING;
-		case RefTagID:
-			return FIX_TYPE_INT;
-		case RefMsgType:
-			return FIX_TYPE_STRING;
-		case SessionRejectReason:
-			return FIX_TYPE_INT;
-		case MaxMessageSize:
-			return FIX_TYPE_INT;
-		case NoMsgTypes:
-			return FIX_TYPE_INT;
-		case MsgDirection:
-			return FIX_TYPE_CHAR;
-		case CxlRejResponseTo:
-			return FIX_TYPE_CHAR;
-		case TestMessageIndicator:
-			return FIX_TYPE_CHAR;
-		case SecondaryExecID:
-			return FIX_TYPE_STRING;
-		case QuoteType:
-			return FIX_TYPE_CHAR;
-		case NoSides:
-			return FIX_TYPE_INT;
-		case TradeRequestID:
-			return FIX_TYPE_STRING;
-		case TradeRequestType:
-			return FIX_TYPE_INT;
-		case NoDates:
-			return FIX_TYPE_INT;
-		case AccountType:
-			return FIX_TYPE_CHAR;
-		case ClOrdLinkID:
-			return FIX_TYPE_STRING;
-		case MassStatusReqID:
-			return FIX_TYPE_STRING;
-		case MassStatusReqType:
-			return FIX_TYPE_STRING;
-		case QuoteRequestRejectReason:
-			return FIX_TYPE_STRING;
-		case QuoteRespID:
-			return FIX_TYPE_STRING;
-		case QuoteRespType:
-			return FIX_TYPE_CHAR;
-		case NoPositions:
-			return FIX_TYPE_STRING;
-		case PosType:
-			return FIX_TYPE_STRING;
-		case LongQty:
-			return FIX_TYPE_FLOAT;
-		case ShortQty:
-			return FIX_TYPE_FLOAT;
-		case PosAmtType:
-			return FIX_TYPE_STRING;
-		case PosAmt:
-			return FIX_TYPE_CHAR;
-		case PosReqID:
-			return FIX_TYPE_STRING;
-		case ClearingBusinessDate:
-			return FIX_TYPE_STRING;
-		case PosMaintRptID:
-			return FIX_TYPE_STRING;
-		case TotalNumPosReports:
-			return FIX_TYPE_INT;
-		case PosReqResult:
-			return FIX_TYPE_CHAR;
-		case PosReqStatus:
-			return FIX_TYPE_CHAR;
-		case SettlPrice:
-			return FIX_TYPE_FLOAT;
-		case SettlPriceType:
-			return FIX_TYPE_CHAR;
-		case PriorSettlPrice:
-			return FIX_TYPE_CHAR;
-		case PosReqType:
-			return FIX_TYPE_CHAR;
-		case NoPosAmt:
-			return FIX_TYPE_INT;
-		case TotNumTradeReports:
-			return FIX_TYPE_INT;
-		case TradeRequestResult:
-			return FIX_TYPE_INT;
-		case TradeRequestStatus:
-			return FIX_TYPE_INT;
-		case NextExpectedMsgSeqNum:
-			return FIX_TYPE_MSGSEQNUM;
-		case OrdStatusReqID:
-			return FIX_TYPE_STRING;
-		case TotNumReports:
-			return FIX_TYPE_INT;
-		case LastRptRequested:
-			return FIX_TYPE_CHAR;
-		case ContingencyType:
-			return FIX_TYPE_CHAR;
-		case AccountBalance:
-			return FIX_TYPE_FLOAT;
-		case SendMissedMessages:
-			return FIX_TYPE_CHAR;
-		case LinkedPositions:
-			return FIX_TYPE_STRING;
-		case Equity:
-			return FIX_TYPE_STRING;
-		case UsedMargin:
-			return FIX_TYPE_STRING;
-		case MaintenanceMargin:
-			return FIX_TYPE_STRING;
+		case swissquote_CheckSum:
+			return SWISSQUOTE_FIX_TYPE_CHECKSUM;
+		case swissquote_LastMsgSeqNumProcessed:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_MDPriceLevel:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_BeginSeqNo:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_RefSeqNum:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_EndSeqNo:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_NewSeqNo:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_RptSeq:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_GapFillFlag:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_PossDupFlag:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_SecurityID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_TestReqID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_QuoteID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_SettlCurrAmt:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_SettlCurrency:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_QuoteReqID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_BidPx:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_OfferPx:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_BidSize:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_OfferSize:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_MsgSeqNum:
+			return SWISSQUOTE_FIX_TYPE_MSGSEQNUM;
+		case swissquote_MDEntrySize:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_LastQty:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_LeavesQty:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_SettlCurrFxRate:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_SettlCurrFxRateCalc:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_SecondaryOrderID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_IssueDate:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_MDEntryPx:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_OrderQty:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_CumQty:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_LastPx:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_AvgPx:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_Price:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_TradingSessionID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_MDUpdateAction:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_TransactTime:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_ExecTransType:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_OrigClOrdID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_MDEntryType:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_OrdStatus:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_ExecType:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_Password:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_Account:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_ClOrdID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_OrderID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_OrdType:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_ExecID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_Symbol:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_Side:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_Text:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_OrdRejReason:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_SecurityDesc:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_MultiLegReportingType:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_NoPartyIDs:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_Username:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_ExecInst:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_SecurityIDSource:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_TimeInForce:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_SettlDate:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_ListID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_ListSeqNo:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_TotNoOrders:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_NoOrders:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_TradeDate:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_Signature:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_SignatureLength:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_RawDataLength:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_RawData:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_PossResend:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_StopPx:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_ExDestination:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_CXlRejReason:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_NoRelatedSym:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_MDReqID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_SubscriptionRequestType:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_MarketDepth:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_MDUpdateType:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_NoMDEntryTypes:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_NoMDEntries:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_MDEntryDate:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_MDEntryTime:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_MDReqRejReason:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_NoQuoteEntries:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_NoQuoteSets:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_QuoteStatus:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_QuoteCancelType:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_QuoteRejectReason:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_QuoteSetId:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_QuoteEntries:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_EncodedTextLen:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_EncodedText:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_RefTagID:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_RefMsgType:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_SessionRejectReason:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_MaxMessageSize:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_NoMsgTypes:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_MsgDirection:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_CxlRejResponseTo:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_TestMessageIndicator:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_SecondaryExecID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_QuoteType:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_NoSides:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_TradeRequestID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_TradeRequestType:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_NoDates:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_AccountType:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_ClOrdLinkID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_MassStatusReqID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_MassStatusReqType:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_QuoteRequestRejectReason:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_QuoteRespID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_QuoteRespType:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_NoPositions:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_PosType:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_LongQty:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_ShortQty:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_PosAmtType:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_PosAmt:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_PosReqID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_ClearingBusinessDate:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_PosMaintRptID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_TotalNumPosReports:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_PosReqResult:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_PosReqStatus:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_SettlPrice:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_SettlPriceType:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_PriorSettlPrice:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_PosReqType:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_NoPosAmt:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_TotNumTradeReports:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_TradeRequestResult:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_TradeRequestStatus:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_NextExpectedMsgSeqNum:
+			return SWISSQUOTE_FIX_TYPE_MSGSEQNUM;
+		case swissquote_OrdStatusReqID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_TotNumReports:
+			return SWISSQUOTE_FIX_TYPE_INT;
+		case swissquote_LastRptRequested:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_ContingencyType:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_AccountBalance:
+			return SWISSQUOTE_FIX_TYPE_FLOAT;
+		case swissquote_SendMissedMessages:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_LinkedPositions:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_Equity:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_UsedMargin:
+			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_MaintenanceMargin:
+			return SWISSQUOTE_FIX_TYPE_STRING;
 		default:
-			return FIX_TYPE_STRING;    /* unrecognized tag */
+			return SWISSQUOTE_FIX_TYPE_STRING;    /* unrecognized tag */
 	}
 }
 
-static void
-rest_of_message(struct swissquote_fix_message *self, struct swissquote_fix_dialect *dialect, struct buffer *buffer) {
+static void rest_of_message(struct swissquote_fix_message *self, struct swissquote_fix_dialect *dialect,
+		struct buffer *buffer) {
 	int tag = 0;
 	const char *tag_ptr = NULL;
 	unsigned long nr_fields = 0;
@@ -557,21 +554,21 @@ rest_of_message(struct swissquote_fix_message *self, struct swissquote_fix_diale
 	type = swissquote_fix_tag_type(tag);
 
 	switch (type) {
-		case FIX_TYPE_INT:
-			self->fields[nr_fields++] = FIX_INT_FIELD(tag, swissquote_fix_atoi64(tag_ptr, NULL));
+		case SWISSQUOTE_FIX_TYPE_INT:
+			self->fields[nr_fields++] = SWISSQUOTE_FIX_INT_FIELD(tag, swissquote_fix_atoi64(tag_ptr, NULL));
 			goto retry;
-		case FIX_TYPE_FLOAT:
-			self->fields[nr_fields++] = FIX_FLOAT_FIELD(tag, strtod(tag_ptr, NULL));
+		case SWISSQUOTE_FIX_TYPE_FLOAT:
+			self->fields[nr_fields++] = SWISSQUOTE_FIX_FLOAT_FIELD(tag, strtod(tag_ptr, NULL));
 			goto retry;
-		case FIX_TYPE_CHAR:
-			self->fields[nr_fields++] = FIX_CHAR_FIELD(tag, tag_ptr[0]);
+		case SWISSQUOTE_FIX_TYPE_CHAR:
+			self->fields[nr_fields++] = SWISSQUOTE_FIX_CHAR_FIELD(tag, tag_ptr[0]);
 			goto retry;
-		case FIX_TYPE_STRING:
-			self->fields[nr_fields++] = FIX_STRING_FIELD(tag, tag_ptr);
+		case SWISSQUOTE_FIX_TYPE_STRING:
+			self->fields[nr_fields++] = SWISSQUOTE_FIX_STRING_FIELD(tag, tag_ptr);
 			goto retry;
-		case FIX_TYPE_CHECKSUM:
+		case SWISSQUOTE_FIX_TYPE_CHECKSUM:
 			break;
-		case FIX_TYPE_MSGSEQNUM:
+		case SWISSQUOTE_FIX_TYPE_MSGSEQNUM:
 			self->msg_seq_num = (unsigned long) swissquote_fix_uatoi(tag_ptr, NULL);
 			goto retry;
 		default:
@@ -616,7 +613,7 @@ static int checksum(struct swissquote_fix_message *self, struct buffer *buffer, 
 		goto exit;
 	}
 
-	if (flags & FIX_PARSE_FLAG_NO_CSUM) {
+	if (flags & SWISSQUOTE_FIX_PARSE_FLAG_NO_CSUM) {
 		ret = 0;
 		goto exit;
 	}
@@ -624,7 +621,7 @@ static int checksum(struct swissquote_fix_message *self, struct buffer *buffer, 
 	/* Buffer's start will point to the CheckSum tag */
 	buffer_advance(buffer, self->body_length - offset);
 
-	ret = match_field(buffer, CheckSum, &self->check_sum);
+	ret = match_field(buffer, swissquote_CheckSum, &self->check_sum);
 	if (ret)
 		goto exit;
 
@@ -643,12 +640,12 @@ static int checksum(struct swissquote_fix_message *self, struct buffer *buffer, 
 static int parse_msg_type(struct swissquote_fix_message *self, unsigned long flags) {
 	int ret;
 
-	ret = match_field(self->head_buf, MsgType, &self->msg_type);
+	ret = match_field(self->head_buf, swissquote_MsgType, &self->msg_type);
 
 	if (ret)
 		goto exit;
 
-	if (!(flags & FIX_PARSE_FLAG_NO_TYPE)) {
+	if (!(flags & SWISSQUOTE_FIX_PARSE_FLAG_NO_TYPE)) {
 		self->type = swissquote_fix_msg_type_parse(self->msg_type, 0x01);
 
 		/* If third field is not MsgType -> garbled */
@@ -665,7 +662,7 @@ static int parse_body_length(struct swissquote_fix_message *self) {
 	int len, ret;
 	const char *ptr;
 
-	ret = match_field(self->head_buf, BodyLength, &ptr);
+	ret = match_field(self->head_buf, swissquote_BodyLength, &ptr);
 
 	if (ret)
 		goto exit;
@@ -684,7 +681,7 @@ static int parse_begin_string(struct swissquote_fix_message *self) {
 	// if first field is not BeginString -> garbled
 	// if BeginString is invalid or empty -> garbled
 
-	return match_field(self->head_buf, BeginString, &self->begin_string);
+	return match_field(self->head_buf, swissquote_BeginString, &self->begin_string);
 }
 
 static int first_three_fields(struct swissquote_fix_message *self, unsigned long flags) {
@@ -850,7 +847,7 @@ bool swissquote_fix_field_unparse(struct swissquote_fix_field *self, struct buff
 	buffer_put(buffer, '=');
 
 	switch (self->type) {
-		case FIX_TYPE_STRING: {
+		case SWISSQUOTE_FIX_TYPE_STRING: {
 			const char *p = self->string_value;
 
 			while (*p) {
@@ -858,26 +855,26 @@ bool swissquote_fix_field_unparse(struct swissquote_fix_field *self, struct buff
 			}
 			break;
 		}
-		case FIX_TYPE_STRING_8: {
+		case SWISSQUOTE_FIX_TYPE_STRING_8: {
 			for (int i = 0; i < sizeof(self->string_8_value) && self->string_8_value[i]; ++i) {
 				buffer_put(buffer, self->string_8_value[i]);
 			}
 			break;
 		}
-		case FIX_TYPE_CHAR: {
+		case SWISSQUOTE_FIX_TYPE_CHAR: {
 			buffer_put(buffer, self->char_value);
 			break;
 		}
-		case FIX_TYPE_FLOAT: {
+		case SWISSQUOTE_FIX_TYPE_FLOAT: {
 			// dtoa2 do not print leading zeros or .0, 7 digits needed sometimes
 			buffer->end += modp_dtoa2(self->float_value, buffer_end(buffer), 7);
 			break;
 		}
-		case FIX_TYPE_INT: {
+		case SWISSQUOTE_FIX_TYPE_INT: {
 			buffer->end += i64toa(self->int_value, buffer_end(buffer));
 			break;
 		}
-		case FIX_TYPE_CHECKSUM: {
+		case SWISSQUOTE_FIX_TYPE_CHECKSUM: {
 			buffer->end += checksumtoa(self->int_value, buffer_end(buffer));
 			break;
 		}
@@ -909,12 +906,12 @@ void swissquote_fix_message_unparse(struct swissquote_fix_message *self) {
 
 	/* standard header */
 	msg_type = (self->type != SWISSQUOTE_FIX_MSG_TYPE_UNKNOWN) ?
-	           FIX_STRING_FIELD(MsgType, swissquote_fix_msg_types[self->type]) :
-	           FIX_STRING_FIELD(MsgType, self->msg_type);
-	sender_comp_id = FIX_STRING_FIELD(SenderCompID, self->sender_comp_id);
-	target_comp_id = FIX_STRING_FIELD(TargetCompID, self->target_comp_id);
-	msg_seq_num = FIX_INT_FIELD   (MsgSeqNum, self->msg_seq_num);
-	sending_time = FIX_STRING_FIELD(SendingTime, buf);
+	           SWISSQUOTE_FIX_STRING_FIELD(swissquote_MsgType, swissquote_fix_msg_types[self->type]) :
+	           SWISSQUOTE_FIX_STRING_FIELD(swissquote_MsgType, self->msg_type);
+	sender_comp_id = SWISSQUOTE_FIX_STRING_FIELD(swissquote_SenderCompID, self->sender_comp_id);
+	target_comp_id = SWISSQUOTE_FIX_STRING_FIELD(swissquote_TargetCompID, self->target_comp_id);
+	msg_seq_num = SWISSQUOTE_FIX_INT_FIELD   (swissquote_MsgSeqNum, self->msg_seq_num);
+	sending_time = SWISSQUOTE_FIX_STRING_FIELD(swissquote_SendingTime, buf);
 
 	/* body */
 	swissquote_fix_field_unparse(&msg_type, self->body_buf);
@@ -927,15 +924,15 @@ void swissquote_fix_message_unparse(struct swissquote_fix_message *self) {
 		swissquote_fix_field_unparse(&self->fields[i], self->body_buf);
 
 	/* head */
-	begin_string = FIX_STRING_FIELD(BeginString, self->begin_string);
-	body_length = FIX_INT_FIELD(BodyLength, buffer_size(self->body_buf));
+	begin_string = SWISSQUOTE_FIX_STRING_FIELD(swissquote_BeginString, self->begin_string);
+	body_length = SWISSQUOTE_FIX_INT_FIELD(swissquote_BodyLength, buffer_size(self->body_buf));
 
 	swissquote_fix_field_unparse(&begin_string, self->head_buf);
 	swissquote_fix_field_unparse(&body_length, self->head_buf);
 
 	/* trailer */
 	cksum = buffer_sum(self->head_buf) + buffer_sum(self->body_buf);
-	check_sum = FIX_CHECKSUM_FIELD(CheckSum, cksum % 256);
+	check_sum = SWISSQUOTE_FIX_CHECKSUM_FIELD(swissquote_CheckSum, cksum % 256);
 	swissquote_fix_field_unparse(&check_sum, self->body_buf);
 
 	TRACE(LIBTRADING_FIX_MESSAGE_UNPARSE_RET());
@@ -947,7 +944,7 @@ int swissquote_fix_message_send(struct swissquote_fix_message *self, int sockfd,
 
 	TRACE(LIBTRADING_FIX_MESSAGE_SEND(self, sockfd, flags));
 
-	if (!(flags & FIX_SEND_FLAG_PRESERVE_BUFFER))
+	if (!(flags & SWISSQUOTE_FIX_SEND_FLAG_PRESERVE_BUFFER))
 		swissquote_fix_message_unparse(self);
 
 	buffer_to_iovec(self->head_buf, &self->iov[0]);
@@ -957,7 +954,7 @@ int swissquote_fix_message_send(struct swissquote_fix_message *self, int sockfd,
 
 	msg_size = swissquote_fix_message_size(self);
 
-	if (!(flags & FIX_SEND_FLAG_PRESERVE_BUFFER)) {
+	if (!(flags & SWISSQUOTE_FIX_SEND_FLAG_PRESERVE_BUFFER)) {
 		self->head_buf = self->body_buf = NULL;
 	}
 
@@ -970,8 +967,8 @@ int swissquote_fix_message_send(struct swissquote_fix_message *self, int sockfd,
 }
 
 struct swissquote_fix_dialect swissquote_fix_dialects[] = {
-		[FIX_4_4] = (struct swissquote_fix_dialect) {
-				.version    = FIX_4_4,
+		[SWISSQUOTE_FIX_4_4] = (struct swissquote_fix_dialect) {
+				.version    = SWISSQUOTE_FIX_4_4,
 				.tag_type    = swissquote_fix_tag_type,
 		}
 };

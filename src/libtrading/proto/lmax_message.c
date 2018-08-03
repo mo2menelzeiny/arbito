@@ -217,180 +217,180 @@ static int parse_field(struct buffer *self, int *tag, const char **value) {
 
 static enum lmax_fix_type lmax_fix_tag_type(int tag) {
     switch (tag) {
-        case CheckSum:
-            return FIX_TYPE_CHECKSUM;
-        case LastMsgSeqNumProcessed:
-            return FIX_TYPE_INT;
-        case MDPriceLevel:
-            return FIX_TYPE_INT;
-        case BeginSeqNo:
-            return FIX_TYPE_INT;
-        case RefSeqNum:
-            return FIX_TYPE_INT;
-        case EndSeqNo:
-            return FIX_TYPE_INT;
-        case NewSeqNo:
-            return FIX_TYPE_INT;
-        case RptSeq:
-            return FIX_TYPE_INT;
-        case GapFillFlag:
-            return FIX_TYPE_STRING;
-        case PossDupFlag:
-            return FIX_TYPE_STRING;
-        case SecurityID:
-            return FIX_TYPE_STRING;
-        case TestReqID:
-            return FIX_TYPE_STRING;
-        case MsgSeqNum:
-            return FIX_TYPE_MSGSEQNUM;
-        case MDEntrySize:
-            return FIX_TYPE_FLOAT;
-        case LastQty:
-            return FIX_TYPE_FLOAT;
-        case LeavesQty:
-            return FIX_TYPE_FLOAT;
-        case MDEntryPx:
-            return FIX_TYPE_FLOAT;
-        case OrderQty:
-            return FIX_TYPE_FLOAT;
-        case CumQty:
-            return FIX_TYPE_FLOAT;
-        case LastPx:
-            return FIX_TYPE_FLOAT;
-        case AvgPx:
-            return FIX_TYPE_FLOAT;
-        case Price:
-            return FIX_TYPE_FLOAT;
-        case TradingSessionID:
-            return FIX_TYPE_STRING;
-        case MDUpdateAction:
-            return FIX_TYPE_STRING;
-        case TransactTime:
-            return FIX_TYPE_STRING;
-        case ExecTransType:
-            return FIX_TYPE_STRING;
-        case OrigClOrdID:
-            return FIX_TYPE_STRING;
-        case MDEntryType:
-            return FIX_TYPE_STRING;
-        case OrdStatus:
-            return FIX_TYPE_STRING;
-        case ExecType:
-            return FIX_TYPE_STRING;
-        case Password:
-            return FIX_TYPE_STRING;
-        case Account:
-            return FIX_TYPE_STRING;
-        case ClOrdID:
-            return FIX_TYPE_STRING;
-        case OrderID:
-            return FIX_TYPE_STRING;
-        case OrdType:
-            return FIX_TYPE_STRING;
-        case ExecID:
-            return FIX_TYPE_STRING;
-        case Symbol:
-            return FIX_TYPE_STRING;
-        case Side:
-            return FIX_TYPE_STRING;
-        case Text:
-            return FIX_TYPE_STRING;
-        case OrdRejReason:
-            return FIX_TYPE_INT;
-        case MultiLegReportingType:
-            return FIX_TYPE_CHAR;
-        case Username:
-            return FIX_TYPE_STRING;
-        case ExecInst:
-            return FIX_TYPE_CHAR;
-        case SecurityIDSource:
-            return FIX_TYPE_STRING;
-        case TimeInForce:
-            return FIX_TYPE_CHAR;
-        case SettlDate:
-            return FIX_TYPE_STRING;
-        case TradeDate:
-            return FIX_TYPE_STRING;
-        case Signature:
-            return FIX_TYPE_STRING;
-        case SignatureLength:
-            return FIX_TYPE_INT;
-        case RawDataLength:
-            return FIX_TYPE_INT;
-        case RawData:
-            return FIX_TYPE_STRING;
-        case PossResend:
-            return FIX_TYPE_INT;
-        case StopPx:
-            return FIX_TYPE_FLOAT;
-        case ExDestination:
-            return FIX_TYPE_STRING;
-        case CXlRejReason:
-            return FIX_TYPE_INT;
-        case NoRelatedSym:
-            return FIX_TYPE_INT;
-        case MDReqID:
-            return FIX_TYPE_STRING;
-        case SubscriptionRequestType:
-            return FIX_TYPE_CHAR;
-        case MarketDepth:
-            return FIX_TYPE_INT;
-        case MDUpdateType:
-            return FIX_TYPE_INT;
-        case NoMDEntryTypes:
-            return FIX_TYPE_INT;
-        case NoMDEntries:
-            return FIX_TYPE_INT;
-        case MDEntryDate:
-            return FIX_TYPE_STRING;
-        case MDEntryTime:
-            return FIX_TYPE_STRING;
-        case MDReqRejReason:
-            return FIX_TYPE_CHAR;
-        case EncodedTextLen:
-            return FIX_TYPE_INT;
-        case EncodedText:
-            return FIX_TYPE_STRING;
-        case RefTagID:
-            return FIX_TYPE_INT;
-        case RefMsgType:
-            return FIX_TYPE_STRING;
-        case SessionRejectReason:
-            return FIX_TYPE_INT;
-        case MaxMessageSize:
-            return FIX_TYPE_INT;
-        case NoMsgTypes:
-            return FIX_TYPE_INT;
-        case MsgDirection:
-            return FIX_TYPE_CHAR;
-        case CxlRejResponseTo:
-            return FIX_TYPE_CHAR;
-        case TestMessageIndicator:
-            return FIX_TYPE_CHAR;
-        case SecondaryExecID:
-            return FIX_TYPE_STRING;
-        case NoSides:
-            return FIX_TYPE_INT;
-        case TradeRequestID:
-            return FIX_TYPE_STRING;
-        case TradeRequestType:
-            return FIX_TYPE_INT;
-        case NoDates:
-            return FIX_TYPE_INT;
-        case TotNumTradeReports:
-            return FIX_TYPE_INT;
-        case TradeRequestResult:
-            return FIX_TYPE_INT;
-        case TradeRequestStatus:
-            return FIX_TYPE_INT;
-        case NextExpectedMsgSeqNum:
-            return FIX_TYPE_MSGSEQNUM;
-        case OrdStatusReqID:
-            return FIX_TYPE_STRING;
-        case LastRptRequested:
-            return FIX_TYPE_CHAR;
+        case lmax_CheckSum:
+            return LMAX_FIX_TYPE_CHECKSUM;
+        case lmax_LastMsgSeqNumProcessed:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_MDPriceLevel:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_BeginSeqNo:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_RefSeqNum:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_EndSeqNo:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_NewSeqNo:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_RptSeq:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_GapFillFlag:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_PossDupFlag:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_SecurityID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_TestReqID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_MsgSeqNum:
+            return LMAX_FIX_TYPE_MSGSEQNUM;
+        case lmax_MDEntrySize:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_LastQty:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_LeavesQty:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_MDEntryPx:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_OrderQty:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_CumQty:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_LastPx:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_AvgPx:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_Price:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_TradingSessionID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_MDUpdateAction:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_TransactTime:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_ExecTransType:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_OrigClOrdID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_MDEntryType:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_OrdStatus:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_ExecType:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_Password:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_Account:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_ClOrdID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_OrderID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_OrdType:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_ExecID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_Symbol:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_Side:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_Text:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_OrdRejReason:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_MultiLegReportingType:
+            return LMAX_FIX_TYPE_CHAR;
+        case lmax_Username:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_ExecInst:
+            return LMAX_FIX_TYPE_CHAR;
+        case lmax_SecurityIDSource:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_TimeInForce:
+            return LMAX_FIX_TYPE_CHAR;
+        case lmax_SettlDate:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_TradeDate:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_Signature:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_SignatureLength:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_RawDataLength:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_RawData:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_PossResend:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_StopPx:
+            return LMAX_FIX_TYPE_FLOAT;
+        case lmax_ExDestination:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_CXlRejReason:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_NoRelatedSym:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_MDReqID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_SubscriptionRequestType:
+            return LMAX_FIX_TYPE_CHAR;
+        case lmax_MarketDepth:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_MDUpdateType:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_NoMDEntryTypes:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_NoMDEntries:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_MDEntryDate:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_MDEntryTime:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_MDReqRejReason:
+            return LMAX_FIX_TYPE_CHAR;
+        case lmax_EncodedTextLen:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_EncodedText:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_RefTagID:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_RefMsgType:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_SessionRejectReason:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_MaxMessageSize:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_NoMsgTypes:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_MsgDirection:
+            return LMAX_FIX_TYPE_CHAR;
+        case lmax_CxlRejResponseTo:
+            return LMAX_FIX_TYPE_CHAR;
+        case lmax_TestMessageIndicator:
+            return LMAX_FIX_TYPE_CHAR;
+        case lmax_SecondaryExecID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_NoSides:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_TradeRequestID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_TradeRequestType:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_NoDates:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_TotNumTradeReports:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_TradeRequestResult:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_TradeRequestStatus:
+            return LMAX_FIX_TYPE_INT;
+        case lmax_NextExpectedMsgSeqNum:
+            return LMAX_FIX_TYPE_MSGSEQNUM;
+        case lmax_OrdStatusReqID:
+            return LMAX_FIX_TYPE_STRING;
+        case lmax_LastRptRequested:
+            return LMAX_FIX_TYPE_CHAR;
         default:
-            return FIX_TYPE_STRING;    /* unrecognized tag */
+            return LMAX_FIX_TYPE_STRING;    /* unrecognized tag */
     }
 }
 
@@ -409,21 +409,21 @@ static void rest_of_message(struct lmax_fix_message *self, struct lmax_fix_diale
     type = lmax_fix_tag_type(tag);
 
     switch (type) {
-        case FIX_TYPE_INT:
-            self->fields[nr_fields++] = FIX_INT_FIELD(tag, lmax_fix_atoi64(tag_ptr, NULL));
+        case LMAX_FIX_TYPE_INT:
+            self->fields[nr_fields++] = LMAX_FIX_INT_FIELD(tag, lmax_fix_atoi64(tag_ptr, NULL));
             goto retry;
-        case FIX_TYPE_FLOAT:
-            self->fields[nr_fields++] = FIX_FLOAT_FIELD(tag, strtod(tag_ptr, NULL));
+        case LMAX_FIX_TYPE_FLOAT:
+            self->fields[nr_fields++] = LMAX_FIX_FLOAT_FIELD(tag, strtod(tag_ptr, NULL));
             goto retry;
-        case FIX_TYPE_CHAR:
-            self->fields[nr_fields++] = FIX_CHAR_FIELD(tag, tag_ptr[0]);
+        case LMAX_FIX_TYPE_CHAR:
+            self->fields[nr_fields++] = LMAX_FIX_CHAR_FIELD(tag, tag_ptr[0]);
             goto retry;
-        case FIX_TYPE_STRING:
-            self->fields[nr_fields++] = FIX_STRING_FIELD(tag, tag_ptr);
+        case LMAX_FIX_TYPE_STRING:
+            self->fields[nr_fields++] = LMAX_FIX_STRING_FIELD(tag, tag_ptr);
             goto retry;
-        case FIX_TYPE_CHECKSUM:
+        case LMAX_FIX_TYPE_CHECKSUM:
             break;
-        case FIX_TYPE_MSGSEQNUM:
+        case LMAX_FIX_TYPE_MSGSEQNUM:
             self->msg_seq_num = (unsigned long) lmax_fix_uatoi(tag_ptr, NULL);
             goto retry;
         default:
@@ -468,7 +468,7 @@ static int checksum(struct lmax_fix_message *self, struct buffer *buffer, unsign
         goto exit;
     }
 
-    if (flags & FIX_PARSE_FLAG_NO_CSUM) {
+    if (flags & LMAX_FIX_PARSE_FLAG_NO_CSUM) {
         ret = 0;
         goto exit;
     }
@@ -476,7 +476,7 @@ static int checksum(struct lmax_fix_message *self, struct buffer *buffer, unsign
     /* Buffer's start will point to the CheckSum tag */
     buffer_advance(buffer, self->body_length - offset);
 
-    ret = match_field(buffer, CheckSum, &self->check_sum);
+    ret = match_field(buffer, lmax_CheckSum, &self->check_sum);
     if (ret)
         goto exit;
 
@@ -495,12 +495,12 @@ static int checksum(struct lmax_fix_message *self, struct buffer *buffer, unsign
 static int parse_msg_type(struct lmax_fix_message *self, unsigned long flags) {
     int ret;
 
-    ret = match_field(self->head_buf, MsgType, &self->msg_type);
+    ret = match_field(self->head_buf,lmax_MsgType, &self->msg_type);
 
     if (ret)
         goto exit;
 
-    if (!(flags & FIX_PARSE_FLAG_NO_TYPE)) {
+    if (!(flags & LMAX_FIX_PARSE_FLAG_NO_TYPE)) {
         self->type = lmax_fix_msg_type_parse(self->msg_type, 0x01);
 
         /* If third field is not MsgType -> garbled */
@@ -517,7 +517,7 @@ static int parse_body_length(struct lmax_fix_message *self) {
     int len, ret;
     const char *ptr;
 
-    ret = match_field(self->head_buf, BodyLength, &ptr);
+    ret = match_field(self->head_buf, lmax_BodyLength, &ptr);
 
     if (ret)
         goto exit;
@@ -536,7 +536,7 @@ static int parse_begin_string(struct lmax_fix_message *self) {
     // if first field is not BeginString -> garbled
     // if BeginString is invalid or empty -> garbled
 
-    return match_field(self->head_buf, BeginString, &self->begin_string);
+    return match_field(self->head_buf, lmax_BeginString, &self->begin_string);
 }
 
 static int first_three_fields(struct lmax_fix_message *self, unsigned long flags) {
@@ -701,7 +701,7 @@ bool lmax_fix_field_unparse(struct lmax_fix_field *self, struct buffer *buffer) 
     buffer_put(buffer, '=');
 
     switch (self->type) {
-        case FIX_TYPE_STRING: {
+        case LMAX_FIX_TYPE_STRING: {
             const char *p = self->string_value;
 
             while (*p) {
@@ -709,26 +709,26 @@ bool lmax_fix_field_unparse(struct lmax_fix_field *self, struct buffer *buffer) 
             }
             break;
         }
-        case FIX_TYPE_STRING_8: {
+        case LMAX_FIX_TYPE_STRING_8: {
             for (int i = 0; i < sizeof(self->string_8_value) && self->string_8_value[i]; ++i) {
                 buffer_put(buffer, self->string_8_value[i]);
             }
             break;
         }
-        case FIX_TYPE_CHAR: {
+        case LMAX_FIX_TYPE_CHAR: {
             buffer_put(buffer, self->char_value);
             break;
         }
-        case FIX_TYPE_FLOAT: {
+        case LMAX_FIX_TYPE_FLOAT: {
             // dtoa2 do not print leading zeros or .0, 7 digits needed sometimes
             buffer->end += modp_dtoa2(self->float_value, buffer_end(buffer), 7);
             break;
         }
-        case FIX_TYPE_INT: {
+        case LMAX_FIX_TYPE_INT: {
             buffer->end += i64toa(self->int_value, buffer_end(buffer));
             break;
         }
-        case FIX_TYPE_CHECKSUM: {
+        case LMAX_FIX_TYPE_CHECKSUM: {
             buffer->end += checksumtoa(self->int_value, buffer_end(buffer));
             break;
         }
@@ -760,12 +760,12 @@ void lmax_fix_message_unparse(struct lmax_fix_message *self) {
 
     /* standard header */
     msg_type = (self->type != LMAX_FIX_MSG_TYPE_UNKNOWN) ?
-               FIX_STRING_FIELD(MsgType, lmax_fix_msg_types[self->type]) :
-               FIX_STRING_FIELD(MsgType, self->msg_type);
-    sender_comp_id = FIX_STRING_FIELD(SenderCompID, self->sender_comp_id);
-    target_comp_id = FIX_STRING_FIELD(TargetCompID, self->target_comp_id);
-    msg_seq_num = FIX_INT_FIELD   (MsgSeqNum, self->msg_seq_num);
-    sending_time = FIX_STRING_FIELD(SendingTime, buf);
+               LMAX_FIX_STRING_FIELD(lmax_MsgType, lmax_fix_msg_types[self->type]) :
+               LMAX_FIX_STRING_FIELD(lmax_MsgType, self->msg_type);
+    sender_comp_id = LMAX_FIX_STRING_FIELD(lmax_SenderCompID, self->sender_comp_id);
+    target_comp_id = LMAX_FIX_STRING_FIELD(lmax_TargetCompID, self->target_comp_id);
+    msg_seq_num = LMAX_FIX_INT_FIELD   (lmax_MsgSeqNum, self->msg_seq_num);
+    sending_time = LMAX_FIX_STRING_FIELD(lmax_SendingTime, buf);
 
     /* body */
     lmax_fix_field_unparse(&msg_type, self->body_buf);
@@ -778,15 +778,15 @@ void lmax_fix_message_unparse(struct lmax_fix_message *self) {
         lmax_fix_field_unparse(&self->fields[i], self->body_buf);
 
     /* head */
-    begin_string = FIX_STRING_FIELD(BeginString, self->begin_string);
-    body_length = FIX_INT_FIELD(BodyLength, buffer_size(self->body_buf));
+    begin_string = LMAX_FIX_STRING_FIELD(lmax_BeginString, self->begin_string);
+    body_length = LMAX_FIX_INT_FIELD(lmax_BodyLength, buffer_size(self->body_buf));
 
     lmax_fix_field_unparse(&begin_string, self->head_buf);
     lmax_fix_field_unparse(&body_length, self->head_buf);
 
     /* trailer */
     cksum = buffer_sum(self->head_buf) + buffer_sum(self->body_buf);
-    check_sum = FIX_CHECKSUM_FIELD(CheckSum, cksum % 256);
+    check_sum = LMAX_FIX_CHECKSUM_FIELD(lmax_CheckSum, cksum % 256);
     lmax_fix_field_unparse(&check_sum, self->body_buf);
 
     TRACE(LIBTRADING_FIX_MESSAGE_UNPARSE_RET());
@@ -798,7 +798,7 @@ int lmax_fix_message_send(struct lmax_fix_message *self, int sockfd, struct ssl_
 
     TRACE(LIBTRADING_FIX_MESSAGE_SEND(self, sockfd, flags));
 
-    if (!(flags & FIX_SEND_FLAG_PRESERVE_BUFFER))
+    if (!(flags & LMAX_FIX_SEND_FLAG_PRESERVE_BUFFER))
         lmax_fix_message_unparse(self);
 
     buffer_to_iovec(self->head_buf, &self->iov[0]);
@@ -808,7 +808,7 @@ int lmax_fix_message_send(struct lmax_fix_message *self, int sockfd, struct ssl_
 
     msg_size = lmax_fix_message_size(self);
 
-    if (!(flags & FIX_SEND_FLAG_PRESERVE_BUFFER)) {
+    if (!(flags & LMAX_FIX_SEND_FLAG_PRESERVE_BUFFER)) {
         self->head_buf = self->body_buf = NULL;
     }
 
@@ -821,8 +821,8 @@ int lmax_fix_message_send(struct lmax_fix_message *self, int sockfd, struct ssl_
 }
 
 struct lmax_fix_dialect lmax_fix_dialects[] = {
-        [FIX_4_4] = (struct lmax_fix_dialect){
-                .version	= FIX_4_4,
+        [LMAX_FIX_4_4] = (struct lmax_fix_dialect){
+                .version	= LMAX_FIX_4_4,
                 .tag_type	= lmax_fix_tag_type,
         }
 };

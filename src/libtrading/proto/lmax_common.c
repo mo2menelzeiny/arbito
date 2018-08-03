@@ -30,7 +30,7 @@ bool lmax_fix_session_keepalive(struct lmax_fix_session *session, struct timespe
 	return true;
 }
 
-static int fix_do_unexpected(struct lmax_fix_session *session, struct lmax_fix_message *msg) {
+static int lmax_fix_do_unexpected(struct lmax_fix_session *session, struct lmax_fix_message *msg) {
 	char text[128];
 
 	if (msg->msg_seq_num > session->in_msg_seq_num) {
@@ -46,7 +46,7 @@ static int fix_do_unexpected(struct lmax_fix_session *session, struct lmax_fix_m
 
 		session->in_msg_seq_num--;
 
-		if (!lmax_fix_get_field(msg, PossDupFlag)) {
+		if (!lmax_fix_get_field(msg, lmax_PossDupFlag)) {
 			lmax_fix_session_logout(session, text);
 			return 1;
 		}
@@ -65,15 +65,15 @@ static int fix_do_unexpected(struct lmax_fix_session *session, struct lmax_fix_m
 bool lmax_fix_session_admin(struct lmax_fix_session *session, struct lmax_fix_message *msg) {
 	struct lmax_fix_field *field;
 
-	if (!fix_msg_expected(session, msg)) {
-		fix_do_unexpected(session, msg);
+	if (!lmax_fix_msg_expected(session, msg)) {
+		lmax_fix_do_unexpected(session, msg);
 
 		goto done;
 	}
 
 	switch (msg->type) {
 		case LMAX_FIX_MSG_TYPE_HEARTBEAT: {
-			field = lmax_fix_get_field(msg, TestReqID);
+			field = lmax_fix_get_field(msg, lmax_TestReqID);
 
 			if (field && !strncmp(field->string_value, session->testreqid, strlen(session->testreqid)))
 				session->tr_pending = 0;
@@ -81,9 +81,9 @@ bool lmax_fix_session_admin(struct lmax_fix_session *session, struct lmax_fix_me
 			goto done;
 		}
 		case LMAX_FIX_MSG_TYPE_TEST_REQUEST: {
-			char id[128] = "TestReqID";
+			char id[128] = "lmax_TestReqID";
 
-			field = lmax_fix_get_field(msg, TestReqID);
+			field = lmax_fix_get_field(msg, lmax_TestReqID);
 
 			if (field)
 				lmax_fix_get_string(field, id, sizeof(id));
@@ -96,13 +96,13 @@ bool lmax_fix_session_admin(struct lmax_fix_session *session, struct lmax_fix_me
 			unsigned long begin_seq_num;
 			unsigned long end_seq_num;
 
-			field = lmax_fix_get_field(msg, BeginSeqNo);
+			field = lmax_fix_get_field(msg, lmax_BeginSeqNo);
 			if (!field)
 				goto fail;
 
 			begin_seq_num = field->int_value;
 
-			field = lmax_fix_get_field(msg, EndSeqNo);
+			field = lmax_fix_get_field(msg, lmax_EndSeqNo);
 			if (!field)
 				goto fail;
 
@@ -118,10 +118,10 @@ bool lmax_fix_session_admin(struct lmax_fix_session *session, struct lmax_fix_me
 			unsigned long msg_seq_num;
 			char text[128];
 
-			field = lmax_fix_get_field(msg, GapFillFlag);
+			field = lmax_fix_get_field(msg, lmax_Text);
 
 			if (field && !strncmp(field->string_value, "Y", 1)) {
-				field = lmax_fix_get_field(msg, NewSeqNo);
+				field = lmax_fix_get_field(msg, lmax_NewSeqNo);
 
 				if (!field)
 					goto done;
@@ -144,7 +144,7 @@ bool lmax_fix_session_admin(struct lmax_fix_session *session, struct lmax_fix_me
 
 					session->in_msg_seq_num--;
 
-					if (!lmax_fix_get_field(msg, PossDupFlag))
+					if (!lmax_fix_get_field(msg, lmax_PossDupFlag))
 						lmax_fix_session_logout(session, text);
 
 					goto done;
@@ -159,7 +159,7 @@ bool lmax_fix_session_admin(struct lmax_fix_session *session, struct lmax_fix_me
 					lmax_fix_session_reject(session, msg_seq_num, text);
 				}
 			} else {
-				field = lmax_fix_get_field(msg, NewSeqNo);
+				field = lmax_fix_get_field(msg, lmax_NewSeqNo);
 
 				if (!field)
 					goto done;
@@ -196,11 +196,11 @@ int lmax_fix_session_logon(struct lmax_fix_session *session) {
 	struct lmax_fix_message *response;
 	struct lmax_fix_message logon_msg;
 	struct lmax_fix_field fields[] = {
-			FIX_INT_FIELD(EncryptMethod, 0),
-			FIX_STRING_FIELD(ResetSeqNumFlag, "Y"),
-			FIX_INT_FIELD(HeartBtInt, session->heartbtint),
-			FIX_STRING_FIELD(Username, session->username),
-			FIX_STRING_FIELD(Password, session->password),
+			LMAX_FIX_INT_FIELD(lmax_EncryptMethod, 0),
+			LMAX_FIX_STRING_FIELD(lmax_ResetSeqNumFlag, "Y"),
+			LMAX_FIX_INT_FIELD(lmax_HeartBtInt, session->heartbtint),
+			LMAX_FIX_STRING_FIELD(lmax_Username, session->username),
+			LMAX_FIX_STRING_FIELD(lmax_Password, session->password),
 	};
 
 	logon_msg = (struct lmax_fix_message) {
@@ -209,18 +209,15 @@ int lmax_fix_session_logon(struct lmax_fix_session *session) {
 			.fields        = fields,
 	};
 
-	if (!session->password || !strlen(session->password))
-		logon_msg.nr_fields--;
-
 	lmax_fix_session_send(session, &logon_msg, 0);
 	session->active = true;
 
 	retry:
-	if (lmax_fix_session_recv(session, &response, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+	if (lmax_fix_session_recv(session, &response, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
 		goto retry;
 
-	if (!fix_msg_expected(session, response)) {
-		if (fix_do_unexpected(session, response))
+	if (!lmax_fix_msg_expected(session, response)) {
+		if (lmax_fix_do_unexpected(session, response))
 			return -1;
 
 		goto retry;
@@ -237,7 +234,7 @@ int lmax_fix_session_logon(struct lmax_fix_session *session) {
 
 int lmax_fix_session_logout(struct lmax_fix_session *session, const char *text) {
 	struct lmax_fix_field fields[] = {
-			FIX_STRING_FIELD(Text, text),
+			LMAX_FIX_STRING_FIELD(lmax_Text, text),
 	};
 	long nr_fields = ARRAY_SIZE(fields);
 	struct lmax_fix_message logout_msg;
@@ -264,7 +261,7 @@ int lmax_fix_session_logout(struct lmax_fix_session *session, const char *text) 
 	if (end.tv_sec - start.tv_sec > 2)
 		return 0;
 
-	if (lmax_fix_session_recv(session, &response, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+	if (lmax_fix_session_recv(session, &response, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
 		goto retry;
 
 	if (lmax_fix_session_admin(session, response))
@@ -282,7 +279,7 @@ int lmax_fix_session_heartbeat(struct lmax_fix_session *session, const char *tes
 	int nr_fields = 0;
 
 	if (test_req_id)
-		fields[nr_fields++] = FIX_STRING_FIELD(TestReqID, test_req_id);
+		fields[nr_fields++] = LMAX_FIX_STRING_FIELD(lmax_TestReqID, test_req_id);
 
 	heartbeat_msg = (struct lmax_fix_message) {
 			.type        = LMAX_FIX_MSG_TYPE_HEARTBEAT,
@@ -296,7 +293,7 @@ int lmax_fix_session_heartbeat(struct lmax_fix_session *session, const char *tes
 int lmax_fix_session_test_request(struct lmax_fix_session *session) {
 	struct lmax_fix_message test_req_msg;
 	struct lmax_fix_field fields[] = {
-			FIX_STRING_FIELD(TestReqID, session->str_now),
+			LMAX_FIX_STRING_FIELD(lmax_TestReqID, session->str_now),
 	};
 
 	strncpy(session->testreqid, session->str_now,
@@ -318,8 +315,8 @@ int lmax_fix_session_resend_request(struct lmax_fix_session *session,
                                     unsigned long bgn, unsigned long end) {
 	struct lmax_fix_message resend_request_msg;
 	struct lmax_fix_field fields[] = {
-			FIX_INT_FIELD(BeginSeqNo, bgn),
-			FIX_INT_FIELD(EndSeqNo, end),
+			LMAX_FIX_INT_FIELD(lmax_BeginSeqNo, bgn),
+			LMAX_FIX_INT_FIELD(lmax_EndSeqNo, end),
 	};
 
 	resend_request_msg = (struct lmax_fix_message) {
@@ -334,8 +331,8 @@ int lmax_fix_session_resend_request(struct lmax_fix_session *session,
 int lmax_fix_session_reject(struct lmax_fix_session *session, unsigned long refseqnum, char *text) {
 	struct lmax_fix_message reject_msg;
 	struct lmax_fix_field fields[] = {
-			FIX_INT_FIELD(RefSeqNum, refseqnum),
-			FIX_STRING_FIELD(Text, text),
+			LMAX_FIX_INT_FIELD(lmax_RefSeqNum, refseqnum),
+			LMAX_FIX_STRING_FIELD(lmax_Text, text),
 	};
 	long nr_fields = ARRAY_SIZE(fields);
 
@@ -355,8 +352,8 @@ int lmax_fix_session_sequence_reset(struct lmax_fix_session *session, unsigned l
                                     unsigned long new_seq_num, bool gap_fill) {
 	struct lmax_fix_message sequence_reset_msg;
 	struct lmax_fix_field fields[] = {
-			FIX_INT_FIELD(NewSeqNo, new_seq_num),
-			FIX_STRING_FIELD(GapFillFlag, "Y"),
+			LMAX_FIX_INT_FIELD(lmax_NewSeqNo, new_seq_num),
+			LMAX_FIX_STRING_FIELD(lmax_Text, "Y"),
 	};
 	long nr_fields = ARRAY_SIZE(fields);
 
@@ -370,7 +367,7 @@ int lmax_fix_session_sequence_reset(struct lmax_fix_session *session, unsigned l
 			.fields        = fields,
 	};
 
-	return lmax_fix_session_send(session, &sequence_reset_msg, FIX_SEND_FLAG_PRESERVE_MSG_NUM);
+	return lmax_fix_session_send(session, &sequence_reset_msg, LMAX_FIX_SEND_FLAG_PRESERVE_MSG_NUM);
 }
 
 int lmax_fix_session_marketdata_request(struct lmax_fix_session *session) {
@@ -379,16 +376,16 @@ int lmax_fix_session_marketdata_request(struct lmax_fix_session *session) {
 	sprintf(mdreqid, "%i", rand());
 	struct lmax_fix_message *response;
 	struct lmax_fix_field fields[] = {
-			FIX_STRING_FIELD(MDReqID, mdreqid),
-			FIX_CHAR_FIELD(SubscriptionRequestType, '1'),
-			FIX_INT_FIELD(MarketDepth, 1),
-			FIX_INT_FIELD(MDUpdateType, 0),
-			FIX_INT_FIELD(NoMDEntryTypes, 2),
-			FIX_CHAR_FIELD(MDEntryType, '0'),
-			FIX_CHAR_FIELD(MDEntryType, '1'),
-			FIX_INT_FIELD(NoRelatedSym, 1),
-			FIX_STRING_FIELD(SecurityID, "4001"),
-			FIX_STRING_FIELD(SecurityIDSource, "8")
+			LMAX_FIX_STRING_FIELD(lmax_MDReqID, mdreqid),
+			LMAX_FIX_CHAR_FIELD(lmax_SubscriptionRequestType, '1'),
+			LMAX_FIX_INT_FIELD(lmax_MarketDepth, 1),
+			LMAX_FIX_INT_FIELD(lmax_MDUpdateType, 0),
+			LMAX_FIX_INT_FIELD(lmax_NoMDEntryTypes, 2),
+			LMAX_FIX_CHAR_FIELD(lmax_MDEntryType, '0'),
+			LMAX_FIX_CHAR_FIELD(lmax_MDEntryType, '1'),
+			LMAX_FIX_INT_FIELD(lmax_NoRelatedSym, 1),
+			LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
+			LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8")
 	};
 
 	struct lmax_fix_message request_msg = (struct lmax_fix_message) {
@@ -401,11 +398,11 @@ int lmax_fix_session_marketdata_request(struct lmax_fix_session *session) {
 	session->active = true;
 
 	retry:
-	if (lmax_fix_session_recv(session, &response, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+	if (lmax_fix_session_recv(session, &response, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
 		goto retry;
 
-	if (!fix_msg_expected(session, response)) {
-		if (fix_do_unexpected(session, response))
+	if (!lmax_fix_msg_expected(session, response)) {
+		if (lmax_fix_do_unexpected(session, response))
 			return -1;
 		goto retry;
 	}
@@ -429,11 +426,11 @@ int lmax_fix_session_new_order_single(struct lmax_fix_session *session, struct l
 	session->active = true;
 
 	retry:
-	if (lmax_fix_session_recv(session, &response, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+	if (lmax_fix_session_recv(session, &response, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
 		goto retry;
 
-	if (!fix_msg_expected(session, response)) {
-		if (fix_do_unexpected(session, response)) {
+	if (!lmax_fix_msg_expected(session, response)) {
+		if (lmax_fix_do_unexpected(session, response)) {
 			fprintf(stderr, "Order failed due to unexpected sequence number\n");
 			return -1;
 		}

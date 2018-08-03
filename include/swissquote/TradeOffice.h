@@ -1,10 +1,11 @@
 
-#ifndef ARBITO_SWISSQUOTE_MARKETDATACLIENT_H
-#define ARBITO_SWISSQUOTE_MARKETDATACLIENT_H
+#ifndef ARBITO_SWISSQUOTE_TRADEOFFICE_H
+#define ARBITO_SWISSQUOTE_TRADEOFFICE_H
 
-#define MESSEGNER_BUFFER 1024
+#define MAX_DEALS 5
+#define DELAY_SECONDS 60
 
-// C
+// C includes
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -22,18 +23,19 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdexcept>
+#include <stack>
 
-// SSL
+// SSL includes
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
 
-// Libtrading
+// Libtrading includes
 #include <libtrading/proto/swissquote_common.h>
 #include <libtrading/die.h>
 #include <libtrading/array.h>
 
-// Disruptor
+// Disruptor includes
 #include <Disruptor/Disruptor.h>
 #include <Disruptor/ThreadPerTaskScheduler.h>
 #include <Disruptor/BusySpinWaitStrategy.h>
@@ -42,8 +44,8 @@
 #include <Disruptor/ILifecycleAware.h>
 
 // Aeron client
-#include <Aeron.h>
 #include <Context.h>
+#include <Aeron.h>
 #include <concurrent/BusySpinIdleStrategy.h>
 #include <FragmentAssembler.h>
 
@@ -55,41 +57,40 @@
 #include "sbe/sbe.h"
 #include "sbe/MarketData.h"
 
-// Domain
-#include "MarketDataEvent.h"
+// Domain includes
+#include "Utilities.h"
 #include "ArbitrageDataEvent.h"
 #include "Messenger.h"
-#include "MessengerConfig.h"
-#include "BrokerMarketDataHandler.h"
-#include "swissquote/Utilities.h"
 
 namespace SWISSQUOTE {
 
-	class MarketOffice {
+	enum MarketState {
+		NO_DEALS = 0,
+		CURRENT_DIFFERENCE_1 = 1,
+		CURRENT_DIFFERENCE_2 = 2
+	};
+
+	class TradeOffice {
 
 	public:
-		MarketOffice(const std::shared_ptr<Messenger> &messenger,
-		             const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
-		             const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
-		             const char *m_host, int m_port, const char *username,
-		             const char *password, const char *sender_comp_id, const char *target_comp_id, int heartbeat,
-		             const char *pub_channel, int pub_stream_id, const char *sub_channel,
-		             int sub_stream_id, double spread, double bid_lot_size, double offer_lot_size);
+		TradeOffice(const std::shared_ptr<Messenger> &messenger,
+		            const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
+		            const char *m_host, int m_port, const char *username, const char *password,
+		            const char *sender_comp_id, const char *target_comp_id, int heartbeat,
+		            double diff_open, double diff_close, double bid_lot_size, double offer_lot_size);
 
 		void start();
 
 	private:
-
-		void initMessengerChannel();
-
 		void initBrokerClient();
 
 		void poll();
 
 	private:
-		double m_bid_lot_size;
-		double m_offer_lot_size;
-		double m_spread;
+		MarketState m_open_state = NO_DEALS;
+		double m_diff_open, m_diff_close;
+		double m_bid_lot_size, m_offer_lot_size;
+		int m_deals_count = 0;
 		int m_port;
 		const char *m_host;
 		SSL_CTX *m_ssl_ctx;
@@ -97,15 +98,9 @@ namespace SWISSQUOTE {
 		struct swissquote_fix_session_cfg m_cfg;
 		struct swissquote_fix_session *m_session;
 		std::thread poller;
-		MessengerConfig m_messenger_config;
 		const std::shared_ptr<Messenger> m_messenger;
-		std::shared_ptr<aeron::Publication> m_messenger_pub;
-		std::shared_ptr<aeron::Subscription> m_messenger_sub;
-		const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> m_broker_market_data_disruptor;
 		const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> m_arbitrage_data_disruptor;
-		std::shared_ptr<BrokerMarketDataHandler> m_broker_market_data_handler;
 	};
 }
 
-
-#endif //ARBITO_SWISSQUOTE_MARKETDATACLIENT_H
+#endif //ARBITO_SWISSQUOTE_TRADEOFFICE_H

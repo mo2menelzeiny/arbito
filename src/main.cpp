@@ -1,6 +1,8 @@
 
 #include "lmax/MarketOffice.h"
 #include "lmax/TradeOffice.h"
+#include "swissquote/MarketOffice.h"
+#include "swissquote/TradeOffice.h"
 #include "Messenger.h"
 
 int main() {
@@ -29,8 +31,10 @@ int main() {
 		const char *to_sender = getenv("TO_SENDER");
 		const char *to_receiver = getenv("TO_RECEIVER");
 
-		int port = 443;
-		int heartbeat = 50;
+		int port = atoi(getenv("PORT"));
+		int heartbeat = atoi(getenv("HEARTBEAT"));
+
+		int broker = atoi(getenv("BROKER"));
 
 		auto task_scheduler = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
 
@@ -50,18 +54,91 @@ int main() {
 
 		std::shared_ptr<Messenger> messenger = std::make_shared<Messenger>();
 
-		std::shared_ptr<LMAX::TradeOffice> trade_office =
-				std::make_shared<LMAX::TradeOffice>(messenger, arbitrage_data_disruptor, to_host, port, to_username,
-				                                    to_password, to_sender, to_receiver, heartbeat, diff_open,
-				                                    diff_close, bid_lot_size, offer_lot_size);
+		std::shared_ptr<LMAX::MarketOffice> lmax_market_office;
+		std::shared_ptr<LMAX::TradeOffice> lmax_trade_office;
 
-		std::shared_ptr<LMAX::MarketOffice> market_office =
-				std::make_shared<LMAX::MarketOffice>(messenger, broker_market_data_disruptor, arbitrage_data_disruptor,
-				                                     mo_host, port, mo_username, mo_password, mo_sender, mo_receiver,
-				                                     heartbeat, pub_channel, pub_stream_id, sub_channel, sub_stream_id,
-				                                     spread, bid_lot_size, offer_lot_size);
-		trade_office->start();
-		market_office->start();
+		std::shared_ptr<SWISSQUOTE::MarketOffice> swissquote_market_office;
+		std::shared_ptr<SWISSQUOTE::TradeOffice> swissquote_trade_office;
+
+		switch (broker) {
+			case 1: {
+				fprintf(stdout, "Broker -> LMAX\n");
+				lmax_market_office = std::make_shared<LMAX::MarketOffice>(messenger,
+				                                                          broker_market_data_disruptor,
+				                                                          arbitrage_data_disruptor,
+				                                                          mo_host,
+				                                                          port,
+				                                                          mo_username,
+				                                                          mo_password,
+				                                                          mo_sender,
+				                                                          mo_receiver,
+				                                                          heartbeat,
+				                                                          pub_channel,
+				                                                          pub_stream_id,
+				                                                          sub_channel,
+				                                                          sub_stream_id,
+				                                                          spread,
+				                                                          bid_lot_size,
+				                                                          offer_lot_size);
+				lmax_trade_office = std::make_shared<LMAX::TradeOffice>(messenger,
+				                                                        arbitrage_data_disruptor,
+				                                                        to_host,
+				                                                        port,
+				                                                        to_username,
+				                                                        to_password,
+				                                                        to_sender,
+				                                                        to_receiver,
+				                                                        heartbeat,
+				                                                        diff_open,
+				                                                        diff_close,
+				                                                        bid_lot_size,
+				                                                        offer_lot_size);
+			}
+
+				lmax_trade_office->start();
+				lmax_market_office->start();
+				break;
+
+			case 2: {
+				fprintf(stdout, "Broker -> SWISSQUOTE\n");
+				swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(messenger,
+				                                                                    arbitrage_data_disruptor,
+				                                                                    to_host,
+				                                                                    port,
+				                                                                    to_username,
+				                                                                    to_password,
+				                                                                    to_sender,
+				                                                                    to_receiver,
+				                                                                    heartbeat,
+				                                                                    diff_open,
+				                                                                    diff_close,
+				                                                                    bid_lot_size,
+				                                                                    offer_lot_size);
+
+				swissquote_market_office = std::make_shared<SWISSQUOTE::MarketOffice>(messenger,
+				                                                                      broker_market_data_disruptor,
+				                                                                      arbitrage_data_disruptor,
+				                                                                      mo_host,
+				                                                                      port,
+				                                                                      mo_username,
+				                                                                      mo_password,
+				                                                                      mo_sender,
+				                                                                      mo_receiver,
+				                                                                      heartbeat,
+				                                                                      pub_channel,
+				                                                                      pub_stream_id,
+				                                                                      sub_channel,
+				                                                                      sub_stream_id,
+				                                                                      spread,
+				                                                                      bid_lot_size,
+				                                                                      offer_lot_size);
+			}
+				swissquote_market_office->start();
+				swissquote_trade_office->start();
+				break;
+			default:
+				fprintf(stderr, "Main: Undefined broker\n");
+		}
 
 		task_scheduler->start();
 		broker_market_data_disruptor->start();
