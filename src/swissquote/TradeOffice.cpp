@@ -32,7 +32,7 @@ namespace SWISSQUOTE {
 		SSL_load_error_strings();
 		SSL_library_init();
 		OpenSSL_add_all_algorithms();
-		m_ssl_ctx = SSL_CTX_new(TLS_client_method());
+		m_ssl_ctx = SSL_CTX_new(TLSv1_client_method());
 		SSL_CTX_set_options(m_ssl_ctx, SSL_OP_NO_SSLv3);
 		SSL_CTX_set_options(m_ssl_ctx, SSL_OP_NO_SSLv2);
 		SSL_CTX_set_options(m_ssl_ctx, SSL_OP_SINGLE_DH_USE);
@@ -157,11 +157,11 @@ namespace SWISSQUOTE {
 						};
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Sell order %s FAILED\n", id);
+							// fprintf(stderr, "Sell order %s FAILED\n", id);
 							return true;
 						};
 
-						fprintf(stdout, "Sell order %s OK\n", id);
+						// fprintf(stdout, "Sell order %s OK\n", id);
 						--m_deals_count;
 						counter = time(0);
 						return true;
@@ -182,11 +182,11 @@ namespace SWISSQUOTE {
 						};
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Buy order %s FAILED\n", id);
+							// fprintf(stderr, "Buy order %s FAILED\n", id);
 							return true;
 						};
 
-						fprintf(stdout, "Buy order %s OK\n", id);
+						// fprintf(stdout, "Buy order %s OK\n", id);
 						++m_deals_count;
 						counter = time(0);
 						return true;
@@ -209,11 +209,11 @@ namespace SWISSQUOTE {
 						};
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Sell order %s FAILED\n", id);
+							// fprintf(stderr, "Sell order %s FAILED\n", id);
 							return true;
 						};
 
-						fprintf(stdout, "Sell order %s OK\n", id);
+						// fprintf(stdout, "Sell order %s OK\n", id);
 						--m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -235,11 +235,11 @@ namespace SWISSQUOTE {
 						};
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Buy order %s FAILED\n", id);
+							// fprintf(stderr, "Buy order %s FAILED\n", id);
 							return true;
 						};
 
-						fprintf(stdout, "Buy order %s OK\n", id);
+						// fprintf(stdout, "Buy order %s OK\n", id);
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -264,7 +264,7 @@ namespace SWISSQUOTE {
 						};
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Buy order %s FAILED\n", id);
+							// fprintf(stderr, "Buy order %s FAILED\n", id);
 							return true;
 						};
 
@@ -291,11 +291,11 @@ namespace SWISSQUOTE {
 						};
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Sell order %s FAILED\n", id);
+							// fprintf(stderr, "Sell order %s FAILED\n", id);
 							return true;
 						};
 
-						fprintf(stdout, "Sell order %s OK\n", id);
+						// fprintf(stdout, "Sell order %s OK\n", id);
 						m_open_state = CURRENT_DIFFERENCE_2;
 						++m_deals_count;
 						counter = time(0);
