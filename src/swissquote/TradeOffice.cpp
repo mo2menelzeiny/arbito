@@ -1,7 +1,7 @@
 
-#include "lmax/TradeOffice.h"
+#include "swissquote/TradeOffice.h"
 
-namespace LMAX {
+namespace SWISSQUOTE {
 
 	TradeOffice::TradeOffice(const std::shared_ptr<Messenger> &messenger,
 	                         const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
@@ -12,8 +12,8 @@ namespace LMAX {
 			  m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close), m_bid_lot_size(bid_lot_size),
 			  m_offer_lot_size(offer_lot_size) {
 		// Session configurations
-		lmax_fix_session_cfg_init(&m_cfg);
-		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
+		swissquote_fix_session_cfg_init(&m_cfg);
+		m_cfg.dialect = &swissquote_fix_dialects[SWISSQUOTE_FIX_4_4];
 		m_cfg.heartbtint = heartbeat;
 		strncpy(m_cfg.username, username, ARRAY_SIZE(m_cfg.username));
 		strncpy(m_cfg.password, password, ARRAY_SIZE(m_cfg.password));
@@ -42,7 +42,7 @@ namespace LMAX {
 		m_cfg.ssl = m_ssl;
 
 		// Session object
-		m_session = lmax_fix_session_new(&m_cfg);
+		m_session = swissquote_fix_session_new(&m_cfg);
 		if (!m_session) {
 			fprintf(stderr, "FIX session cannot be created\n");
 			return;
@@ -82,7 +82,7 @@ namespace LMAX {
 		if (m_cfg.sockfd < 0)
 			error("Unable to connect to a socket (%s)", strerror(saved_errno));
 
-		if (lmax_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0)
+		if (swissquote_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0)
 			die("cannot set socket option TCP_NODELAY");
 
 		// SSL connection
@@ -111,7 +111,7 @@ namespace LMAX {
 		OPENSSL_free(str);
 
 		// Session login
-		if (lmax_fix_session_logon(m_session)) {
+		if (swissquote_fix_session_logon(m_session)) {
 			fprintf(stderr, "Client Logon FAILED\n");
 			return;
 		}
@@ -146,17 +146,17 @@ namespace LMAX {
 						char id[16];
 						sprintf(id, "%i", rand());
 
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '2'), // SELL
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
+						struct swissquote_fix_field fields[] = {
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '2'), // SELL
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
+								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
 						};
 
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
 							return true;
 						};
@@ -171,17 +171,17 @@ namespace LMAX {
 						char id[16];
 						sprintf(id, "%i", rand());
 
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '1'), // BUY
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
+						struct swissquote_fix_field fields[] = {
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '1'), // BUY
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
+								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
 						};
 
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
 							return true;
 						};
@@ -198,17 +198,17 @@ namespace LMAX {
 						char id[16];
 						sprintf(id, "%i", rand());
 
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '2'), // SELL
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
+						struct swissquote_fix_field fields[] = {
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '2'), // SELL
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
+								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
 						};
 
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
 							return true;
 						};
@@ -224,17 +224,17 @@ namespace LMAX {
 						char id[16];
 						sprintf(id, "%i", rand());
 
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '1'), // BUY
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
+						struct swissquote_fix_field fields[] = {
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '1'), // BUY
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
+								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
 						};
 
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
 							return true;
 						};
@@ -253,17 +253,17 @@ namespace LMAX {
 						char id[16];
 						sprintf(id, "%i", rand());
 
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '1'), // BUY
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
+						struct swissquote_fix_field fields[] = {
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '1'), // BUY
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
+								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
 						};
 
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
 							return true;
 						};
@@ -280,17 +280,17 @@ namespace LMAX {
 						char id[16];
 						sprintf(id, "%i", rand());
 
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '2'), // SELL
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
+						struct swissquote_fix_field fields[] = {
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '2'), // SELL
+								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
+								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
+								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
 						};
 
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
+						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
 							return true;
 						};
@@ -324,24 +324,24 @@ namespace LMAX {
 			if (diff > 0.1 * m_session->heartbtint) {
 				prev = cur;
 
-				if (!lmax_fix_session_keepalive(m_session, &cur)) {
+				if (!swissquote_fix_session_keepalive(m_session, &cur)) {
 					fprintf(stderr, "Session keep alive FAILED\n");
 					break;
 				}
 			}
 
-			if (lmax_fix_session_time_update(m_session)) {
+			if (swissquote_fix_session_time_update(m_session)) {
 				fprintf(stderr, "Session time update FAILED\n");
 				break;
 			}
 
-			struct lmax_fix_message *msg = nullptr;
-			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
+			struct swissquote_fix_message *msg = nullptr;
+			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				if (!msg) {
 					continue;
 				}
 
-				if (lmax_fix_session_admin(m_session, msg)) {
+				if (swissquote_fix_session_admin(m_session, msg)) {
 					continue;
 				}
 			}
@@ -357,7 +357,7 @@ namespace LMAX {
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();
-			lmax_fix_session_free(m_session);
+			swissquote_fix_session_free(m_session);
 			initBrokerClient();
 		}
 	}

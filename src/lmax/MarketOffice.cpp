@@ -17,7 +17,7 @@ namespace LMAX {
 			  m_messenger_config{pub_channel, pub_stream_id, sub_channel, sub_stream_id} {
 		// Session configurations
 		lmax_fix_session_cfg_init(&m_cfg);
-		m_cfg.dialect = &lmax_fix_dialects[FIX_4_4];
+		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
 		m_cfg.heartbtint = heartbeat;
 		strncpy(m_cfg.username, username, ARRAY_SIZE(m_cfg.username));
 		strncpy(m_cfg.password, password, ARRAY_SIZE(m_cfg.password));
@@ -113,7 +113,7 @@ namespace LMAX {
 		if (m_cfg.sockfd < 0)
 			error("Unable to connect to a socket (%s)", strerror(saved_errno));
 
-		if (socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0)
+		if (lmax_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0)
 			die("cannot set socket option TCP_NODELAY");
 
 		// SSL connection
@@ -224,7 +224,7 @@ namespace LMAX {
 			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			struct lmax_fix_message *msg = nullptr;
-			if (lmax_fix_session_recv(m_session, &msg, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
+			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				if (!msg) {
 					continue;
 				}
@@ -239,15 +239,15 @@ namespace LMAX {
 				case LMAX_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
 					// Filter market data based on spread, bid lot size and offer lot size
 					if (m_spread > (lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value -
-					                lmax_fix_get_float(msg, MDEntryPx, 0.0))
-					    || m_bid_lot_size > lmax_fix_get_float(msg, MDEntrySize, 0.0)
+					                lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
+					    || m_bid_lot_size > lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)
 					    || m_offer_lot_size > lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value) {
 						continue;
 					}
 					// allocate most recent prices
 					broker_market_data = (MarketDataEvent) {
-							.bid = lmax_fix_get_float(msg, MDEntryPx, 0.0),
-							.bid_qty = (lmax_fix_get_float(msg, MDEntrySize, 0.0)),
+							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
+							.bid_qty = (lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
 							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value
 					};

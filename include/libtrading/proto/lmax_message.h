@@ -65,111 +65,111 @@ enum lmax_fix_msg_type {
 extern const char *lmax_fix_msg_types[LMAX_FIX_MSG_TYPE_MAX];
 
 enum lmax_fix_type {
-    FIX_TYPE_INT,
-    FIX_TYPE_FLOAT,
-    FIX_TYPE_CHAR,
-    FIX_TYPE_STRING,
-    FIX_TYPE_CHECKSUM,
-    FIX_TYPE_MSGSEQNUM,
-    FIX_TYPE_STRING_8,
+    LMAX_FIX_TYPE_INT,
+    LMAX_FIX_TYPE_FLOAT,
+    LMAX_FIX_TYPE_CHAR,
+    LMAX_FIX_TYPE_STRING,
+    LMAX_FIX_TYPE_CHECKSUM,
+    LMAX_FIX_TYPE_MSGSEQNUM,
+    LMAX_FIX_TYPE_STRING_8,
 };
 
 enum lmax_fix_tag {
-    Account = 1,
-    AvgPx = 6,
-    BeginSeqNo = 7,
-    BeginString = 8,
-    BodyLength = 9,
-    CheckSum = 10,
-    ClOrdID = 11,
-    CumQty = 14,
-    EndSeqNo = 16,
-    ExecID = 17,
-    ExecInst = 18,
-    ExecTransType = 20,
-    SecurityIDSource = 22,
-    LastPx = 31,
-    LastQty = 32,
-    MsgSeqNum = 34,
-    MsgType = 35,
-    NewSeqNo = 36,
-    OrderID = 37,
-    OrderQty = 38,
-    OrdStatus = 39,
-    OrdType = 40,
-    OrigClOrdID = 41,
-    PossDupFlag = 43,
-    Price = 44,
-    RefSeqNum = 45,
-    SecurityID = 48,
-    SenderCompID = 49,
-    SendingTime = 52,
-    Side = 54,
-    Symbol = 55,
-    TargetCompID = 56,
-    Text = 58,
-    TimeInForce = 59,
-    TransactTime = 60,
-    SettlDate = 64,
-    TradeDate = 75,
-    RptSeq = 83,
-    Signature = 89,
-    SignatureLength = 93,
-    RawDataLength = 95,
-    RawData = 96,
-    PossResend = 97,
-    EncryptMethod = 98,
-    StopPx = 99,
-    ExDestination = 100,
-    CXlRejReason = 102,
-    OrdRejReason = 103,
-    HeartBtInt = 108,
-    TestReqID = 112,
-    GapFillFlag = 123,
-    ResetSeqNumFlag = 141,
-    NoRelatedSym = 146,
-    ExecType = 150,
-    LeavesQty = 151,
-	MDReqID = 262,
-	SubscriptionRequestType = 263,
-	MarketDepth = 264,
-    MDUpdateType = 265,
-    NoMDEntryTypes = 267,
-    NoMDEntries = 268,
-    MDEntryType = 269,
-    MDEntryPx = 270,
-    MDEntrySize = 271,
-    MDEntryDate = 272,
-    MDEntryTime = 273,
-    MDUpdateAction = 279,
-    MDReqRejReason = 281,
-    TradingSessionID = 336,
-    EncodedTextLen = 354,
-    EncodedText = 355,
-    LastMsgSeqNumProcessed = 369,
-    RefTagID = 371,
-    RefMsgType = 372,
-    SessionRejectReason = 373,
-    MaxMessageSize = 383,
-    NoMsgTypes = 384,
-    MsgDirection = 385,
-    CxlRejResponseTo = 434,
-    MultiLegReportingType = 442,
-    TestMessageIndicator = 464,
-    SecondaryExecID = 527,
-    NoSides = 552,
-    Username = 553,
-    Password = 554,
-    TradeRequestID = 568,
-    TradeRequestType = 569,
-    NoDates = 580,
-    TotNumTradeReports = 748,
-    TradeRequestResult = 749,
-    TradeRequestStatus = 750,
-    NextExpectedMsgSeqNum = 789,
-    OrdStatusReqID = 790,
-    LastRptRequested = 912,
-    MDPriceLevel = 1023
+    lmax_Account = 1,
+    lmax_AvgPx = 6,
+    lmax_BeginSeqNo = 7,
+    lmax_BeginString = 8,
+    lmax_BodyLength = 9,
+    lmax_CheckSum = 10,
+    lmax_ClOrdID = 11,
+    lmax_CumQty = 14,
+    lmax_EndSeqNo = 16,
+    lmax_ExecID = 17,
+    lmax_ExecInst = 18,
+    lmax_ExecTransType = 20,
+    lmax_SecurityIDSource = 22,
+    lmax_LastPx = 31,
+    lmax_LastQty = 32,
+    lmax_MsgSeqNum = 34,
+    lmax_MsgType = 35,
+    lmax_NewSeqNo = 36,
+    lmax_OrderID = 37,
+    lmax_OrderQty = 38,
+    lmax_OrdStatus = 39,
+    lmax_OrdType = 40,
+    lmax_OrigClOrdID = 41,
+    lmax_PossDupFlag = 43,
+    lmax_Price = 44,
+    lmax_RefSeqNum = 45,
+    lmax_SecurityID = 48,
+    lmax_SenderCompID = 49,
+    lmax_SendingTime = 52,
+    lmax_Side = 54,
+    lmax_Symbol = 55,
+    lmax_TargetCompID = 56,
+    lmax_Text = 58,
+    lmax_TimeInForce = 59,
+    lmax_TransactTime = 60,
+    lmax_SettlDate = 64,
+    lmax_TradeDate = 75,
+    lmax_RptSeq = 83,
+    lmax_Signature = 89,
+    lmax_SignatureLength = 93,
+    lmax_RawDataLength = 95,
+    lmax_RawData = 96,
+    lmax_PossResend = 97,
+    lmax_EncryptMethod = 98,
+    lmax_StopPx = 99,
+    lmax_ExDestination = 100,
+    lmax_CXlRejReason = 102,
+    lmax_OrdRejReason = 103,
+    lmax_HeartBtInt = 108,
+    lmax_TestReqID = 112,
+    lmax_GapFillFlag = 123,
+    lmax_ResetSeqNumFlag = 141,
+    lmax_NoRelatedSym = 146,
+    lmax_ExecType = 150,
+    lmax_LeavesQty = 151,
+	lmax_MDReqID = 262,
+	lmax_SubscriptionRequestType = 263,
+	lmax_MarketDepth = 264,
+    lmax_MDUpdateType = 265,
+    lmax_NoMDEntryTypes = 267,
+    lmax_NoMDEntries = 268,
+    lmax_MDEntryType = 269,
+    lmax_MDEntryPx = 270,
+    lmax_MDEntrySize = 271,
+    lmax_MDEntryDate = 272,
+    lmax_MDEntryTime = 273,
+    lmax_MDUpdateAction = 279,
+    lmax_MDReqRejReason = 281,
+    lmax_TradingSessionID = 336,
+    lmax_EncodedTextLen = 354,
+    lmax_EncodedText = 355,
+    lmax_LastMsgSeqNumProcessed = 369,
+    lmax_RefTagID = 371,
+    lmax_RefMsgType = 372,
+    lmax_SessionRejectReason = 373,
+    lmax_MaxMessageSize = 383,
+    lmax_NoMsgTypes = 384,
+    lmax_MsgDirection = 385,
+    lmax_CxlRejResponseTo = 434,
+    lmax_MultiLegReportingType = 442,
+    lmax_TestMessageIndicator = 464,
+    lmax_SecondaryExecID = 527,
+    lmax_NoSides = 552,
+    lmax_Username = 553,
+    lmax_Password = 554,
+    lmax_TradeRequestID = 568,
+    lmax_TradeRequestType = 569,
+    lmax_NoDates = 580,
+    lmax_TotNumTradeReports = 748,
+    lmax_TradeRequestResult = 749,
+    lmax_TradeRequestStatus = 750,
+    lmax_NextExpectedMsgSeqNum = 789,
+    lmax_OrdStatusReqID = 790,
+    lmax_LastRptRequested = 912,
+    lmax_MDPriceLevel = 1023
 };
 
 struct lmax_fix_field {
@@ -185,45 +185,45 @@ struct lmax_fix_field {
     };
 };
 
-#define FIX_INT_FIELD(t, v)				\
+#define LMAX_FIX_INT_FIELD(t, v)				\
 	(struct lmax_fix_field) {				\
 		.tag		= (t),			\
-		.type		= FIX_TYPE_INT,		\
+		.type		= LMAX_FIX_TYPE_INT,		\
 		{ .int_value	= (v) },			\
 	}
 
-#define FIX_STRING_FIELD(t, s)				\
+#define LMAX_FIX_STRING_FIELD(t, s)				\
 	(struct lmax_fix_field) {				\
 		.tag		= (t),			\
-		.type		= FIX_TYPE_STRING,	\
+		.type		= LMAX_FIX_TYPE_STRING,	\
 		{ .string_value	= (s) },			\
 	}
 
-#define FIX_FLOAT_FIELD(t, v)				\
+#define LMAX_FIX_FLOAT_FIELD(t, v)				\
 	(struct lmax_fix_field) {				\
 		.tag		= (t),			\
-		.type		= FIX_TYPE_FLOAT,	\
+		.type		= LMAX_FIX_TYPE_FLOAT,	\
 		{ .float_value  = (v) },			\
 	}
 
-#define FIX_CHECKSUM_FIELD(t, v)			\
+#define LMAX_FIX_CHECKSUM_FIELD(t, v)			\
 	(struct lmax_fix_field) {				\
 		.tag		= (t),			\
-		.type		= FIX_TYPE_CHECKSUM,	\
+		.type		= LMAX_FIX_TYPE_CHECKSUM,	\
 		{ .int_value	= (v) },			\
 	}
 
-#define FIX_CHAR_FIELD(t, v)				\
+#define LMAX_FIX_CHAR_FIELD(t, v)				\
 	(struct lmax_fix_field) {				\
 		.tag		= (t),			\
-		.type		= FIX_TYPE_CHAR,	\
+		.type		= LMAX_FIX_TYPE_CHAR,	\
 		{ .char_value	= (v) },			\
 	}
 
-#define FIX_STRING_8_FIELD(t)				\
+#define LMAX_FIX_STRING_8_FIELD(t)				\
 	(struct lmax_fix_field) {				\
 		.tag		= (t),			\
-		.type		= FIX_TYPE_STRING_8,	\
+		.type		= LMAX_FIX_TYPE_STRING_8,	\
 	}
 
 struct lmax_fix_message {
@@ -261,8 +261,8 @@ static inline size_t lmax_fix_message_size(struct lmax_fix_message *self) {
 struct lmax_fix_message *lmax_fix_message_new(void);
 
 enum lmax_fix_parse_flag {
-    FIX_PARSE_FLAG_NO_CSUM = 1UL << 0,
-    FIX_PARSE_FLAG_NO_TYPE = 1UL << 1
+    LMAX_FIX_PARSE_FLAG_NO_CSUM = 1UL << 0,
+    LMAX_FIX_PARSE_FLAG_NO_TYPE = 1UL << 1
 };
 
 int64_t lmax_fix_atoi64(const char *p, const char **end);

@@ -28,7 +28,7 @@ extern "C" {
 struct swissquote_fix_message;
 
 enum swissquote_fix_version {
-    FIX_4_4,
+    SWISSQUOTE_FIX_4_4,
 };
 
 struct swissquote_fix_dialect {
@@ -54,11 +54,11 @@ struct swissquote_fix_session_cfg {
 };
 
 enum swissquote_fix_failure_reason {
-	FIX_SUCCESS		= 0,
-	FIX_FAILURE_CONN_CLOSED = 1,
-	FIX_FAILURE_RECV_ZERO_B = 2,
-	FIX_FAILURE_SYSTEM	= 3,	// see errno
-	FIX_FAILURE_GARBLED	= 4
+	SWISSQUOTE_FIX_SUCCESS		= 0,
+	SWISSQUOTE_FIX_FAILURE_CONN_CLOSED = 1,
+	SWISSQUOTE_FIX_FAILURE_RECV_ZERO_B = 2,
+	SWISSQUOTE_FIX_FAILURE_SYSTEM	= 3,	// see errno
+	SWISSQUOTE_FIX_FAILURE_GARBLED	= 4
 };
 
 struct swissquote_fix_session {
@@ -98,7 +98,7 @@ struct swissquote_fix_session {
 	void				*user_data;
 };
 
-static inline bool fix_msg_expected(struct swissquote_fix_session *session, struct swissquote_fix_message *msg)
+static inline bool swissquote_fix_msg_expected(struct swissquote_fix_session *session, struct swissquote_fix_message *msg)
 {
 	return msg->msg_seq_num == session->in_msg_seq_num || swissquote_fix_message_type_is(msg, SWISSQUOTE_FIX_MSG_TYPE_SEQUENCE_RESET);
 }
@@ -114,13 +114,13 @@ int swissquote_fix_session_send(struct swissquote_fix_session *self, struct swis
 int swissquote_fix_session_recv(struct swissquote_fix_session *self, struct swissquote_fix_message **msg, unsigned long flags);
 
 enum swissquote_fix_send_flag {
-	FIX_SEND_FLAG_PRESERVE_MSG_NUM = 1UL << 0, // lower 16 bits
-	FIX_SEND_FLAG_PRESERVE_BUFFER  = 1UL << 1,
+	SWISSQUOTE_FIX_SEND_FLAG_PRESERVE_MSG_NUM = 1UL << 0, // lower 16 bits
+	SWISSQUOTE_FIX_SEND_FLAG_PRESERVE_BUFFER  = 1UL << 1,
 };
 
 enum swissquote_fix_recv_flag {
-	FIX_RECV_FLAG_MSG_DONTWAIT = 1UL << 16, // upper 16 bits
-	FIX_RECV_KEEP_IN_MSGSEQNUM = 1UL << 17
+	SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT = 1UL << 16, // upper 16 bits
+	SWISSQUOTE_FIX_RECV_KEEP_IN_MSGSEQNUM = 1UL << 17
 };
 
 #ifdef __cplusplus

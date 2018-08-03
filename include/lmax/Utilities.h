@@ -1,8 +1,8 @@
 
-#ifndef ARBITO_UTILITIES_H
-#define ARBITO_UTILITIES_H
+#ifndef ARBITO_LMAX_UTILITIES_H
+#define ARBITO_LMAX_UTILITIES_H
 
-static int fstrncpy(char *dest, const char *src, int n) {
+static int lmax_fstrncpy(char *dest, const char *src, int n) {
 	int i;
 
 	for (i = 0; i < n && src[i] != 0x00 && src[i] != 0x01; i++)
@@ -11,7 +11,7 @@ static int fstrncpy(char *dest, const char *src, int n) {
 	return i;
 }
 
-static void fprintmsg(FILE *stream, struct lmax_fix_message *msg) {
+static void lmax_fprintmsg(FILE *stream, struct lmax_fix_message *msg) {
 	char buf[256];
 	struct lmax_fix_field *field;
 	int size = sizeof buf;
@@ -23,49 +23,49 @@ static void fprintmsg(FILE *stream, struct lmax_fix_message *msg) {
 		return;
 
 	if (msg->begin_string && len < size) {
-		len += snprintf(buf + len, size - len, "%c%d=", delim, BeginString);
-		len += fstrncpy(buf + len, msg->begin_string, size - len);
+		len += snprintf(buf + len, size - len, "%c%d=", delim, lmax_BeginString);
+		len += lmax_fstrncpy(buf + len, msg->begin_string, size - len);
 	}
 
 	if (msg->body_length && len < size) {
-		len += snprintf(buf + len, size - len, "%c%d=%lu", delim, BodyLength, msg->body_length);
+		len += snprintf(buf + len, size - len, "%c%d=%lu", delim, lmax_BodyLength, msg->body_length);
 	}
 
 	if (msg->msg_type && len < size) {
-		len += snprintf(buf + len, size - len, "%c%d=", delim, MsgType);
-		len += fstrncpy(buf + len, msg->msg_type, size - len);
+		len += snprintf(buf + len, size - len, "%c%d=", delim, lmax_MsgType);
+		len += lmax_fstrncpy(buf + len, msg->msg_type, size - len);
 	}
 
 	if (msg->sender_comp_id && len < size) {
-		len += snprintf(buf + len, size - len, "%c%d=", delim, SenderCompID);
-		len += fstrncpy(buf + len, msg->sender_comp_id, size - len);
+		len += snprintf(buf + len, size - len, "%c%d=", delim, lmax_SenderCompID);
+		len += lmax_fstrncpy(buf + len, msg->sender_comp_id, size - len);
 	}
 
 	if (msg->target_comp_id && len < size) {
-		len += snprintf(buf + len, size - len, "%c%d=", delim, TargetCompID);
-		len += fstrncpy(buf + len, msg->target_comp_id, size - len);
+		len += snprintf(buf + len, size - len, "%c%d=", delim, lmax_TargetCompID);
+		len += lmax_fstrncpy(buf + len, msg->target_comp_id, size - len);
 	}
 
 	if (msg->msg_seq_num && len < size) {
-		len += snprintf(buf + len, size - len, "%c%d=%lu", delim, MsgSeqNum, msg->msg_seq_num);
+		len += snprintf(buf + len, size - len, "%c%d=%lu", delim, lmax_MsgSeqNum, msg->msg_seq_num);
 	}
 
 	for (i = 0; i < msg->nr_fields && len < size; i++) {
 		field = msg->fields + i;
 
 		switch (field->type) {
-			case FIX_TYPE_STRING:
+			case LMAX_FIX_TYPE_STRING:
 				len += snprintf(buf + len, size - len, "%c%d=", delim, field->tag);
-				len += fstrncpy(buf + len, field->string_value, size - len);
+				len += lmax_fstrncpy(buf + len, field->string_value, size - len);
 				break;
-			case FIX_TYPE_FLOAT:
+			case LMAX_FIX_TYPE_FLOAT:
 				len += snprintf(buf + len, size - len, "%c%d=%f", delim, field->tag, field->float_value);
 				break;
-			case FIX_TYPE_CHAR:
+			case LMAX_FIX_TYPE_CHAR:
 				len += snprintf(buf + len, size - len, "%c%d=%c", delim, field->tag, field->char_value);
 				break;
-			case FIX_TYPE_CHECKSUM:
-			case FIX_TYPE_INT:
+			case LMAX_FIX_TYPE_CHECKSUM:
+			case LMAX_FIX_TYPE_INT:
 				len += snprintf(buf + len, size - len, "%c%d=%" PRId64, delim, field->tag, field->int_value);
 				break;
 			default:
@@ -79,13 +79,8 @@ static void fprintmsg(FILE *stream, struct lmax_fix_message *msg) {
 	fprintf(stream, "%s%c\n", buf, delim);
 }
 
-static int socket_setopt(int sockfd, int level, int optname, int optval) {
+static int lmax_socket_setopt(int sockfd, int level, int optname, int optval) {
 	return setsockopt(sockfd, level, optname, (void *) &optval, sizeof(optval));
 }
 
-static void generateId(char *id_container) {
-	srand(time(NULL));
-	sprintf(id_container, "%i", rand());
-}
-
-#endif //ARBITO_UTILITIES_H
+#endif //ARBITO_LMAX_UTILITIES_H

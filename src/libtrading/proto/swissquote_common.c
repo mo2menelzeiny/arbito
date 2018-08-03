@@ -28,7 +28,7 @@ bool swissquote_fix_session_keepalive(struct swissquote_fix_session *session, st
 	return true;
 }
 
-static int fix_do_unexpected(struct swissquote_fix_session *session, struct swissquote_fix_message *msg) {
+static int swissquote_fix_do_unexpected(struct swissquote_fix_session *session, struct swissquote_fix_message *msg) {
 	char text[128];
 
 	if (msg->msg_seq_num > session->in_msg_seq_num) {
@@ -44,7 +44,7 @@ static int fix_do_unexpected(struct swissquote_fix_session *session, struct swis
 
 		session->in_msg_seq_num--;
 
-		if (!swissquote_fix_get_field(msg, PossDupFlag)) {
+		if (!swissquote_fix_get_field(msg, swissquote_PossDupFlag)) {
 			swissquote_fix_session_logout(session, text);
 			return 1;
 		}
@@ -63,15 +63,15 @@ static int fix_do_unexpected(struct swissquote_fix_session *session, struct swis
 bool swissquote_fix_session_admin(struct swissquote_fix_session *session, struct swissquote_fix_message *msg) {
 	struct swissquote_fix_field *field;
 
-	if (!fix_msg_expected(session, msg)) {
-		fix_do_unexpected(session, msg);
+	if (!swissquote_fix_msg_expected(session, msg)) {
+		swissquote_fix_do_unexpected(session, msg);
 
 		goto done;
 	}
 
 	switch (msg->type) {
 		case SWISSQUOTE_FIX_MSG_TYPE_HEARTBEAT: {
-			field = swissquote_fix_get_field(msg, TestReqID);
+			field = swissquote_fix_get_field(msg, swissquote_TestReqID);
 
 			if (field && !strncmp(field->string_value, session->testreqid, strlen(session->testreqid)))
 				session->tr_pending = 0;
@@ -81,7 +81,7 @@ bool swissquote_fix_session_admin(struct swissquote_fix_session *session, struct
 		case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST: {
 			char id[128] = "TestReqID";
 
-			field = swissquote_fix_get_field(msg, TestReqID);
+			field = swissquote_fix_get_field(msg, swissquote_TestReqID);
 
 			if (field)
 				swissquote_fix_get_string(field, id, sizeof(id));
@@ -94,13 +94,13 @@ bool swissquote_fix_session_admin(struct swissquote_fix_session *session, struct
 			unsigned long begin_seq_num;
 			unsigned long end_seq_num;
 
-			field = swissquote_fix_get_field(msg, BeginSeqNo);
+			field = swissquote_fix_get_field(msg, swissquote_BeginSeqNo);
 			if (!field)
 				goto fail;
 
 			begin_seq_num = field->int_value;
 
-			field = swissquote_fix_get_field(msg, EndSeqNo);
+			field = swissquote_fix_get_field(msg, swissquote_EndSeqNo);
 			if (!field)
 				goto fail;
 
@@ -116,10 +116,10 @@ bool swissquote_fix_session_admin(struct swissquote_fix_session *session, struct
 			unsigned long msg_seq_num;
 			char text[128];
 
-			field = swissquote_fix_get_field(msg, GapFillFlag);
+			field = swissquote_fix_get_field(msg, swissquote_GapFillFlag);
 
 			if (field && !strncmp(field->string_value, "Y", 1)) {
-				field = swissquote_fix_get_field(msg, NewSeqNo);
+				field = swissquote_fix_get_field(msg, swissquote_NewSeqNo);
 
 				if (!field)
 					goto done;
@@ -142,7 +142,7 @@ bool swissquote_fix_session_admin(struct swissquote_fix_session *session, struct
 
 					session->in_msg_seq_num--;
 
-					if (!swissquote_fix_get_field(msg, PossDupFlag))
+					if (!swissquote_fix_get_field(msg, swissquote_PossDupFlag))
 						swissquote_fix_session_logout(session, text);
 
 					goto done;
@@ -157,7 +157,7 @@ bool swissquote_fix_session_admin(struct swissquote_fix_session *session, struct
 					swissquote_fix_session_reject(session, msg_seq_num, text);
 				}
 			} else {
-				field = swissquote_fix_get_field(msg, NewSeqNo);
+				field = swissquote_fix_get_field(msg, swissquote_NewSeqNo);
 
 				if (!field)
 					goto done;
@@ -194,11 +194,11 @@ int swissquote_fix_session_logon(struct swissquote_fix_session *session) {
 	struct swissquote_fix_message *response;
 	struct swissquote_fix_message logon_msg;
 	struct swissquote_fix_field fields[] = {
-			FIX_INT_FIELD(EncryptMethod, 0),
-			FIX_STRING_FIELD(ResetSeqNumFlag, "Y"),
-			FIX_INT_FIELD(HeartBtInt, session->heartbtint),
-			FIX_STRING_FIELD(Username, session->username),
-			FIX_STRING_FIELD(Password, session->password),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_EncryptMethod, 0),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_ResetSeqNumFlag, "Y"),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_HeartBtInt, session->heartbtint),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Username, session->username),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Password, session->password),
 	};
 
 	logon_msg = (struct swissquote_fix_message) {
@@ -207,26 +207,22 @@ int swissquote_fix_session_logon(struct swissquote_fix_session *session) {
 			.fields        = fields,
 	};
 
-	if (!session->password || !strlen(session->password))
-		logon_msg.nr_fields--;
-
 	swissquote_fix_session_send(session, &logon_msg, 0);
 	session->active = true;
 
 	retry:
-	if (swissquote_fix_session_recv(session, &response, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+	if (swissquote_fix_session_recv(session, &response, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
 		goto retry;
 
-	if (!fix_msg_expected(session, response)) {
-		if (fix_do_unexpected(session, response))
+	if (!swissquote_fix_msg_expected(session, response)) {
+		if (swissquote_fix_do_unexpected(session, response)) {
 			return -1;
-
+		}
 		goto retry;
 	}
 
 	if (!swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_LOGON)) {
 		swissquote_fix_session_logout(session, "First message not a logon");
-
 		return -1;
 	}
 
@@ -235,7 +231,7 @@ int swissquote_fix_session_logon(struct swissquote_fix_session *session) {
 
 int swissquote_fix_session_logout(struct swissquote_fix_session *session, const char *text) {
 	struct swissquote_fix_field fields[] = {
-			FIX_STRING_FIELD(Text, text),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Text, text),
 	};
 	long nr_fields = ARRAY_SIZE(fields);
 	struct swissquote_fix_message logout_msg;
@@ -262,7 +258,7 @@ int swissquote_fix_session_logout(struct swissquote_fix_session *session, const 
 	if (end.tv_sec - start.tv_sec > 2)
 		return 0;
 
-	if (swissquote_fix_session_recv(session, &response, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+	if (swissquote_fix_session_recv(session, &response, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
 		goto retry;
 
 	if (swissquote_fix_session_admin(session, response))
@@ -280,7 +276,7 @@ int swissquote_fix_session_heartbeat(struct swissquote_fix_session *session, con
 	int nr_fields = 0;
 
 	if (test_req_id)
-		fields[nr_fields++] = FIX_STRING_FIELD(TestReqID, test_req_id);
+		fields[nr_fields++] = SWISSQUOTE_FIX_STRING_FIELD(swissquote_TestReqID, test_req_id);
 
 	heartbeat_msg = (struct swissquote_fix_message) {
 			.type        = SWISSQUOTE_FIX_MSG_TYPE_HEARTBEAT,
@@ -294,7 +290,7 @@ int swissquote_fix_session_heartbeat(struct swissquote_fix_session *session, con
 int swissquote_fix_session_test_request(struct swissquote_fix_session *session) {
 	struct swissquote_fix_message test_req_msg;
 	struct swissquote_fix_field fields[] = {
-			FIX_STRING_FIELD(TestReqID, session->str_now),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_TestReqID, session->str_now),
 	};
 
 	strncpy(session->testreqid, session->str_now,
@@ -316,8 +312,8 @@ int swissquote_fix_session_resend_request(struct swissquote_fix_session *session
                                     unsigned long bgn, unsigned long end) {
 	struct swissquote_fix_message resend_request_msg;
 	struct swissquote_fix_field fields[] = {
-			FIX_INT_FIELD(BeginSeqNo, bgn),
-			FIX_INT_FIELD(EndSeqNo, end),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_BeginSeqNo, bgn),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_EndSeqNo, end),
 	};
 
 	resend_request_msg = (struct swissquote_fix_message) {
@@ -332,8 +328,8 @@ int swissquote_fix_session_resend_request(struct swissquote_fix_session *session
 int swissquote_fix_session_reject(struct swissquote_fix_session *session, unsigned long refseqnum, char *text) {
 	struct swissquote_fix_message reject_msg;
 	struct swissquote_fix_field fields[] = {
-			FIX_INT_FIELD(RefSeqNum, refseqnum),
-			FIX_STRING_FIELD(Text, text),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_RefSeqNum, refseqnum),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Text, text),
 	};
 	long nr_fields = ARRAY_SIZE(fields);
 
@@ -353,8 +349,8 @@ int swissquote_fix_session_sequence_reset(struct swissquote_fix_session *session
                                     unsigned long new_seq_num, bool gap_fill) {
 	struct swissquote_fix_message sequence_reset_msg;
 	struct swissquote_fix_field fields[] = {
-			FIX_INT_FIELD(NewSeqNo, new_seq_num),
-			FIX_STRING_FIELD(GapFillFlag, "Y"),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_NewSeqNo, new_seq_num),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_GapFillFlag, "Y"),
 	};
 	long nr_fields = ARRAY_SIZE(fields);
 
@@ -368,7 +364,7 @@ int swissquote_fix_session_sequence_reset(struct swissquote_fix_session *session
 			.fields        = fields,
 	};
 
-	return swissquote_fix_session_send(session, &sequence_reset_msg, FIX_SEND_FLAG_PRESERVE_MSG_NUM);
+	return swissquote_fix_session_send(session, &sequence_reset_msg, SWISSQUOTE_FIX_SEND_FLAG_PRESERVE_MSG_NUM);
 }
 
 int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *session) {
@@ -377,16 +373,16 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 	sprintf(mdreqid, "%i", rand());
 	struct swissquote_fix_message *response;
 	struct swissquote_fix_field fields[] = {
-			FIX_STRING_FIELD(MDReqID, mdreqid),
-			FIX_CHAR_FIELD(SubscriptionRequestType, '1'),
-			FIX_INT_FIELD(MarketDepth, 1),
-			FIX_INT_FIELD(MDUpdateType, 0),
-			FIX_INT_FIELD(NoMDEntryTypes, 2),
-			FIX_CHAR_FIELD(MDEntryType, '0'),
-			FIX_CHAR_FIELD(MDEntryType, '1'),
-			FIX_INT_FIELD(NoRelatedSym, 1),
-			FIX_STRING_FIELD(SecurityID, "4001"),
-			FIX_STRING_FIELD(SecurityIDSource, "8")
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_MDReqID, mdreqid),
+			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_SubscriptionRequestType, '1'),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_MarketDepth, 1),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_MDUpdateType, 0),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_NoMDEntryTypes, 2),
+			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_MDEntryType, '0'),
+			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_MDEntryType, '1'),
+			SWISSQUOTE_FIX_INT_FIELD(swissquote_NoRelatedSym, 1),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8")
 	};
 
 	struct swissquote_fix_message request_msg = (struct swissquote_fix_message) {
@@ -399,16 +395,47 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 	session->active = true;
 
 	retry:
-	if (swissquote_fix_session_recv(session, &response, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+	if (swissquote_fix_session_recv(session, &response, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
 		goto retry;
 
-	if (!fix_msg_expected(session, response)) {
-		if (fix_do_unexpected(session, response))
+	if (!swissquote_fix_msg_expected(session, response)) {
+		if (swissquote_fix_do_unexpected(session, response))
 			return -1;
 		goto retry;
 	}
 
 	if (!swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH)) {
+		return -1;
+	}
+
+	return 0;
+}
+
+int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, struct swissquote_fix_field *fields, long nr_fields) {
+	struct swissquote_fix_message *response;
+	struct swissquote_fix_message order_msg = (struct swissquote_fix_message) {
+			.type = SWISSQUOTE_FIX_MSG_TYPE_NEW_ORDER_SINGLE,
+			.nr_fields = nr_fields,
+			.fields = fields
+	};
+
+	swissquote_fix_session_send(session, &order_msg, 0);
+	session->active = true;
+
+	retry:
+	if (swissquote_fix_session_recv(session, &response, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+		goto retry;
+
+	if (!swissquote_fix_msg_expected(session, response)) {
+		if (swissquote_fix_do_unexpected(session, response)) {
+			fprintf(stderr, "Order failed due to unexpected sequence number\n");
+			return -1;
+		}
+		goto retry;
+	}
+
+	if (!swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT)) {
+		fprintf(stderr, "Order failed due to unexpected message\n");
 		return -1;
 	}
 
