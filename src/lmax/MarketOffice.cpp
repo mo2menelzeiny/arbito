@@ -44,14 +44,14 @@ namespace LMAX {
 		m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
 		while (!m_messenger_pub) {
 			m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
-			std::this_thread::sleep_for(std::chrono::seconds(2));
+			std::this_thread::yield();
 		}
 		printf("Publication found!\n");
 
 		m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
 		while (!m_messenger_sub) {
 			m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
-			std::this_thread::sleep_for(std::chrono::seconds(2));
+			std::this_thread::yield();
 		}
 		printf("Subscription found!\n");
 
