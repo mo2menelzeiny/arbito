@@ -95,8 +95,8 @@ int main() {
 				                                                        offer_lot_size);
 			}
 
-				lmax_trade_office->start();
 				lmax_market_office->start();
+				lmax_trade_office->start();
 				break;
 
 			case 2: {
