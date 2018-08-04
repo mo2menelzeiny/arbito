@@ -37,11 +37,6 @@
 
 // Disruptor includes
 #include <Disruptor/Disruptor.h>
-#include <Disruptor/ThreadPerTaskScheduler.h>
-#include <Disruptor/BusySpinWaitStrategy.h>
-#include <Disruptor/RingBuffer.h>
-#include <Disruptor/IEventHandler.h>
-#include <Disruptor/ILifecycleAware.h>
 
 // Aeron client
 #include <Context.h>
