@@ -20,7 +20,6 @@
 int main() {
 
 	try {
-
 		double spread = atof(getenv("SPREAD"));
 		double offer_lot_size = atof(getenv("OFFER_LOT_SIZE"));
 		double bid_lot_size = atof(getenv("BID_LOT_SIZE"));
@@ -44,6 +43,8 @@ int main() {
 		int heartbeat = atoi(getenv("HEARTBEAT"));
 		int broker = atoi(getenv("BROKER"));
 		const char *uri_string = getenv("MONGO_URI");
+
+		fprintf(stdout, "Main: System starting..\n");
 
 		auto recorder = std::make_shared<Recorder>(uri_string, broker);
 

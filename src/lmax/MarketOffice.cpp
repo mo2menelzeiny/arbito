@@ -159,8 +159,6 @@ namespace LMAX {
 		fprintf(stdout, "Client market data request OK\n");
 		m_recorder->recordSystemMessage("MarketOffice: market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
-		// TODO: test messenger failing and reconnection
-		// TODO: investigate in moving this to initialize()
 		// Polling thread loop
 		poller = std::thread(&MarketOffice::poll, this);
 		poller.detach();

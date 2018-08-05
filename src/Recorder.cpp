@@ -10,7 +10,7 @@ Recorder::Recorder(const char *uri_string, int broker_number) {
 
 	if (!m_uri) {
 		fprintf (stderr,
-		         "failed to parse URI: %s\n"
+		         "Recorder: failed to parse URI: %s\n"
 		         "error message:       %s\n",
 		         uri_string,
 		         error.message);
@@ -47,7 +47,7 @@ int Recorder::ping() {
 			client, "db_arbito", &ping, NULL, NULL, &error);
 
 	if (!r) {
-		fprintf (stderr, "%s\n", error.message);
+		fprintf (stderr, "Recorder: %s\n", error.message);
 		return 0;
 	}
 
@@ -77,7 +77,7 @@ void Recorder::recordSystemMessage(const char *message, SystemRecordType type) {
 	}
 
 	if (!mongoc_collection_insert_one (coll_system, insert, NULL, NULL, &error)) {
-		fprintf (stderr, "%s\n", error.message);
+		fprintf (stderr, "Recorder: %s\n", error.message);
 	}
 
 	bson_destroy (insert);
