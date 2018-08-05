@@ -12,3 +12,5 @@ zlib1g-dev
 openssl
 libssl-dev
 unzip
+libmongoc-1.0-0
+libbson-1.0

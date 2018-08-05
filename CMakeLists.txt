@@ -16,6 +16,8 @@ find_library(SSL_LIB ssl)
 find_library(DISRUPTOR_LIBRARIES Disruptor)
 find_library(AERON_CLIENT_LIB aeron_client)
 find_library(AERON_DRIVER_LIB aeron_driver)
+find_library(MONGOC_LIB mongoc-1.0)
+find_library(BSON_LIB bson-1.0)
 
 file(GLOB HEADERS
         include/*.h
@@ -47,7 +49,9 @@ target_link_libraries(arbito
         ${OPENSSL_LIBRARIES}
         ${ZLIB_LIBRARIES}
         ${AERON_DRIVER_LIB}
-        ${AERON_CLIENT_LIB})
+        ${AERON_CLIENT_LIB}
+        ${MONGOC_LIB}
+        ${BSON_LIB})
 
 FILE(COPY resources DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 message(STATUS "Copied resources to binary directory")

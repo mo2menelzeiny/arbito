@@ -28,20 +28,19 @@ cmake -DBUILD_AERON_DRIVER=ON ../..
 make -j 4
 make -j 4 install PREFIX=/usr/local
 
-##return to externals
-#cd ../../..
-#
-#echo "Installing SBE.."
-#wget https://github.com/real-logic/simple-binary-encoding/archive/1.8.1.tar.gz
-#tar zvxf simple-binary-encoding-1.8.1.tar.gz
-#rm simple-binary-encoding-1.8.1.tar.gz
-#cd simple-binary-encoding-1.8.1
-#./gradlew
-#mkdir -p cppbuild/Debug
-#cd cppbuild/Debug
-#cmake  ../..
-#make -j 4
-#make -j 4 install PREFIX=/usr/local
+##return to externals/
+cd ../../..
+
+echo "Installing Mongo C Driver.."
+wget https://github.com/mongodb/mongo-c-driver/releases/download/1.12.0/mongo-c-driver-1.12.0.tar.gz
+tar xzf mongo-c-driver-1.12.0.tar.gz
+rm mongo-c-driver-1.12.0.tar.gz
+cd mongo-c-driver-1.12.0
+mkdir cmake-build
+cd cmake-build
+cmake .. -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DCMAKE_BUILD_TYPE=Release
+make -j 4
+make -j 4 install PREFIX=/usr/local
 
 #Leave to root
 cd ../../../..
