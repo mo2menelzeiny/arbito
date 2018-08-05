@@ -11,13 +11,17 @@ find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(ZLIB REQUIRED)
+find_package (libmongoc-1.0 1.7 REQUIRED)
 
 find_library(SSL_LIB ssl)
 find_library(DISRUPTOR_LIBRARIES Disruptor)
 find_library(AERON_CLIENT_LIB aeron_client)
 find_library(AERON_DRIVER_LIB aeron_driver)
-find_library(MONGOC_LIB mongoc-1.0)
-find_library(BSON_LIB bson-1.0)
+
+
+message ("--   mongoc found version \"${MONGOC_VERSION}\"")
+message ("--   mongoc include path \"${MONGOC_INCLUDE_DIRS}\"")
+message ("--   mongoc libraries \"${MONGOC_LIBRARIES}\"")
 
 file(GLOB HEADERS
         include/*.h
@@ -41,6 +45,8 @@ add_executable(arbito
         ${HEADERS}
         ${SOURCES})
 
+target_include_directories (arbito PRIVATE "${MONGOC_INCLUDE_DIRS}")
+
 target_link_libraries(arbito
         ${CMAKE_THREAD_LIBS_INIT}
         ${DISRUPTOR_LIBRARIES}
@@ -50,8 +56,9 @@ target_link_libraries(arbito
         ${ZLIB_LIBRARIES}
         ${AERON_DRIVER_LIB}
         ${AERON_CLIENT_LIB}
-        ${MONGOC_LIB}
-        ${BSON_LIB})
+        ${MONGOC_LIBRARIES})
+
+target_compile_definitions (arbito PRIVATE "${MONGOC_DEFINITIONS}")
 
 FILE(COPY resources DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 message(STATUS "Copied resources to binary directory")
