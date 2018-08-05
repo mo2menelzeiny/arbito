@@ -3,15 +3,16 @@
 
 namespace SWISSQUOTE {
 
-	MarketOffice::MarketOffice(const std::shared_ptr<Messenger> &messenger,
+	MarketOffice::MarketOffice(const std::shared_ptr<Recorder> &recorder, const std::shared_ptr<Messenger> &messenger,
 	                           const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
 	                           const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
-	                           const char *m_host, int m_port,
-	                           const char *username, const char *password, const char *sender_comp_id,
-	                           const char *target_comp_id, int heartbeat, const char *pub_channel,
-	                           const int pub_stream_id, const char *sub_channel, const int sub_stream_id, double spread,
-	                           double bid_lot_size, double offer_lot_size)
-			: m_messenger(messenger), m_broker_market_data_disruptor(broker_market_data_disruptor),
+	                           const char *m_host, int m_port, const char *username, const char *password,
+	                           const char *sender_comp_id,
+	                           const char *target_comp_id, int heartbeat, const char *pub_channel, int pub_stream_id,
+	                           const char *sub_channel, int sub_stream_id, double spread, double bid_lot_size,
+	                           double offer_lot_size)
+			: m_recorder(recorder), m_messenger(messenger),
+			  m_broker_market_data_disruptor(broker_market_data_disruptor),
 			  m_arbitrage_data_disruptor(arbitrage_data_disruptor), m_host(m_host), m_port(m_port), m_spread(spread),
 			  m_bid_lot_size(bid_lot_size), m_offer_lot_size(offer_lot_size),
 			  m_messenger_config{pub_channel, pub_stream_id, sub_channel, sub_stream_id} {
@@ -55,6 +56,7 @@ namespace SWISSQUOTE {
 		}
 		printf("Subscription found!\n");
 
+		m_recorder->recordSystemMessage("MarketOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void MarketOffice::initBrokerClient() {
@@ -144,22 +146,28 @@ namespace SWISSQUOTE {
 		// Session login
 		if (swissquote_fix_session_logon(m_session)) {
 			fprintf(stderr, "Client Logon FAILED\n");
+			m_recorder->recordSystemMessage("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
 		fprintf(stdout, "Client Logon OK\n");
+		m_recorder->recordSystemMessage("MarketOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// Market data request
 		if (swissquote_fix_session_marketdata_request(m_session)) {
-			fprintf(stderr, "Market data request FAILED\n");
+			fprintf(stderr, "market data request FAILED\n");
+			m_recorder->recordSystemMessage("MarketOffice: market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
 		fprintf(stdout, "Market data request OK\n");
+		m_recorder->recordSystemMessage("MarketOffice: market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// TODO: test messenger failing and reconnection
 		// TODO: investigate in moving this to initialize()
 		// Polling thread loop
 		poller = std::thread(&MarketOffice::poll, this);
 		poller.detach();
+
+		m_recorder->recordSystemMessage("MarketOffice: broker client OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void MarketOffice::poll() {
@@ -274,8 +282,9 @@ namespace SWISSQUOTE {
 
 		// Reconnection condition
 		if (m_session->active) {
-			std::this_thread::sleep_for(std::chrono::seconds(60));
 			fprintf(stdout, "Market office reconnecting..\n");
+			m_recorder->recordSystemMessage("MarketOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			std::this_thread::sleep_for(std::chrono::seconds(60));
 			SSL_shutdown(m_cfg.ssl);
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();

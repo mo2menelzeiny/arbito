@@ -56,6 +56,7 @@
 #include "Utilities.h"
 #include "ArbitrageDataEvent.h"
 #include "Messenger.h"
+#include "Recorder.h"
 
 namespace SWISSQUOTE {
 
@@ -68,11 +69,12 @@ namespace SWISSQUOTE {
 	class TradeOffice {
 
 	public:
-		TradeOffice(const std::shared_ptr<Messenger> &messenger,
+		TradeOffice(const std::shared_ptr<Recorder> &recorder, const std::shared_ptr<Messenger> &messenger,
 		            const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
 		            const char *m_host, int m_port, const char *username, const char *password,
-		            const char *sender_comp_id, const char *target_comp_id, int heartbeat,
-		            double diff_open, double diff_close, double bid_lot_size, double offer_lot_size);
+		            const char *sender_comp_id,
+		            const char *target_comp_id, int heartbeat, double diff_open, double diff_close, double bid_lot_size,
+		            double offer_lot_size);
 
 		void start();
 
@@ -95,6 +97,7 @@ namespace SWISSQUOTE {
 		std::thread poller;
 		const std::shared_ptr<Messenger> m_messenger;
 		const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> m_arbitrage_data_disruptor;
+		const std::shared_ptr<Recorder> m_recorder;
 	};
 }
 

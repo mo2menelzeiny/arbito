@@ -3,12 +3,15 @@
 
 namespace LMAX {
 
-	TradeOffice::TradeOffice(const std::shared_ptr<Messenger> &messenger,
+	TradeOffice::TradeOffice(const std::shared_ptr<Recorder> &recorder, const std::shared_ptr<Messenger> &messenger,
 	                         const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
 	                         const char *m_host, int m_port, const char *username, const char *password,
-	                         const char *sender_comp_id, const char *target_comp_id, int heartbeat,
-	                         double diff_open, double diff_close, double bid_lot_size, double offer_lot_size)
-			: m_messenger(messenger), m_arbitrage_data_disruptor(arbitrage_data_disruptor), m_host(m_host),
+	                         const char *sender_comp_id,
+	                         const char *target_comp_id, int heartbeat, double diff_open, double diff_close,
+	                         double bid_lot_size,
+	                         double offer_lot_size)
+			: m_recorder(recorder), m_messenger(messenger), m_arbitrage_data_disruptor(arbitrage_data_disruptor),
+			  m_host(m_host),
 			  m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close), m_bid_lot_size(bid_lot_size),
 			  m_offer_lot_size(offer_lot_size) {
 		// Session configurations
@@ -121,6 +124,7 @@ namespace LMAX {
 		poller = std::thread(&TradeOffice::poll, this);
 		poller.detach();
 
+		m_recorder->recordSystemMessage("TradeOffice: broker client OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void TradeOffice::poll() {
@@ -130,7 +134,7 @@ namespace LMAX {
 		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 
-			if ( check_timeout && (time(0) - counter < timeout)) {
+			if (check_timeout && (time(0) - counter < timeout)) {
 				return true;
 			}
 			check_timeout = false;
@@ -157,11 +161,11 @@ namespace LMAX {
 						};
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							// fprintf(stderr, "Sell order %s FAILED\n", id);
+							fprintf(stderr, "Sell order %s FAILED\n", id);
 							return true;
 						};
 
-						// fprintf(stdout, "Sell order %s OK\n", id);
+						fprintf(stdout, "Sell order %s OK\n", id);
 						--m_deals_count;
 						counter = time(0);
 						return true;
@@ -182,11 +186,11 @@ namespace LMAX {
 						};
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							// fprintf(stderr, "Buy order %s FAILED\n", id);
+							fprintf(stderr, "Buy order %s FAILED\n", id);
 							return true;
 						};
 
-						// fprintf(stdout, "Buy order %s OK\n", id);
+						fprintf(stdout, "Buy order %s OK\n", id);
 						++m_deals_count;
 						counter = time(0);
 						return true;
@@ -209,11 +213,11 @@ namespace LMAX {
 						};
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							// fprintf(stderr, "Sell order %s FAILED\n", id);
+							fprintf(stderr, "Sell order %s FAILED\n", id);
 							return true;
 						};
 
-						// fprintf(stdout, "Sell order %s OK\n", id);
+						fprintf(stdout, "Sell order %s OK\n", id);
 						--m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -235,11 +239,11 @@ namespace LMAX {
 						};
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							// fprintf(stderr, "Buy order %s FAILED\n", id);
+							fprintf(stderr, "Buy order %s FAILED\n", id);
 							return true;
 						};
 
-						// fprintf(stdout, "Buy order %s OK\n", id);
+						fprintf(stdout, "Buy order %s OK\n", id);
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -264,11 +268,11 @@ namespace LMAX {
 						};
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							// fprintf(stderr, "Buy order %s FAILED\n", id);
+							fprintf(stderr, "Buy order %s FAILED\n", id);
 							return true;
 						};
 
-						// fprintf(stdout, "Buy order %s OK\n", id);
+						fprintf(stdout, "Buy order %s OK\n", id);
 						m_open_state = CURRENT_DIFFERENCE_1;
 						++m_deals_count;
 						counter = time(0);
@@ -291,11 +295,11 @@ namespace LMAX {
 						};
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							// fprintf(stderr, "Sell order %s FAILED\n", id);
+							fprintf(stderr, "Sell order %s FAILED\n", id);
 							return true;
 						};
+						fprintf(stdout, "Sell order %s OK\n", id);
 
-						// fprintf(stdout, "Sell order %s OK\n", id);
 						m_open_state = CURRENT_DIFFERENCE_2;
 						++m_deals_count;
 						counter = time(0);
@@ -351,8 +355,9 @@ namespace LMAX {
 
 		// Reconnection condition
 		if (m_session->active) {
-			std::this_thread::sleep_for(std::chrono::seconds(60));
 			fprintf(stdout, "Trade office reconnecting..\n");
+			m_recorder->recordSystemMessage("TradeOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			std::this_thread::sleep_for(std::chrono::seconds(60));
 			SSL_shutdown(m_cfg.ssl);
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
