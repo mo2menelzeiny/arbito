@@ -11,6 +11,9 @@
 #include "Disruptor/ThreadPerTaskScheduler.h"
 #include "Disruptor/BusySpinWaitStrategy.h"
 
+// MongoDB
+#include <>
+
 int main() {
 
 	try {
