@@ -143,20 +143,20 @@ namespace LMAX {
 
 		// Session login
 		if (lmax_fix_session_logon(m_session)) {
-			fprintf(stderr, "Client Logon FAILED\n");
+			fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
 			m_recorder->recordSystemMessage("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
-		fprintf(stdout, "Client Logon OK\n");
+		fprintf(stdout, "MarketOffice: Client Logon OK\n");
 		m_recorder->recordSystemMessage("MarketOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// Market data request
 		if (lmax_fix_session_marketdata_request(m_session)) {
-			fprintf(stderr, "Client market data request FAILED\n");
+			fprintf(stderr, "MarketOffice: Client market data request FAILED\n");
 			m_recorder->recordSystemMessage("MarketOffice: market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
-		fprintf(stdout, "Client market data request OK\n");
+		fprintf(stdout, "MarketOffice: Client market data request OK\n");
 		m_recorder->recordSystemMessage("MarketOffice: market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// Polling thread loop
@@ -214,13 +214,13 @@ namespace LMAX {
 				prev = cur;
 
 				if (!lmax_fix_session_keepalive(m_session, &cur)) {
-					fprintf(stderr, "Session keep alive FAILED\n");
+					fprintf(stderr, "MarketOffice: Session keep alive FAILED\n");
 					break;
 				}
 			}
 
 			if (lmax_fix_session_time_update(m_session)) {
-				fprintf(stderr, "Session time update FAILED\n");
+				fprintf(stderr, "MarketOffice: Session time update FAILED\n");
 				break;
 			}
 
@@ -229,13 +229,7 @@ namespace LMAX {
 
 			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
-				if (!msg) {
-					continue;
-				}
-
-				if (lmax_fix_session_admin(m_session, msg)) {
-					continue;
-				}
+				continue;
 			}
 
 			switch (msg->type) {
@@ -279,8 +273,8 @@ namespace LMAX {
 		if (m_session->active) {
 			fprintf(stdout, "Market office reconnecting..\n");
 			m_recorder->recordSystemMessage("MarketOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			std::this_thread::sleep_for(std::chrono::seconds(60));
-			SSL_shutdown(m_cfg.ssl);
+			std::this_thread::sleep_for(std::chrono::seconds(20));
+			/*SSL_shutdown(m_cfg.ssl);*/
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();

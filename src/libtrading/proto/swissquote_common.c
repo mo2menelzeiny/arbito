@@ -129,8 +129,7 @@ bool swissquote_fix_session_admin(struct swissquote_fix_session *session, struct
 				msg_seq_num = msg->msg_seq_num;
 
 				if (msg_seq_num > exp_seq_num) {
-					swissquote_fix_session_resend_request(session,
-					                                exp_seq_num, msg_seq_num);
+					swissquote_fix_session_resend_request(session, exp_seq_num, msg_seq_num);
 
 					session->in_msg_seq_num--;
 
@@ -308,8 +307,8 @@ int swissquote_fix_session_test_request(struct swissquote_fix_session *session) 
 	return swissquote_fix_session_send(session, &test_req_msg, 0);
 }
 
-int swissquote_fix_session_resend_request(struct swissquote_fix_session *session,
-                                    unsigned long bgn, unsigned long end) {
+int swissquote_fix_session_resend_request(struct swissquote_fix_session *session, unsigned long bgn,
+		unsigned long end) {
 	struct swissquote_fix_message resend_request_msg;
 	struct swissquote_fix_field fields[] = {
 			SWISSQUOTE_FIX_INT_FIELD(swissquote_BeginSeqNo, bgn),
@@ -346,7 +345,7 @@ int swissquote_fix_session_reject(struct swissquote_fix_session *session, unsign
 }
 
 int swissquote_fix_session_sequence_reset(struct swissquote_fix_session *session, unsigned long msg_seq_num,
-                                    unsigned long new_seq_num, bool gap_fill) {
+                                          unsigned long new_seq_num, bool gap_fill) {
 	struct swissquote_fix_message sequence_reset_msg;
 	struct swissquote_fix_field fields[] = {
 			SWISSQUOTE_FIX_INT_FIELD(swissquote_NewSeqNo, new_seq_num),
@@ -381,8 +380,8 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_MDEntryType, '0'),
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_MDEntryType, '1'),
 			SWISSQUOTE_FIX_INT_FIELD(swissquote_NoRelatedSym, 1),
-			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
-			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8")
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD"),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityDesc, "4001")
 	};
 
 	struct swissquote_fix_message request_msg = (struct swissquote_fix_message) {
@@ -399,19 +398,23 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 		goto retry;
 
 	if (!swissquote_fix_msg_expected(session, response)) {
-		if (swissquote_fix_do_unexpected(session, response))
+		if (swissquote_fix_do_unexpected(session, response)) {
+			fprintf(stderr, "Request failed due to unexpected sequence number\n");
 			return -1;
+		}
 		goto retry;
 	}
 
-	if (!swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH)) {
+	if (swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_REQUEST_REJECT)) {
+		fprintf(stderr, "Market data request rejected\n");
 		return -1;
 	}
 
 	return 0;
 }
 
-int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, struct swissquote_fix_field *fields, long nr_fields) {
+int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, struct swissquote_fix_field *fields,
+                                            long nr_fields) {
 	struct swissquote_fix_message *response;
 	struct swissquote_fix_message order_msg = (struct swissquote_fix_message) {
 			.type = SWISSQUOTE_FIX_MSG_TYPE_NEW_ORDER_SINGLE,

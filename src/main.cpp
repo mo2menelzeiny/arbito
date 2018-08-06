@@ -57,7 +57,7 @@ int main() {
 				32,
 				task_scheduler,
 				Disruptor::ProducerType::Single,
-				std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				std::make_shared<Disruptor::SleepingWaitStrategy>());
 
 		auto arbitrage_data_disruptor = std::make_shared<Disruptor::disruptor<ArbitrageDataEvent>>(
 				[]() { return ArbitrageDataEvent(); },
@@ -114,20 +114,6 @@ int main() {
 				break;
 
 			case 2: {
-				swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
-				                                                                    messenger,
-				                                                                    arbitrage_data_disruptor,
-				                                                                    to_host,
-				                                                                    port,
-				                                                                    to_username,
-				                                                                    to_password,
-				                                                                    to_sender,
-				                                                                    to_receiver,
-				                                                                    heartbeat,
-				                                                                    diff_open,
-				                                                                    diff_close,
-				                                                                    bid_lot_size,
-				                                                                    offer_lot_size);
 
 				swissquote_market_office = std::make_shared<SWISSQUOTE::MarketOffice>(recorder,
 				                                                                      messenger,
@@ -147,9 +133,23 @@ int main() {
 				                                                                      spread,
 				                                                                      bid_lot_size,
 				                                                                      offer_lot_size);
+				/*swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
+				                                                                    messenger,
+				                                                                    arbitrage_data_disruptor,
+				                                                                    to_host,
+				                                                                    port,
+				                                                                    to_username,
+				                                                                    to_password,
+				                                                                    to_sender,
+				                                                                    to_receiver,
+				                                                                    heartbeat,
+				                                                                    diff_open,
+				                                                                    diff_close,
+				                                                                    bid_lot_size,
+				                                                                    offer_lot_size);*/
 			}
 				swissquote_market_office->start();
-				swissquote_trade_office->start();
+				//swissquote_trade_office->start();
 				break;
 			default:
 				recorder->recordSystemMessage("Main: broker case FAILED", SYSTEM_RECORD_TYPE_ERROR);

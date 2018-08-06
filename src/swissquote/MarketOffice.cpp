@@ -7,10 +7,9 @@ namespace SWISSQUOTE {
 	                           const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
 	                           const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
 	                           const char *m_host, int m_port, const char *username, const char *password,
-	                           const char *sender_comp_id,
-	                           const char *target_comp_id, int heartbeat, const char *pub_channel, int pub_stream_id,
-	                           const char *sub_channel, int sub_stream_id, double spread, double bid_lot_size,
-	                           double offer_lot_size)
+	                           const char *sender_comp_id, const char *target_comp_id, int heartbeat,
+	                           const char *pub_channel, int pub_stream_id, const char *sub_channel, int sub_stream_id,
+	                           double spread, double bid_lot_size, double offer_lot_size)
 			: m_recorder(recorder), m_messenger(messenger),
 			  m_broker_market_data_disruptor(broker_market_data_disruptor),
 			  m_arbitrage_data_disruptor(arbitrage_data_disruptor), m_host(m_host), m_port(m_port), m_spread(spread),
@@ -216,13 +215,13 @@ namespace SWISSQUOTE {
 				prev = cur;
 
 				if (!swissquote_fix_session_keepalive(m_session, &cur)) {
-					fprintf(stderr, "Session keep alive FAILED\n");
+					fprintf(stderr, "MarketOffice: Session keep alive FAILED\n");
 					break;
 				}
 			}
 
 			if (swissquote_fix_session_time_update(m_session)) {
-				fprintf(stderr, "Session time update FAILED\n");
+				fprintf(stderr, "MarketOffice: Session time update FAILED\n");
 				break;
 			}
 
@@ -231,16 +230,12 @@ namespace SWISSQUOTE {
 
 			struct swissquote_fix_message *msg = nullptr;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
-				if (!msg) {
-					continue;
-				}
-
-				if (swissquote_fix_session_admin(m_session, msg)) {
-					continue;
-				}
+				continue;
 			}
 
-			// fprintmsg(stdout, msg);
+			/*printf("MarketOffice:\n");
+			swissquote_fprintmsg(stdout, msg);*/
+
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
 					// Filter market data based on spread, bid lot size and offer lot size
@@ -282,8 +277,8 @@ namespace SWISSQUOTE {
 		if (m_session->active) {
 			fprintf(stdout, "Market office reconnecting..\n");
 			m_recorder->recordSystemMessage("MarketOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			std::this_thread::sleep_for(std::chrono::seconds(60));
-			SSL_shutdown(m_cfg.ssl);
+			std::this_thread::sleep_for(std::chrono::seconds(20));
+			/*SSL_shutdown(m_cfg.ssl);*/
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();
