@@ -331,26 +331,23 @@ namespace SWISSQUOTE {
 				prev = cur;
 
 				if (!swissquote_fix_session_keepalive(m_session, &cur)) {
-					fprintf(stderr, "Session keep alive FAILED\n");
+					fprintf(stderr, "TradeOffice: Session keep alive FAILED\n");
 					break;
 				}
 			}
 
 			if (swissquote_fix_session_time_update(m_session)) {
-				fprintf(stderr, "Session time update FAILED\n");
+				fprintf(stderr, "TradeOffice: Session time update FAILED\n");
 				break;
 			}
 
 			struct swissquote_fix_message *msg = nullptr;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
-				if (!msg) {
-					continue;
-				}
-
-				if (swissquote_fix_session_admin(m_session, msg)) {
-					continue;
-				}
+				continue;
 			}
+
+			/*printf("TradeOffice:\n");
+			swissquote_fprintmsg(stdout, msg);*/
 
 			arbitrage_data_poller->poll(arbitrage_data_handler);
 		}
@@ -359,8 +356,8 @@ namespace SWISSQUOTE {
 		if (m_session->active) {
 			fprintf(stdout, "Trade office reconnecting..\n");
 			m_recorder->recordSystemMessage("TradeOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			std::this_thread::sleep_for(std::chrono::seconds(60));
-			SSL_shutdown(m_cfg.ssl);
+			std::this_thread::sleep_for(std::chrono::seconds(20));
+			/*SSL_shutdown(m_cfg.ssl);*/
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();
