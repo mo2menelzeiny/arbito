@@ -18,7 +18,7 @@
 class Messenger {
 
 public:
-	Messenger(const std::shared_ptr<Recorder> &recorder);
+	explicit Messenger(const std::shared_ptr<Recorder> &recorder);
 	const std::shared_ptr<aeron::Aeron> &aeronClient() const;
 	void start();
 private:
