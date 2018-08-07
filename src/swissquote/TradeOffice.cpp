@@ -356,8 +356,7 @@ namespace SWISSQUOTE {
 		if (m_session->active) {
 			fprintf(stdout, "Trade office reconnecting..\n");
 			m_recorder->recordSystemMessage("TradeOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			std::this_thread::sleep_for(std::chrono::seconds(20));
-			/*SSL_shutdown(m_cfg.ssl);*/
+			std::this_thread::sleep_for(std::chrono::seconds(30));
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();
