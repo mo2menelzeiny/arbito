@@ -164,6 +164,7 @@ namespace SWISSQUOTE {
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -189,6 +190,7 @@ namespace SWISSQUOTE {
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -216,6 +218,7 @@ namespace SWISSQUOTE {
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -242,6 +245,7 @@ namespace SWISSQUOTE {
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -271,6 +275,7 @@ namespace SWISSQUOTE {
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -298,6 +303,7 @@ namespace SWISSQUOTE {
 
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 

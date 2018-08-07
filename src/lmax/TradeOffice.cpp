@@ -162,6 +162,7 @@ namespace LMAX {
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -187,6 +188,7 @@ namespace LMAX {
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -214,6 +216,7 @@ namespace LMAX {
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -240,6 +243,7 @@ namespace LMAX {
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -269,6 +273,7 @@ namespace LMAX {
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 
@@ -296,6 +301,7 @@ namespace LMAX {
 
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
+							counter = time(0);
 							return true;
 						};
 						fprintf(stdout, "Sell order %s OK\n", id);

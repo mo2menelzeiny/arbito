@@ -20,10 +20,9 @@ class Messenger {
 public:
 	Messenger(const std::shared_ptr<Recorder> &recorder);
 	const std::shared_ptr<aeron::Aeron> &aeronClient() const;
-
+	void start();
 private:
 	void mediaDriver();
-	void initialize();
 
 private:
 	aeron::Context m_aeron_context;
