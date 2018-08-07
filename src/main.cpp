@@ -160,10 +160,19 @@ int main() {
 		broker_market_data_disruptor->start();
 		arbitrage_data_disruptor->start();
 
+
+		auto arbitrage_recorder_poller = arbitrage_data_disruptor->ringBuffer()->newPoller();
+		auto arbitrage_recorder_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence,
+		                                      bool endOfBatch) -> bool {
+			recorder->recordArbitrage(data);
+			return true;
+		};
+
 		recorder->recordSystem("Main: all OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		while (true) {
-			std::this_thread::yield();
+			arbitrage_recorder_poller->poll(arbitrage_recorder_handler);
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 
 	} catch (const std::exception &e) {
