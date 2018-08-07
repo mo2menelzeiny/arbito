@@ -250,7 +250,8 @@ namespace SWISSQUOTE {
 							.bid = swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0),
 							.bid_qty = (swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)),
 							.offer = swissquote_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-							.offer_qty = swissquote_fix_get_field_at(msg, msg->nr_fields - 1)->float_value
+							.offer_qty = swissquote_fix_get_field_at(msg, msg->nr_fields - 1)->float_value,
+							.timestamp = swissquote_fix_get_field(msg, swissquote_SendingTime)->string_value
 					};
 
 					// publish market data to broker disruptor
@@ -262,7 +263,8 @@ namespace SWISSQUOTE {
 					auto next_sequence_2 = m_arbitrage_data_disruptor->ringBuffer()->next();
 					(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence_2] = (ArbitrageDataEvent) {
 							.l1 = broker_market_data,
-							.l2 = messenger_market_data
+							.l2 = messenger_market_data,
+							.timestamp = m_session->str_now
 					};
 					m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence_2);
 

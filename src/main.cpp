@@ -94,7 +94,7 @@ int main() {
 				                                                          spread,
 				                                                          bid_lot_size,
 				                                                          offer_lot_size);
-				lmax_trade_office = std::make_shared<LMAX::TradeOffice>(recorder,
+				/*lmax_trade_office = std::make_shared<LMAX::TradeOffice>(recorder,
 				                                                        messenger,
 				                                                        arbitrage_data_disruptor,
 				                                                        to_host,
@@ -107,10 +107,10 @@ int main() {
 				                                                        diff_open,
 				                                                        diff_close,
 				                                                        bid_lot_size,
-				                                                        offer_lot_size);
+				                                                        offer_lot_size);*/
 			}
 				lmax_market_office->start();
-				lmax_trade_office->start();
+				// lmax_trade_office->start();
 				break;
 
 			case 2: {
@@ -132,7 +132,7 @@ int main() {
 				                                                                      spread,
 				                                                                      bid_lot_size,
 				                                                                      offer_lot_size);
-				swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
+				/*swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
 				                                                                    messenger,
 				                                                                    arbitrage_data_disruptor,
 				                                                                    to_host,
@@ -145,11 +145,12 @@ int main() {
 				                                                                    diff_open,
 				                                                                    diff_close,
 				                                                                    bid_lot_size,
-				                                                                    offer_lot_size);
+				                                                                    offer_lot_size);*/
 			}
 				swissquote_market_office->start();
-				swissquote_trade_office->start();
+				// swissquote_trade_office->start();
 				break;
+
 			default:
 				recorder->recordSystemMessage("Main: broker case FAILED", SYSTEM_RECORD_TYPE_ERROR);
 				return EXIT_FAILURE;

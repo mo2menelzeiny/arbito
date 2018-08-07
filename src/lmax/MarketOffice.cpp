@@ -186,7 +186,8 @@ namespace LMAX {
 					.bid = marketData.bid(),
 					.bid_qty = marketData.bidQty(),
 					.offer = marketData.offer(),
-					.offer_qty = marketData.offerQty()
+					.offer_qty = marketData.offerQty(),
+					.timestamp = marketData.timestamp()
 			};
 
 			// publish arbitrage data to arbitrage data disruptor
@@ -246,7 +247,8 @@ namespace LMAX {
 							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
 							.bid_qty = (lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value
+							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value,
+							.timestamp = lmax_fix_get_field(msg, lmax_SendingTime)->string_value
 					};
 
 					// publish market data to broker disruptor
@@ -258,7 +260,8 @@ namespace LMAX {
 					auto next_sequence_2 = m_arbitrage_data_disruptor->ringBuffer()->next();
 					(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence_2] = (ArbitrageDataEvent) {
 							.l1 = broker_market_data,
-							.l2 = messenger_market_data
+							.l2 = messenger_market_data,
+							.timestamp = m_session->str_now
 					};
 					m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence_2);
 
