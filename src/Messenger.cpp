@@ -1,9 +1,7 @@
 
 #include "Messenger.h"
 
-Messenger::Messenger(const std::shared_ptr<Recorder> &recorder) {
-	initialize();
-}
+Messenger::Messenger(const std::shared_ptr<Recorder> &recorder): m_recorder(recorder) {}
 
 const std::shared_ptr<aeron::Aeron> &Messenger::aeronClient() const {
 	return m_aeron_client;
@@ -37,7 +35,7 @@ void Messenger::mediaDriver() {
 	aeron_driver_context_close(context);
 }
 
-void Messenger::initialize() {
+void Messenger::start() {
 	// Aeron media driver thread
 	m_media_driver = std::thread(&Messenger::mediaDriver, this);
 	m_media_driver.detach();
@@ -61,7 +59,7 @@ void Messenger::initialize() {
 		m_recorder->recordSystemMessage("Messenger: Image OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	});
 
-	m_aeron_context.unavailableImageHandler([](aeron::Image &image) {
+	m_aeron_context.unavailableImageHandler([&](aeron::Image &image) {
 		std::cout << "Unavailable image on correlationId=" << image.correlationId() << " sessionId="
 		          << image.sessionId();
 		std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;

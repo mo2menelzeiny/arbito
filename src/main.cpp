@@ -66,7 +66,8 @@ int main() {
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::SleepingWaitStrategy>());
 
-		std::shared_ptr<Messenger> messenger = std::make_shared<Messenger>();
+		std::shared_ptr<Messenger> messenger = std::make_shared<Messenger>(recorder);
+		messenger->start();
 
 		std::shared_ptr<LMAX::MarketOffice> lmax_market_office;
 		std::shared_ptr<LMAX::TradeOffice> lmax_trade_office;
@@ -114,7 +115,6 @@ int main() {
 				break;
 
 			case 2: {
-
 				swissquote_market_office = std::make_shared<SWISSQUOTE::MarketOffice>(recorder,
 				                                                                      messenger,
 				                                                                      broker_market_data_disruptor,
@@ -133,7 +133,7 @@ int main() {
 				                                                                      spread,
 				                                                                      bid_lot_size,
 				                                                                      offer_lot_size);
-				/*swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
+				swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
 				                                                                    messenger,
 				                                                                    arbitrage_data_disruptor,
 				                                                                    to_host,
@@ -146,10 +146,10 @@ int main() {
 				                                                                    diff_open,
 				                                                                    diff_close,
 				                                                                    bid_lot_size,
-				                                                                    offer_lot_size);*/
+				                                                                    offer_lot_size);
 			}
 				swissquote_market_office->start();
-				//swissquote_trade_office->start();
+				swissquote_trade_office->start();
 				break;
 			default:
 				recorder->recordSystemMessage("Main: broker case FAILED", SYSTEM_RECORD_TYPE_ERROR);
