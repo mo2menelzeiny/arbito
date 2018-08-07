@@ -32,6 +32,7 @@
         <field name="bidQty" id="2" type="double"/>
         <field name="offer" id="3" type="double"/>
         <field name="offerQty" id="4" type="double"/>
+        <field name="timestamp" id="5" type="utcDateOnly"/>
     </sbe:message>
 
 </sbe:messageSchema>
