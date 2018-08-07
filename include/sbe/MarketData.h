@@ -110,7 +110,7 @@ public:
 
     static SBE_CONSTEXPR std::uint16_t sbeBlockLength() SBE_NOEXCEPT
     {
-        return (std::uint16_t)32;
+        return (std::uint16_t)34;
     }
 
     static SBE_CONSTEXPR std::uint16_t sbeTemplateId() SBE_NOEXCEPT
@@ -495,6 +495,81 @@ public:
         val.fp_value = value;
         val.uint_value = SBE_LITTLE_ENDIAN_ENCODE_64(val.uint_value);
         std::memcpy(m_buffer + m_offset + 24, &val, sizeof(double));
+        return *this;
+    }
+
+    static SBE_CONSTEXPR std::uint16_t timestampId() SBE_NOEXCEPT
+    {
+        return 5;
+    }
+
+    static SBE_CONSTEXPR std::uint64_t timestampSinceVersion() SBE_NOEXCEPT
+    {
+         return 0;
+    }
+
+    bool timestampInActingVersion() SBE_NOEXCEPT
+    {
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare"
+#endif
+        return m_actingVersion >= timestampSinceVersion();
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+    }
+
+    static SBE_CONSTEXPR std::size_t timestampEncodingOffset() SBE_NOEXCEPT
+    {
+         return 32;
+    }
+
+
+    static const char *timestampMetaAttribute(const ::sbe::MetaAttribute::Attribute metaAttribute) SBE_NOEXCEPT
+    {
+        switch (metaAttribute)
+        {
+            case ::sbe::MetaAttribute::EPOCH: return "";
+            case ::sbe::MetaAttribute::TIME_UNIT: return "";
+            case ::sbe::MetaAttribute::SEMANTIC_TYPE: return "";
+            case ::sbe::MetaAttribute::PRESENCE: return "required";
+        }
+
+        return "";
+    }
+
+    static SBE_CONSTEXPR std::uint16_t timestampNullValue() SBE_NOEXCEPT
+    {
+        return SBE_NULLVALUE_UINT16;
+    }
+
+    static SBE_CONSTEXPR std::uint16_t timestampMinValue() SBE_NOEXCEPT
+    {
+        return (std::uint16_t)0;
+    }
+
+    static SBE_CONSTEXPR std::uint16_t timestampMaxValue() SBE_NOEXCEPT
+    {
+        return (std::uint16_t)65534;
+    }
+
+    static SBE_CONSTEXPR std::size_t timestampEncodingLength() SBE_NOEXCEPT
+    {
+        return 2;
+    }
+
+    std::uint16_t timestamp() const
+    {
+        std::uint16_t val;
+        std::memcpy(&val, m_buffer + m_offset + 32, sizeof(std::uint16_t));
+        return SBE_LITTLE_ENDIAN_ENCODE_16(val);
+    }
+
+    MarketData &timestamp(const std::uint16_t value)
+    {
+        std::uint16_t val = SBE_LITTLE_ENDIAN_ENCODE_16(value);
+        std::memcpy(m_buffer + m_offset + 32, &val, sizeof(std::uint16_t));
         return *this;
     }
 };
