@@ -57,14 +57,14 @@ int main() {
 				32,
 				task_scheduler,
 				Disruptor::ProducerType::Single,
-				std::make_shared<Disruptor::SleepingWaitStrategy>());
+				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto arbitrage_data_disruptor = std::make_shared<Disruptor::disruptor<ArbitrageDataEvent>>(
 				[]() { return ArbitrageDataEvent(); },
 				32,
 				task_scheduler,
 				Disruptor::ProducerType::Single,
-				std::make_shared<Disruptor::SleepingWaitStrategy>());
+				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		std::shared_ptr<Messenger> messenger = std::make_shared<Messenger>(recorder);
 		messenger->start();
@@ -109,7 +109,6 @@ int main() {
 				                                                        bid_lot_size,
 				                                                        offer_lot_size);
 			}
-
 				lmax_market_office->start();
 				lmax_trade_office->start();
 				break;
