@@ -29,8 +29,8 @@ enum OrderRecordState {
 class Recorder {
 public:
 	Recorder(const char *uri_string, int broker_num);
-	void recordSystemMessage(const char *message, SystemRecordType type);
-	void recordArbitrageData(ArbitrageDataEvent &event);
+	void recordSystem(const char *message, SystemRecordType type);
+	void recordArbitrage(ArbitrageDataEvent &event);
 
 private:
 	int ping();

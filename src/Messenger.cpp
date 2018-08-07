@@ -56,14 +56,14 @@ void Messenger::start() {
 		std::cout << "Available image correlationId=" << image.correlationId() << " sessionId="
 		          << image.sessionId();
 		std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
-		m_recorder->recordSystemMessage("Messenger: Image OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystem("Messenger: Image OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	});
 
 	m_aeron_context.unavailableImageHandler([&](aeron::Image &image) {
 		std::cout << "Unavailable image on correlationId=" << image.correlationId() << " sessionId="
 		          << image.sessionId();
 		std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
-		m_recorder->recordSystemMessage("Messenger: Image FAILED", SYSTEM_RECORD_TYPE_ERROR);
+		m_recorder->recordSystem("Messenger: Image FAILED", SYSTEM_RECORD_TYPE_ERROR);
 	});
 
 	m_aeron_client = std::make_shared<aeron::Aeron>(m_aeron_context);

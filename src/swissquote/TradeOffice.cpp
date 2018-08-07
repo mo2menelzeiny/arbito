@@ -116,17 +116,17 @@ namespace SWISSQUOTE {
 		// Session login
 		if (swissquote_fix_session_logon(m_session)) {
 			fprintf(stderr, "Client Logon FAILED\n");
-			m_recorder->recordSystemMessage("TradeOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystem("TradeOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
 		fprintf(stdout, "Client Logon OK\n");
-		m_recorder->recordSystemMessage("TradeOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystem("TradeOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// Polling thread loop
 		poller = std::thread(&TradeOffice::poll, this);
 		poller.detach();
 
-		m_recorder->recordSystemMessage("TradeOffice: broker client OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystem("TradeOffice: broker client OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void TradeOffice::poll() {
@@ -361,7 +361,7 @@ namespace SWISSQUOTE {
 		// Reconnection condition
 		if (m_session->active) {
 			fprintf(stdout, "Trade office reconnecting..\n");
-			m_recorder->recordSystemMessage("TradeOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystem("TradeOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			std::this_thread::sleep_for(std::chrono::seconds(30));
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
