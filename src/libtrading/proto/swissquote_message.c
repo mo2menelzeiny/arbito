@@ -409,6 +409,8 @@ static enum swissquote_fix_type swissquote_fix_tag_type(int tag) {
 			return SWISSQUOTE_FIX_TYPE_STRING;
 		case swissquote_MDEntryTime:
 			return SWISSQUOTE_FIX_TYPE_STRING;
+		case swissquote_QuoteCondition:
+			return SWISSQUOTE_FIX_TYPE_CHAR;
 		case swissquote_MDReqRejReason:
 			return SWISSQUOTE_FIX_TYPE_CHAR;
 		case swissquote_NoQuoteEntries:
@@ -419,6 +421,8 @@ static enum swissquote_fix_type swissquote_fix_tag_type(int tag) {
 			return SWISSQUOTE_FIX_TYPE_CHAR;
 		case swissquote_QuoteCancelType:
 			return SWISSQUOTE_FIX_TYPE_CHAR;
+		case swissquote_QuoteEntryID:
+			return SWISSQUOTE_FIX_TYPE_STRING;
 		case swissquote_QuoteRejectReason:
 			return SWISSQUOTE_FIX_TYPE_STRING;
 		case swissquote_QuoteSetId:

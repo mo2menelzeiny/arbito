@@ -194,7 +194,8 @@ namespace LMAX {
 			auto next_sequence = m_arbitrage_data_disruptor->ringBuffer()->next();
 			(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence] = (ArbitrageDataEvent) {
 					.l1 = broker_market_data,
-					.l2 = messenger_market_data
+					.l2 = messenger_market_data,
+					.timestamp = m_session->str_now
 			};
 			m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence);
 
@@ -242,13 +243,19 @@ namespace LMAX {
 					    || m_offer_lot_size > lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value) {
 						continue;
 					}
+
+					// allocate timestamp
+					char timestamp_buffer[64];
+					lmax_fix_get_string(lmax_fix_get_field(msg, lmax_SendingTime),
+					                          const_cast<char *>(timestamp_buffer), 64);
+
 					// allocate most recent prices
 					broker_market_data = (MarketDataEvent) {
 							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
 							.bid_qty = (lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
 							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value,
-							.timestamp = lmax_fix_get_field(msg, lmax_SendingTime)->string_value
+							.timestamp = timestamp_buffer
 					};
 
 					// publish market data to broker disruptor

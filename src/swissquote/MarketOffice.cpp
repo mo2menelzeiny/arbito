@@ -187,14 +187,16 @@ namespace SWISSQUOTE {
 					.bid = marketData.bid(),
 					.bid_qty = marketData.bidQty(),
 					.offer = marketData.offer(),
-					.offer_qty = marketData.offerQty()
+					.offer_qty = marketData.offerQty(),
+					.timestamp = marketData.timestamp()
 			};
 
 			// publish arbitrage data to arbitrage data disruptor
 			auto next_sequence = m_arbitrage_data_disruptor->ringBuffer()->next();
 			(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence] = (ArbitrageDataEvent) {
 					.l1 = broker_market_data,
-					.l2 = messenger_market_data
+					.l2 = messenger_market_data,
+					.timestamp = m_session->str_now
 			};
 			m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence);
 
@@ -239,19 +241,25 @@ namespace SWISSQUOTE {
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
 					// Filter market data based on spread, bid lot size and offer lot size
-					if (m_spread > (swissquote_fix_get_field_at(msg, msg->nr_fields - 2)->float_value -
+					if (m_spread > (swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value -
 					                swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0))
 					    || m_bid_lot_size > swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)
-					    || m_offer_lot_size > swissquote_fix_get_field_at(msg, msg->nr_fields - 1)->float_value) {
+					    || m_offer_lot_size > swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value) {
 						continue;
 					}
+
+					// allocate timestamp
+					char timestamp_buffer[64];
+					swissquote_fix_get_string(swissquote_fix_get_field(msg, swissquote_SendingTime),
+					                          const_cast<char *>(timestamp_buffer), 64);
+
 					// allocate most recent prices
 					broker_market_data = (MarketDataEvent) {
 							.bid = swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0),
 							.bid_qty = (swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)),
-							.offer = swissquote_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-							.offer_qty = swissquote_fix_get_field_at(msg, msg->nr_fields - 1)->float_value,
-							.timestamp = swissquote_fix_get_field(msg, swissquote_SendingTime)->string_value
+							.offer = swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value,
+							.offer_qty = swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value,
+							.timestamp = timestamp_buffer
 					};
 
 					// publish market data to broker disruptor
