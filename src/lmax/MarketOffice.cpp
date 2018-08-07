@@ -54,7 +54,7 @@ namespace LMAX {
 		}
 		printf("Subscription found!\n");
 
-		m_recorder->recordSystemMessage("MarketOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystem("MarketOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void MarketOffice::initBrokerClient() {
@@ -144,26 +144,26 @@ namespace LMAX {
 		// Session login
 		if (lmax_fix_session_logon(m_session)) {
 			fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
-			m_recorder->recordSystemMessage("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystem("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
 		fprintf(stdout, "MarketOffice: Client Logon OK\n");
-		m_recorder->recordSystemMessage("MarketOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystem("MarketOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// Market data request
 		if (lmax_fix_session_marketdata_request(m_session)) {
 			fprintf(stderr, "MarketOffice: Client market data request FAILED\n");
-			m_recorder->recordSystemMessage("MarketOffice: market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystem("MarketOffice: market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
 		fprintf(stdout, "MarketOffice: Client market data request OK\n");
-		m_recorder->recordSystemMessage("MarketOffice: market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystem("MarketOffice: market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// Polling thread loop
 		poller = std::thread(&MarketOffice::poll, this);
 		poller.detach();
 
-		m_recorder->recordSystemMessage("MarketOffice: broker client OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystem("MarketOffice: broker client OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void MarketOffice::poll() {
@@ -275,7 +275,7 @@ namespace LMAX {
 		// Reconnection condition
 		if (m_session->active) {
 			fprintf(stdout, "Market office reconnecting..\n");
-			m_recorder->recordSystemMessage("MarketOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystem("MarketOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			std::this_thread::sleep_for(std::chrono::seconds(30));
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();

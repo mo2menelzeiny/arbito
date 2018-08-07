@@ -48,7 +48,7 @@ int main() {
 
 		auto recorder = std::make_shared<Recorder>(uri_string, broker);
 
-		recorder->recordSystemMessage("Main: initialize OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		recorder->recordSystem("Main: initialize OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		auto task_scheduler = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
 
@@ -152,7 +152,7 @@ int main() {
 				break;
 
 			default:
-				recorder->recordSystemMessage("Main: broker case FAILED", SYSTEM_RECORD_TYPE_ERROR);
+				recorder->recordSystem("Main: broker case FAILED", SYSTEM_RECORD_TYPE_ERROR);
 				return EXIT_FAILURE;
 		}
 
@@ -160,7 +160,7 @@ int main() {
 		broker_market_data_disruptor->start();
 		arbitrage_data_disruptor->start();
 
-		recorder->recordSystemMessage("Main: all OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		recorder->recordSystem("Main: all OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		while (true) {
 			std::this_thread::yield();
