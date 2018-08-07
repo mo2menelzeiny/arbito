@@ -43,7 +43,7 @@ make -j 4
 make -j 4 install PREFIX=/usr/local
 
 #Leave to root
-cd ../../../..
+cd ../../..
 
 
 echo "Building executables.."
