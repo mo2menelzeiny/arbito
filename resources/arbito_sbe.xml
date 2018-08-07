@@ -8,20 +8,10 @@
             <type name="schemaId" primitiveType="uint16"/>
             <type name="version" primitiveType="uint16"/>
         </composite>
-        <composite name="varString" description="Variable-length string">
-            <type name="length" primitiveType="uint16" semanticType="Length"/>
-            <type name="data" length="0" primitiveType="uint8"
-                  semanticType="data" characterEncoding="UTF-8"/>
-        </composite>
-        <composite name="varData">
-            <type name="length" primitiveType="uint32" maxValue="1073741824"/>
+        <composite name="varDataEncoding">
+            <type name="length" primitiveType="uint8"/>
             <type name="varData" primitiveType="uint8" length="0"/>
         </composite>
-        <composite name="utcTimeOnly" description="Time of day with precision on the wire" semanticType="UTCTimeOnly">
-            <type name="time" primitiveType="uint64"/>
-            <type name="unit" primitiveType="uint8"/>
-        </composite>
-        <type name="utcDateOnly" primitiveType="uint16" semanticType="UTCDateOnly"/>
         <type name="string8" primitiveType="char" semanticType="String" length="8"/>
         <type name="string16" primitiveType="char" semanticType="String" length="16"/>
         <type name="string32" primitiveType="char" semanticType="String" length="32"/>
@@ -32,7 +22,6 @@
         <field name="bidQty" id="2" type="double"/>
         <field name="offer" id="3" type="double"/>
         <field name="offerQty" id="4" type="double"/>
-        <field name="timestamp" id="5" type="utcDateOnly"/>
+        <data name="timestamp" id="5" type="varDataEncoding"/>
     </sbe:message>
-
 </sbe:messageSchema>

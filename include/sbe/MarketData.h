@@ -31,6 +31,7 @@
 #include <sbe/sbe.h>
 
 #include "MessageHeader.h"
+#include "VarDataEncoding.h"
 
 namespace sbe {
 
@@ -110,7 +111,7 @@ public:
 
     static SBE_CONSTEXPR std::uint16_t sbeBlockLength() SBE_NOEXCEPT
     {
-        return (std::uint16_t)34;
+        return (std::uint16_t)32;
     }
 
     static SBE_CONSTEXPR std::uint16_t sbeTemplateId() SBE_NOEXCEPT
@@ -498,9 +499,22 @@ public:
         return *this;
     }
 
-    static SBE_CONSTEXPR std::uint16_t timestampId() SBE_NOEXCEPT
+    static const char *timestampMetaAttribute(const ::sbe::MetaAttribute::Attribute metaAttribute) SBE_NOEXCEPT
     {
-        return 5;
+        switch (metaAttribute)
+        {
+            case ::sbe::MetaAttribute::EPOCH: return "unix";
+            case ::sbe::MetaAttribute::TIME_UNIT: return "nanosecond";
+            case ::sbe::MetaAttribute::SEMANTIC_TYPE: return "";
+            case ::sbe::MetaAttribute::PRESENCE: return "required";
+        }
+
+        return "";
+    }
+
+    static const char *timestampCharacterEncoding() SBE_NOEXCEPT
+    {
+        return "null";
     }
 
     static SBE_CONSTEXPR std::uint64_t timestampSinceVersion() SBE_NOEXCEPT
@@ -520,56 +534,90 @@ public:
 #endif
     }
 
-    static SBE_CONSTEXPR std::size_t timestampEncodingOffset() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint16_t timestampId() SBE_NOEXCEPT
     {
-         return 32;
+        return 5;
     }
 
 
-    static const char *timestampMetaAttribute(const ::sbe::MetaAttribute::Attribute metaAttribute) SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t timestampHeaderLength() SBE_NOEXCEPT
     {
-        switch (metaAttribute)
+        return 1;
+    }
+
+    std::uint8_t timestampLength() const
+    {
+        std::uint8_t length;
+        std::memcpy(&length, m_buffer + sbePosition(), sizeof(std::uint8_t));
+        return (length);
+    }
+
+
+    const char *timestamp()
+    {
+         std::uint8_t lengthFieldValue;
+         std::memcpy(&lengthFieldValue, m_buffer + sbePosition(), sizeof(std::uint8_t));
+         const char *fieldPtr = (m_buffer + sbePosition() + 1);
+         sbePosition(sbePosition() + 1 + (lengthFieldValue));
+         return fieldPtr;
+    }
+
+    std::uint64_t getTimestamp(char *dst, const std::uint64_t length)
+    {
+        std::uint64_t lengthOfLengthField = 1;
+        std::uint64_t lengthPosition = sbePosition();
+        sbePosition(lengthPosition + lengthOfLengthField);
+        std::uint8_t lengthFieldValue;
+        std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
+        std::uint64_t dataLength = (lengthFieldValue);
+        std::uint64_t bytesToCopy = (length < dataLength) ? length : dataLength;
+        std::uint64_t pos = sbePosition();
+        sbePosition(sbePosition() + dataLength);
+        std::memcpy(dst, m_buffer + pos, bytesToCopy);
+        return bytesToCopy;
+    }
+
+    MarketData &putTimestamp(const char *src, const std::uint8_t length)
+    {
+        std::uint64_t lengthOfLengthField = 1;
+        std::uint64_t lengthPosition = sbePosition();
+        std::uint8_t lengthFieldValue = (length);
+        sbePosition(lengthPosition + lengthOfLengthField);
+        std::memcpy(m_buffer + lengthPosition, &lengthFieldValue, sizeof(std::uint8_t));
+        std::uint64_t pos = sbePosition();
+        sbePosition(sbePosition() + length);
+        std::memcpy(m_buffer + pos, src, length);
+        return *this;
+    }
+
+    const std::string getTimestampAsString()
+    {
+        std::uint64_t lengthOfLengthField = 1;
+        std::uint64_t lengthPosition = sbePosition();
+        sbePosition(lengthPosition + lengthOfLengthField);
+        std::uint8_t lengthFieldValue;
+        std::memcpy(&lengthFieldValue, m_buffer + lengthPosition, sizeof(std::uint8_t));
+        std::uint64_t dataLength = (lengthFieldValue);
+        std::uint64_t pos = sbePosition();
+        const std::string result(m_buffer + pos, dataLength);
+        sbePosition(sbePosition() + dataLength);
+        return result;
+    }
+
+    MarketData &putTimestamp(const std::string& str)
+    {
+        if (str.length() > 254)
         {
-            case ::sbe::MetaAttribute::EPOCH: return "";
-            case ::sbe::MetaAttribute::TIME_UNIT: return "";
-            case ::sbe::MetaAttribute::SEMANTIC_TYPE: return "";
-            case ::sbe::MetaAttribute::PRESENCE: return "required";
+             throw std::runtime_error("std::string too long for length type [E109]");
         }
-
-        return "";
-    }
-
-    static SBE_CONSTEXPR std::uint16_t timestampNullValue() SBE_NOEXCEPT
-    {
-        return SBE_NULLVALUE_UINT16;
-    }
-
-    static SBE_CONSTEXPR std::uint16_t timestampMinValue() SBE_NOEXCEPT
-    {
-        return (std::uint16_t)0;
-    }
-
-    static SBE_CONSTEXPR std::uint16_t timestampMaxValue() SBE_NOEXCEPT
-    {
-        return (std::uint16_t)65534;
-    }
-
-    static SBE_CONSTEXPR std::size_t timestampEncodingLength() SBE_NOEXCEPT
-    {
-        return 2;
-    }
-
-    std::uint16_t timestamp() const
-    {
-        std::uint16_t val;
-        std::memcpy(&val, m_buffer + m_offset + 32, sizeof(std::uint16_t));
-        return SBE_LITTLE_ENDIAN_ENCODE_16(val);
-    }
-
-    MarketData &timestamp(const std::uint16_t value)
-    {
-        std::uint16_t val = SBE_LITTLE_ENDIAN_ENCODE_16(value);
-        std::memcpy(m_buffer + m_offset + 32, &val, sizeof(std::uint16_t));
+        std::uint64_t lengthOfLengthField = 1;
+        std::uint64_t lengthPosition = sbePosition();
+        std::uint8_t lengthFieldValue = (static_cast<std::uint8_t>(str.length()));
+        sbePosition(lengthPosition + lengthOfLengthField);
+        std::memcpy(m_buffer + lengthPosition, &lengthFieldValue, sizeof(std::uint8_t));
+        std::uint64_t pos = sbePosition();
+        sbePosition(sbePosition() + str.length());
+        std::memcpy(m_buffer + pos, str.c_str(), str.length());
         return *this;
     }
 };
