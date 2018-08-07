@@ -6,6 +6,7 @@
 
 struct ArbitrageDataEvent {
 	MarketDataEvent l1, l2;
+	const char *timestamp;
 
 	double currentDifference1() {
 		return l1.offer - l2.bid;

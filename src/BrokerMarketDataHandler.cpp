@@ -12,7 +12,8 @@ void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequen
 			.bid(data.bid)
 			.bidQty(data.bid_qty)
 			.offer(data.offer)
-			.offerQty(data.offer_qty);
+			.offerQty(data.offer_qty)
+			.putTimestamp(data.timestamp, strlen(data.timestamp));
 
 	aeron::index_t len = m_msg_header.encodedLength() + m_market_data.encodedLength();
 	aeron::concurrent::AtomicBuffer srcBuffer(m_buffer, PUB_BUFFER_SIZE);
@@ -24,4 +25,4 @@ void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequen
 }
 
 BrokerMarketDataHandler::BrokerMarketDataHandler(const std::shared_ptr<aeron::Publication> &messenger_pub)
-: m_messenger_pub(messenger_pub) {}
+		: m_messenger_pub(messenger_pub) {}
