@@ -56,12 +56,6 @@ namespace SWISSQUOTE {
 		printf("Subscription found!\n");
 
 		m_recorder->recordSystem("MarketOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
-
-		while(0 == m_messenger_sub->imageCount()) {
-			std::this_thread::yield();
-		}
-
-		m_recorder->recordSystem("MarketOffice: messenger subscription OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void MarketOffice::initBrokerClient() {

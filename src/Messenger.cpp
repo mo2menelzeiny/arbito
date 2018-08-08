@@ -1,7 +1,7 @@
 
 #include "Messenger.h"
 
-Messenger::Messenger(const std::shared_ptr<Recorder> &recorder): m_recorder(recorder) {}
+Messenger::Messenger(const std::shared_ptr<Recorder> &recorder) : m_recorder(recorder) {}
 
 const std::shared_ptr<aeron::Aeron> &Messenger::aeronClient() const {
 	return m_aeron_client;
@@ -64,6 +64,13 @@ void Messenger::start() {
 		          << image.sessionId();
 		std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
 		m_recorder->recordSystem("Messenger: Image FAILED", SYSTEM_RECORD_TYPE_ERROR);
+	});
+
+	m_aeron_context.errorHandler([&](const std::exception &exception) {
+		fprintf(stderr, "Messenger: %s\n", exception.what());
+		std::string buffer("Messenger: ");
+		buffer.append(exception.what());
+		m_recorder->recordSystem(buffer.c_str(), SYSTEM_RECORD_TYPE_ERROR);
 	});
 
 	m_aeron_client = std::make_shared<aeron::Aeron>(m_aeron_context);

@@ -176,7 +176,7 @@ int main() {
 		}
 
 	} catch (const std::exception &e) {
-		std::cerr << "EXCEPTION: " << e.what() << " : " << std::endl;
+		std::cerr << "EXCEPTION: " << e.what() << std::endl;
 	}
 	return EXIT_FAILURE;
 }
