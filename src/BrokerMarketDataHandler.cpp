@@ -21,7 +21,7 @@ void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequen
 	std::int64_t result;
 	do {
 		result = m_messenger_pub->offer(srcBuffer, 0, len);
-	} while (result < 0L);
+	} while (result != aeron::NOT_CONNECTED);
 }
 
 BrokerMarketDataHandler::BrokerMarketDataHandler(const std::shared_ptr<aeron::Publication> &messenger_pub)
