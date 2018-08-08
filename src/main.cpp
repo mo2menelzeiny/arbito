@@ -172,7 +172,7 @@ int main() {
 
 		while (true) {
 			arbitrage_recorder_poller->poll(arbitrage_recorder_handler);
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
 		}
 
 	} catch (const std::exception &e) {
