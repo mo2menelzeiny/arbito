@@ -34,7 +34,7 @@ namespace SWISSQUOTE {
 	}
 
 	void MarketOffice::initMessengerChannel() {
-		printf("Initializing market office messenger channel..\n");
+		printf("MarketOffice: Initializing messenger channel..\n");
 
 		std::int64_t publication_id = m_messenger->aeronClient()->addPublication(m_messenger_config.pub_channel,
 		                                                                         m_messenger_config.pub_stream_id);
@@ -56,10 +56,16 @@ namespace SWISSQUOTE {
 		printf("Subscription found!\n");
 
 		m_recorder->recordSystem("MarketOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
+
+		while(0 == m_messenger_sub->imageCount()) {
+			std::this_thread::yield();
+		}
+
+		m_recorder->recordSystem("MarketOffice: messenger subscription OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void MarketOffice::initBrokerClient() {
-		printf("Initializing market office broker client..\n");
+		printf("MarketOffice: Initializing broker client..\n");
 		// SSL options
 		SSL_load_error_strings();
 		SSL_library_init();
