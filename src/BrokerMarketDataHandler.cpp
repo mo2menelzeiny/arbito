@@ -2,12 +2,14 @@
 #include "BrokerMarketDataHandler.h"
 
 void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) {
+	sbe::MessageHeader m_msg_header;
 	m_msg_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, PUB_BUFFER_SIZE)
 			.blockLength(sbe::MarketData::sbeBlockLength())
 			.templateId(sbe::MarketData::sbeTemplateId())
 			.schemaId(sbe::MarketData::sbeSchemaId())
 			.version(sbe::MarketData::sbeSchemaVersion());
 
+	sbe::MarketData m_market_data;
 	m_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer), m_msg_header.encodedLength(), PUB_BUFFER_SIZE)
 			.bid(data.bid)
 			.bidQty(data.bid_qty)
