@@ -42,15 +42,15 @@ namespace LMAX {
 
 		m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
 		while (!m_messenger_pub) {
-			m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
 			std::this_thread::yield();
+			m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
 		}
 		printf("MarketOffice: publication found!\n");
 
 		m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
 		while (!m_messenger_sub) {
-			m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
 			std::this_thread::yield();
+			m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
 		}
 		printf("MarketOffice: subscription found!\n");
 
