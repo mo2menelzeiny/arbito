@@ -182,21 +182,19 @@ namespace SWISSQUOTE {
 			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
 			                         MESSEGNER_BUFFER);
-			// allocate market data
-			messenger_market_data = (MarketDataEvent) {
-					.bid = marketData.bid(),
-					.bid_qty = marketData.bidQty(),
-					.offer = marketData.offer(),
-					.offer_qty = marketData.offerQty(),
-					.timestamp = marketData.timestamp()
-			};
 
 			// publish arbitrage data to arbitrage data disruptor
 			auto next_sequence = m_arbitrage_data_disruptor->ringBuffer()->next();
 			(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence] = (ArbitrageDataEvent) {
 					.l1 = broker_market_data,
-					.l2 = messenger_market_data,
-					.timestamp = m_session->str_now
+					.l2 = (MarketDataEvent) {
+							.bid = marketData.bid(),
+							.bid_qty = marketData.bidQty(),
+							.offer = marketData.offer(),
+							.offer_qty = marketData.offerQty(),
+							.timestamp = marketData.timestamp()
+					},
+					.timestamp = strdup(m_session->str_now)
 			};
 			m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence);
 
@@ -248,7 +246,7 @@ namespace SWISSQUOTE {
 					// allocate timestamp
 					char timestamp_buffer[64];
 					swissquote_fix_get_string(swissquote_fix_get_field(msg, swissquote_SendingTime),
-					                          const_cast<char *>(timestamp_buffer), 64);
+					                          (timestamp_buffer), 64);
 
 					// allocate most recent prices
 					broker_market_data = (MarketDataEvent) {
@@ -256,7 +254,7 @@ namespace SWISSQUOTE {
 							.bid_qty = (swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)),
 							.offer = swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value,
 							.offer_qty = swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value,
-							.timestamp = timestamp_buffer
+							.timestamp = strdup(timestamp_buffer)
 					};
 
 					// publish market data to broker disruptor

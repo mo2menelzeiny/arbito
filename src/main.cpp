@@ -54,14 +54,14 @@ int main() {
 
 		auto broker_market_data_disruptor = std::make_shared<Disruptor::disruptor<MarketDataEvent>>(
 				[]() { return MarketDataEvent(); },
-				32,
+				1024,
 				task_scheduler,
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto arbitrage_data_disruptor = std::make_shared<Disruptor::disruptor<ArbitrageDataEvent>>(
 				[]() { return ArbitrageDataEvent(); },
-				32,
+				1024,
 				task_scheduler,
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
@@ -172,7 +172,7 @@ int main() {
 
 		while (true) {
 			arbitrage_recorder_poller->poll(arbitrage_recorder_handler);
-			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
+			std::this_thread::sleep_for(std::chrono::microseconds(100));
 		}
 
 	} catch (const std::exception &e) {

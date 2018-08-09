@@ -181,21 +181,19 @@ namespace LMAX {
 			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
 			                         MESSEGNER_BUFFER);
-			// allocate market data
-			messenger_market_data = (MarketDataEvent) {
-					.bid = marketData.bid(),
-					.bid_qty = marketData.bidQty(),
-					.offer = marketData.offer(),
-					.offer_qty = marketData.offerQty(),
-					.timestamp = marketData.timestamp()
-			};
 
 			// publish arbitrage data to arbitrage data disruptor
 			auto next_sequence = m_arbitrage_data_disruptor->ringBuffer()->next();
 			(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence] = (ArbitrageDataEvent) {
 					.l1 = broker_market_data,
-					.l2 = messenger_market_data,
-					.timestamp = m_session->str_now
+					.l2 = (MarketDataEvent) {
+							.bid = marketData.bid(),
+							.bid_qty = marketData.bidQty(),
+							.offer = marketData.offer(),
+							.offer_qty = marketData.offerQty(),
+							.timestamp = marketData.timestamp()
+					},
+					.timestamp = strdup(m_session->str_now)
 			};
 			m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence);
 
@@ -255,7 +253,7 @@ namespace LMAX {
 							.bid_qty = (lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
 							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value,
-							.timestamp = timestamp_buffer
+							.timestamp = strdup(timestamp_buffer)
 					};
 
 					// publish market data to broker disruptor
