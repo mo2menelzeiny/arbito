@@ -43,17 +43,17 @@ namespace SWISSQUOTE {
 
 		m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
 		while (!m_messenger_pub) {
-			m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
 			std::this_thread::yield();
+			m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
 		}
-		printf("Publication found!\n");
+		printf("MarketOffice: Publication found\n");
 
 		m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
 		while (!m_messenger_sub) {
-			m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
 			std::this_thread::yield();
+			m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
 		}
-		printf("Subscription found!\n");
+		printf("MarketOffice: Subscription found\n");
 
 		m_recorder->recordSystem("MarketOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}

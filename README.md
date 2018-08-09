@@ -10,3 +10,4 @@
 <p>Disable zero checks <code>dokku checks:disable arbito</code>
 <p>Set deploy branch <code>dokku git:set arbtio deploy_branch development</code>
 <p>Set network to host <code>dokku docker-options:add arbito deploy --network=host</code>
+<p>Set shm size <code>dokku docker-options:add arbito deploy --shm-size="1g"<c/ode>
