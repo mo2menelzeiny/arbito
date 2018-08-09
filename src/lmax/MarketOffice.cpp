@@ -170,14 +170,14 @@ namespace LMAX {
 		MarketDataEvent messenger_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
 		MarketDataEvent broker_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
 		aeron::BusySpinIdleStrategy messengerIdleStrategy;
-		sbe::MessageHeader msgHeader;
-		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
 			// TODO: implement on the fly decode
 			// decode header
+			sbe::MessageHeader msgHeader;
 			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
 			// decode body
+			sbe::MarketData marketData;
 			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
 			                         MESSEGNER_BUFFER);
@@ -262,15 +262,6 @@ namespace LMAX {
 					auto next_sequence_1 = m_broker_market_data_disruptor->ringBuffer()->next();
 					(*m_broker_market_data_disruptor->ringBuffer())[next_sequence_1] = broker_market_data;
 					m_broker_market_data_disruptor->ringBuffer()->publish(next_sequence_1);
-
-					// publish arbitrage data to arbitrage data disruptor
-					auto next_sequence_2 = m_arbitrage_data_disruptor->ringBuffer()->next();
-					(*m_arbitrage_data_disruptor->ringBuffer())[next_sequence_2] = (ArbitrageDataEvent) {
-							.l1 = broker_market_data,
-							.l2 = messenger_market_data,
-							.timestamp = m_session->str_now
-					};
-					m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence_2);
 
 					continue;
 				}
