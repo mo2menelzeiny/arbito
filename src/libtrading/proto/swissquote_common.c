@@ -368,7 +368,6 @@ int swissquote_fix_session_sequence_reset(struct swissquote_fix_session *session
 
 int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *session) {
 	char mdreqid[16];
-	srand(time(NULL));
 	sprintf(mdreqid, "%i", rand());
 	struct swissquote_fix_message *response;
 	struct swissquote_fix_field fields[] = {

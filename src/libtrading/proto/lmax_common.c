@@ -372,7 +372,6 @@ int lmax_fix_session_sequence_reset(struct lmax_fix_session *session, unsigned l
 
 int lmax_fix_session_marketdata_request(struct lmax_fix_session *session) {
 	char mdreqid[16];
-	srand(time(NULL));
 	sprintf(mdreqid, "%i", rand());
 	struct lmax_fix_message *response;
 	struct lmax_fix_field fields[] = {
@@ -414,11 +413,23 @@ int lmax_fix_session_marketdata_request(struct lmax_fix_session *session) {
 	return 0;
 }
 
-int lmax_fix_session_new_order_single(struct lmax_fix_session *session, struct lmax_fix_field *fields, long nr_fields) {
-	struct lmax_fix_message *response;
+int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char direction, double lot_size,
+                                      struct lmax_fix_message *response) {
+	char id[16];
+	sprintf(id, "%i", rand());
+	struct lmax_fix_field fields[] = {
+			LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
+			LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
+			LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
+			LMAX_FIX_CHAR_FIELD(lmax_Side, direction), // SELL
+			LMAX_FIX_STRING_FIELD(lmax_TransactTime, session->str_now),
+			LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, lot_size),
+			LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
+	};
+
 	struct lmax_fix_message order_msg = (struct lmax_fix_message) {
 			.type = LMAX_FIX_MSG_TYPE_NEW_ORDER_SINGLE,
-			.nr_fields = nr_fields,
+			.nr_fields = ARRAY_SIZE(fields),
 			.fields = fields
 	};
 
@@ -441,6 +452,8 @@ int lmax_fix_session_new_order_single(struct lmax_fix_session *session, struct l
 		fprintf(stderr, "Order failed due to unexpected message\n");
 		return -1;
 	}
+
+
 
 	return 0;
 }
