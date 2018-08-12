@@ -147,52 +147,28 @@ namespace LMAX {
 			switch (m_open_state) {
 				case CURRENT_DIFFERENCE_1: {
 					if (data.currentDifference2() >= m_diff_close) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '2'), // SELL
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
-						};
-
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Sell order %s FAILED\n", id);
+						struct lmax_fix_message *response = nullptr;
+						if (lmax_fix_session_new_order_single(m_session, '2', m_bid_lot_size, response)) {
+							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Sell order %s OK\n", id);
+						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
 						counter = time(0);
 						return false;
 					}
 
-					if (m_deals_count < MAX_DEALS && data.currentDifference1() >= m_diff_open) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '1'), // BUY
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
-						};
-
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Buy order %s FAILED\n", id);
+					if (data.currentDifference1() >= m_diff_open && m_deals_count < MAX_DEALS) {
+						struct lmax_fix_message *response = nullptr;
+						if (lmax_fix_session_new_order_single(m_session, '1', m_offer_lot_size, response)) {
+							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Buy order %s OK\n", id);
+						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
 						counter = time(0);
 						return false;
@@ -201,53 +177,29 @@ namespace LMAX {
 					break;
 				case CURRENT_DIFFERENCE_2: {
 					if (data.currentDifference1() >= m_diff_close) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '2'), // SELL
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
-						};
-
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Sell order %s FAILED\n", id);
+						struct lmax_fix_message *response = nullptr;
+						if (lmax_fix_session_new_order_single(m_session, '2', m_bid_lot_size, response)) {
+							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Sell order %s OK\n", id);
+						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
 						counter = time(0);
 						check_timeout = true;
 						return false;
 					}
 
-					if (m_deals_count < MAX_DEALS && data.currentDifference2() >= m_diff_open) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '1'), // BUY
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
-						};
-
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Buy order %s FAILED\n", id);
+					if (data.currentDifference2() >= m_diff_open && m_deals_count < MAX_DEALS) {
+						struct lmax_fix_message *response = nullptr;
+						if (lmax_fix_session_new_order_single(m_session, '1', m_offer_lot_size, response)) {
+							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Buy order %s OK\n", id);
+						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -258,26 +210,14 @@ namespace LMAX {
 
 				case NO_DEALS: {
 					if (data.currentDifference1() >= m_diff_open) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '1'), // BUY
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
-						};
-
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Buy order %s FAILED\n", id);
+						struct lmax_fix_message *response = nullptr;
+						if (lmax_fix_session_new_order_single(m_session, '1', m_offer_lot_size, response)) {
+							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Buy order %s OK\n", id);
+						fprintf(stdout, "Buy order OK\n");
 						m_open_state = CURRENT_DIFFERENCE_1;
 						++m_deals_count;
 						counter = time(0);
@@ -286,25 +226,14 @@ namespace LMAX {
 					}
 
 					if (data.currentDifference2() >= m_diff_open) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct lmax_fix_field fields[] = {
-								LMAX_FIX_STRING_FIELD(lmax_ClOrdID, id),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityID, "4001"),
-								LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
-								LMAX_FIX_CHAR_FIELD(lmax_Side, '2'), // SELL
-								LMAX_FIX_STRING_FIELD(lmax_TransactTime, m_session->str_now),
-								LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, m_bid_lot_size),
-								LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
-						};
-
-						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Sell order %s FAILED\n", id);
+						struct lmax_fix_message *response = nullptr;
+						if (lmax_fix_session_new_order_single(m_session, '2', m_bid_lot_size, response)) {
+							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
 						};
-						fprintf(stdout, "Sell order %s OK\n", id);
+
+						fprintf(stdout, "Sell order OK\n");
 
 						m_open_state = CURRENT_DIFFERENCE_2;
 						++m_deals_count;
