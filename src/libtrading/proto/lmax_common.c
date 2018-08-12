@@ -413,7 +413,7 @@ int lmax_fix_session_marketdata_request(struct lmax_fix_session *session) {
 	return 0;
 }
 
-int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char direction, double lot_size,
+int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char direction, const double *lot_size,
                                       struct lmax_fix_message *response) {
 	char id[16];
 	sprintf(id, "%i", rand());
@@ -423,7 +423,7 @@ int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char dir
 			LMAX_FIX_STRING_FIELD(lmax_SecurityIDSource, "8"),
 			LMAX_FIX_CHAR_FIELD(lmax_Side, direction), // SELL
 			LMAX_FIX_STRING_FIELD(lmax_TransactTime, session->str_now),
-			LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, lot_size),
+			LMAX_FIX_FLOAT_FIELD(lmax_OrderQty, *lot_size),
 			LMAX_FIX_CHAR_FIELD(lmax_OrdType, '1') // Market
 	};
 
@@ -452,8 +452,6 @@ int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char dir
 		fprintf(stderr, "Order failed due to unexpected message\n");
 		return -1;
 	}
-
-
 
 	return 0;
 }

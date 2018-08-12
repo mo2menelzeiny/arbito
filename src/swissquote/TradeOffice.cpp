@@ -149,52 +149,28 @@ namespace SWISSQUOTE {
 			switch (m_open_state) {
 				case CURRENT_DIFFERENCE_1: {
 					if (data.currentDifference2() >= m_diff_close) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct swissquote_fix_field fields[] = {
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '2'), // SELL
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
-								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
-						};
-
-						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Sell order %s FAILED\n", id);
+						struct swissquote_fix_message *response = nullptr;
+						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, response)) {
+							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Sell order %s OK\n", id);
+						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
 						counter = time(0);
 						return false;
 					}
 
 					if (m_deals_count < MAX_DEALS && data.currentDifference1() >= m_diff_open) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct swissquote_fix_field fields[] = {
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '1'), // BUY
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
-								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
-						};
-
-						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Buy order %s FAILED\n", id);
+						struct swissquote_fix_message *response = nullptr;
+						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
+							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Buy order %s OK\n", id);
+						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
 						counter = time(0);
 						return false;
@@ -203,26 +179,14 @@ namespace SWISSQUOTE {
 					break;
 				case CURRENT_DIFFERENCE_2: {
 					if (data.currentDifference1() >= m_diff_close) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct swissquote_fix_field fields[] = {
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '2'), // SELL
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
-								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
-						};
-
-						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Sell order %s FAILED\n", id);
+						struct swissquote_fix_message *response = nullptr;
+						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, response)) {
+							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Sell order %s OK\n", id);
+						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -230,26 +194,14 @@ namespace SWISSQUOTE {
 					}
 
 					if (m_deals_count < MAX_DEALS && data.currentDifference2() >= m_diff_open) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct swissquote_fix_field fields[] = {
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '1'), // BUY
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
-								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
-						};
-
-						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Buy order %s FAILED\n", id);
+						struct swissquote_fix_message *response = nullptr;
+						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
+							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Buy order %s OK\n", id);
+						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -260,26 +212,14 @@ namespace SWISSQUOTE {
 
 				case NO_DEALS: {
 					if (data.currentDifference1() >= m_diff_open) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct swissquote_fix_field fields[] = {
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '1'), // BUY
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
-								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
-						};
-
-						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Buy order %s FAILED\n", id);
+						struct swissquote_fix_message *response = nullptr;
+						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
+							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Buy order %s OK\n", id);
+						fprintf(stdout, "Buy order OK\n");
 						m_open_state = CURRENT_DIFFERENCE_1;
 						++m_deals_count;
 						counter = time(0);
@@ -288,26 +228,14 @@ namespace SWISSQUOTE {
 					}
 
 					if (data.currentDifference2() >= m_diff_open) {
-						char id[16];
-						sprintf(id, "%i", rand());
-
-						struct swissquote_fix_field fields[] = {
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, '2'), // SELL
-								SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
-								SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_bid_lot_size),
-								SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
-						};
-
-						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
-							fprintf(stderr, "Sell order %s FAILED\n", id);
+						struct swissquote_fix_message *response = nullptr;
+						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, response)) {
+							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
 						};
 
-						fprintf(stdout, "Sell order %s OK\n", id);
+						fprintf(stdout, "Sell order OK\n");
 						m_open_state = CURRENT_DIFFERENCE_2;
 						++m_deals_count;
 						counter = time(0);
@@ -355,8 +283,8 @@ namespace SWISSQUOTE {
 				continue;
 			}
 
-			printf("TradeOffice:\n");
-			swissquote_fprintmsg(stdout, msg);
+			/*printf("TradeOffice:\n");
+			swissquote_fprintmsg(stdout, msg);*/
 
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:

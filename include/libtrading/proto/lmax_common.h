@@ -19,9 +19,6 @@ int lmax_fix_session_order_cancel_replace(struct lmax_fix_session *session, stru
 
 int lmax_fix_session_execution_report(struct lmax_fix_session *session, struct lmax_fix_field *fields, long nr_fields);
 
-int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char direction, double lot_size,
-                                      struct lmax_fix_message *response);
-
 int lmax_fix_session_resend_request(struct lmax_fix_session *session, unsigned long bgn, unsigned long end);
 
 int lmax_fix_session_reject(struct lmax_fix_session *session, unsigned long refseqnum, char *text);
@@ -39,6 +36,9 @@ int lmax_fix_session_test_request(struct lmax_fix_session *session);
 int lmax_fix_session_logon(struct lmax_fix_session *session);
 
 int lmax_fix_session_marketdata_request(struct lmax_fix_session *session);
+
+int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char direction, const double *lot_size,
+                                      struct lmax_fix_message *response);
 
 #ifdef __cplusplus
 }
