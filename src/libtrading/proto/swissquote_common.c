@@ -381,7 +381,7 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_MDEntryType, '1'),
 			SWISSQUOTE_FIX_INT_FIELD(swissquote_NoRelatedSym, 1),
 			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD"),
-			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityDesc, "4001")
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityDesc, "SQEU")
 	};
 
 	struct swissquote_fix_message request_msg = (struct swissquote_fix_message) {
@@ -443,6 +443,5 @@ int swissquote_fix_session_new_order_single(struct swissquote_fix_session *sessi
 	}
 
 	return 0;
-	// TODO: return execution report msg
 }
 

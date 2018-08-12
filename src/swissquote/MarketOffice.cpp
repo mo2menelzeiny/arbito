@@ -168,17 +168,16 @@ namespace SWISSQUOTE {
 	}
 
 	void MarketOffice::poll() {
-		MarketDataEvent messenger_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
 		MarketDataEvent broker_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
 		aeron::BusySpinIdleStrategy messengerIdleStrategy;
+		sbe::MessageHeader msgHeader;
+		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
 			// TODO: implement on the fly decode
 			// decode header
-			sbe::MessageHeader msgHeader;
 			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
 			// decode body
-			sbe::MarketData marketData;
 			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
 			                         MESSEGNER_BUFFER);
@@ -225,13 +224,16 @@ namespace SWISSQUOTE {
 				break;
 			}
 
-			// messenger subscription poller
+			// polls messages from aeron
 			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			struct swissquote_fix_message *msg = nullptr;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
 			}
+
+			printf("MarketOffice:\n");
+			swissquote_fprintmsg(stdout, msg);
 
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
@@ -264,6 +266,9 @@ namespace SWISSQUOTE {
 
 					continue;
 				}
+				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:
+					swissquote_fix_session_admin(m_session, msg);
+					continue;
 				default:
 					continue;
 			}

@@ -135,7 +135,7 @@ namespace LMAX {
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 
 			if (check_timeout && (time(0) - counter < timeout)) {
-				return true;
+				return false;
 			}
 			check_timeout = false;
 
@@ -163,13 +163,13 @@ namespace LMAX {
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Sell order %s OK\n", id);
 						--m_deals_count;
 						counter = time(0);
-						return true;
+						return false;
 					}
 
 					if (m_deals_count < MAX_DEALS && data.currentDifference1() >= m_diff_open) {
@@ -189,13 +189,13 @@ namespace LMAX {
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Buy order %s OK\n", id);
 						++m_deals_count;
 						counter = time(0);
-						return true;
+						return false;
 					}
 				}
 					break;
@@ -217,14 +217,14 @@ namespace LMAX {
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Sell order %s OK\n", id);
 						--m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return true;
+						return false;
 					}
 
 					if (m_deals_count < MAX_DEALS && data.currentDifference2() >= m_diff_open) {
@@ -244,14 +244,14 @@ namespace LMAX {
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Buy order %s OK\n", id);
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return true;
+						return false;
 					}
 				}
 					break;
@@ -274,7 +274,7 @@ namespace LMAX {
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Buy order %s OK\n", id);
@@ -282,7 +282,7 @@ namespace LMAX {
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return true;
+						return false;
 					}
 
 					if (data.currentDifference2() >= m_diff_open) {
@@ -302,7 +302,7 @@ namespace LMAX {
 						if (lmax_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 						fprintf(stdout, "Sell order %s OK\n", id);
 
@@ -310,13 +310,13 @@ namespace LMAX {
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return true;
+						return false;
 					}
 				}
 					break;
 			}
 
-			return true;
+			return false;
 
 		};
 
