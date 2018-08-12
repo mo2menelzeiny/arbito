@@ -189,16 +189,14 @@ namespace LMAX {
 							.bid = marketData.bid(),
 							.bid_qty = marketData.bidQty(),
 							.offer = marketData.offer(),
-							.offer_qty = marketData.offerQty(),
-							.timestamp = marketData.timestamp()
-					},
-					.timestamp = strdup(m_session->str_now)
+							.offer_qty = marketData.offerQty()
+					}
 			};
 			m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence);
 
 		});
 
-		struct timespec cur{}, prev{}, bench{};
+		struct timespec cur{}, prev{};
 		__time_t diff;
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
@@ -223,9 +221,7 @@ namespace LMAX {
 				break;
 			}
 
-			// messenger subscription poller
 			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
-
 
 			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
@@ -242,18 +238,12 @@ namespace LMAX {
 						continue;
 					}
 
-					// allocate timestamp
-					char timestamp_buffer[64];
-					lmax_fix_get_string(lmax_fix_get_field(msg, lmax_SendingTime), const_cast<char *>(timestamp_buffer),
-					                    64);
-
 					// allocate most recent prices
 					broker_market_data = (MarketDataEvent) {
 							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
 							.bid_qty = (lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value,
-							.timestamp = strdup(timestamp_buffer)
+							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value
 					};
 
 					// publish market data to broker disruptor

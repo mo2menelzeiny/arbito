@@ -117,4 +117,3 @@ void Recorder::recordArbitrage(ArbitrageDataEvent &event) {
 	mongoc_client_pool_push(m_pool, client);
 }
 
-
