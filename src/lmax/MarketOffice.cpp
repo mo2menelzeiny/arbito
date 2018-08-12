@@ -167,17 +167,16 @@ namespace LMAX {
 	}
 
 	void MarketOffice::poll() {
-		MarketDataEvent messenger_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
 		MarketDataEvent broker_market_data{.bid = -1.0, .bid_qty = -1.0, .offer = -1.0, .offer_qty = -1.0};
 		aeron::BusySpinIdleStrategy messengerIdleStrategy;
+		sbe::MessageHeader msgHeader;
+		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
 			// TODO: implement on the fly decode
 			// decode header
-			sbe::MessageHeader msgHeader;
 			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
 			// decode body
-			sbe::MarketData marketData;
 			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
 			                         MESSEGNER_BUFFER);
@@ -199,7 +198,7 @@ namespace LMAX {
 
 		});
 
-		struct timespec cur{}, prev{};
+		struct timespec cur{}, prev{}, bench{};
 		__time_t diff;
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
@@ -227,6 +226,7 @@ namespace LMAX {
 			// messenger subscription poller
 			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
+
 			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
@@ -244,8 +244,8 @@ namespace LMAX {
 
 					// allocate timestamp
 					char timestamp_buffer[64];
-					lmax_fix_get_string(lmax_fix_get_field(msg, lmax_SendingTime),
-					                          const_cast<char *>(timestamp_buffer), 64);
+					lmax_fix_get_string(lmax_fix_get_field(msg, lmax_SendingTime), const_cast<char *>(timestamp_buffer),
+					                    64);
 
 					// allocate most recent prices
 					broker_market_data = (MarketDataEvent) {
@@ -260,7 +260,6 @@ namespace LMAX {
 					auto next_sequence_1 = m_broker_market_data_disruptor->ringBuffer()->next();
 					(*m_broker_market_data_disruptor->ringBuffer())[next_sequence_1] = broker_market_data;
 					m_broker_market_data_disruptor->ringBuffer()->publish(next_sequence_1);
-
 					continue;
 				}
 				default:

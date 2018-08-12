@@ -94,7 +94,7 @@ int main() {
 				                                                          spread,
 				                                                          bid_lot_size,
 				                                                          offer_lot_size);
-				/*lmax_trade_office = std::make_shared<LMAX::TradeOffice>(recorder,
+				lmax_trade_office = std::make_shared<LMAX::TradeOffice>(recorder,
 				                                                        messenger,
 				                                                        arbitrage_data_disruptor,
 				                                                        to_host,
@@ -107,10 +107,10 @@ int main() {
 				                                                        diff_open,
 				                                                        diff_close,
 				                                                        bid_lot_size,
-				                                                        offer_lot_size);*/
+				                                                        offer_lot_size);
 			}
 				lmax_market_office->start();
-				// lmax_trade_office->start();
+				lmax_trade_office->start();
 				break;
 
 			case 2: {
@@ -132,7 +132,7 @@ int main() {
 				                                                                      spread,
 				                                                                      bid_lot_size,
 				                                                                      offer_lot_size);
-				/*swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
+				swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
 				                                                                    messenger,
 				                                                                    arbitrage_data_disruptor,
 				                                                                    to_host,
@@ -145,10 +145,10 @@ int main() {
 				                                                                    diff_open,
 				                                                                    diff_close,
 				                                                                    bid_lot_size,
-				                                                                    offer_lot_size);*/
+				                                                                    offer_lot_size);
 			}
 				swissquote_market_office->start();
-				// swissquote_trade_office->start();
+				swissquote_trade_office->start();
 				break;
 
 			default:
@@ -165,13 +165,13 @@ int main() {
 		auto arbitrage_recorder_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence,
 		                                      bool endOfBatch) -> bool {
 			recorder->recordArbitrage(data);
-			return true;
+			return false;
 		};
 
 		recorder->recordSystem("Main: all OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		while (true) {
-			arbitrage_recorder_poller->poll(arbitrage_recorder_handler);
+			/*arbitrage_recorder_poller->poll(arbitrage_recorder_handler);*/
 			std::this_thread::sleep_for(std::chrono::microseconds(100));
 		}
 

@@ -137,7 +137,7 @@ namespace SWISSQUOTE {
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 
 			if (check_timeout && (time(0) - counter < timeout)) {
-				return true;
+				return false;
 			}
 			check_timeout = false;
 
@@ -165,13 +165,13 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Sell order %s OK\n", id);
 						--m_deals_count;
 						counter = time(0);
-						return true;
+						return false;
 					}
 
 					if (m_deals_count < MAX_DEALS && data.currentDifference1() >= m_diff_open) {
@@ -191,13 +191,13 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Buy order %s OK\n", id);
 						++m_deals_count;
 						counter = time(0);
-						return true;
+						return false;
 					}
 				}
 					break;
@@ -219,14 +219,14 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Sell order %s OK\n", id);
 						--m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return true;
+						return false;
 					}
 
 					if (m_deals_count < MAX_DEALS && data.currentDifference2() >= m_diff_open) {
@@ -246,14 +246,14 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Buy order %s OK\n", id);
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return true;
+						return false;
 					}
 				}
 					break;
@@ -276,7 +276,7 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Buy order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Buy order %s OK\n", id);
@@ -284,7 +284,7 @@ namespace SWISSQUOTE {
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return true;
+						return false;
 					}
 
 					if (data.currentDifference2() >= m_diff_open) {
@@ -304,7 +304,7 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, fields, ARRAY_SIZE(fields))) {
 							fprintf(stderr, "Sell order %s FAILED\n", id);
 							counter = time(0);
-							return true;
+							return false;
 						};
 
 						fprintf(stdout, "Sell order %s OK\n", id);
@@ -312,13 +312,13 @@ namespace SWISSQUOTE {
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return true;
+						return false;
 					}
 				}
 					break;
 			}
 
-			return true;
+			return false;
 
 		};
 
@@ -347,15 +347,24 @@ namespace SWISSQUOTE {
 				break;
 			}
 
+			// polls the events from the arbitrage data disrubtor
+			arbitrage_data_poller->poll(arbitrage_data_handler);
+
 			struct swissquote_fix_message *msg = nullptr;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
 			}
 
-			/*printf("TradeOffice:\n");
-			swissquote_fprintmsg(stdout, msg);*/
+			printf("TradeOffice:\n");
+			swissquote_fprintmsg(stdout, msg);
 
-			arbitrage_data_poller->poll(arbitrage_data_handler);
+			switch (msg->type) {
+				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:
+					swissquote_fix_session_admin(m_session, msg);
+					continue;
+				default:
+					continue;
+			}
 		}
 
 		// Reconnection condition
