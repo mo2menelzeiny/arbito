@@ -190,10 +190,8 @@ namespace SWISSQUOTE {
 							.bid = marketData.bid(),
 							.bid_qty = marketData.bidQty(),
 							.offer = marketData.offer(),
-							.offer_qty = marketData.offerQty(),
-							.timestamp = marketData.timestamp()
-					},
-					.timestamp = strdup(m_session->str_now)
+							.offer_qty = marketData.offerQty()
+					}
 			};
 			m_arbitrage_data_disruptor->ringBuffer()->publish(next_sequence);
 
@@ -224,7 +222,6 @@ namespace SWISSQUOTE {
 				break;
 			}
 
-			// polls messages from aeron
 			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			struct swissquote_fix_message *msg = nullptr;
@@ -232,8 +229,8 @@ namespace SWISSQUOTE {
 				continue;
 			}
 
-			printf("MarketOffice:\n");
-			swissquote_fprintmsg(stdout, msg);
+			/*printf("MarketOffice:\n");
+			swissquote_fprintmsg(stdout, msg);*/
 
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
@@ -245,18 +242,12 @@ namespace SWISSQUOTE {
 						continue;
 					}
 
-					// allocate timestamp
-					char timestamp_buffer[64];
-					swissquote_fix_get_string(swissquote_fix_get_field(msg, swissquote_SendingTime),
-					                          (timestamp_buffer), 64);
-
 					// allocate most recent prices
 					broker_market_data = (MarketDataEvent) {
 							.bid = swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0),
 							.bid_qty = (swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)),
 							.offer = swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value,
-							.offer_qty = swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value,
-							.timestamp = strdup(timestamp_buffer)
+							.offer_qty = swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value
 					};
 
 					// publish market data to broker disruptor
