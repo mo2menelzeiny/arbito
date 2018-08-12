@@ -412,12 +412,23 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 	return 0;
 }
 
-int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, struct swissquote_fix_field *fields,
-                                            long nr_fields) {
-	struct swissquote_fix_message *response;
+int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, char direction, const double *lot_size,
+		struct swissquote_fix_message *response) {
+	char id[16];
+	sprintf(id, "%i", rand());
+	struct swissquote_fix_field fields[] = {
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
+			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, direction), // SELL
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, session->str_now),
+			SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, *lot_size),
+			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
+			// TODO: add account tag1
+	};
 	struct swissquote_fix_message order_msg = (struct swissquote_fix_message) {
 			.type = SWISSQUOTE_FIX_MSG_TYPE_NEW_ORDER_SINGLE,
-			.nr_fields = nr_fields,
+			.nr_fields = ARRAY_SIZE(fields),
 			.fields = fields
 	};
 
