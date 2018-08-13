@@ -235,7 +235,7 @@ namespace SWISSQUOTE {
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
 					// Filter market data based on spread, bid lot size and offer lot size
-					if (m_spread > (swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value -
+					if (m_spread < (swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value -
 					                swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0))
 					    || m_bid_lot_size > swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)
 					    || m_offer_lot_size > swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value) {

@@ -2,8 +2,8 @@
 #ifndef ARBITO_LMAX_TRADEOFFICE_H
 #define ARBITO_LMAX_TRADEOFFICE_H
 
-#define MAX_DEALS 5
-#define DELAY_SECONDS 60
+#define LMAX_MAX_DEALS 5
+#define LMAX_DELAY_SECONDS 60
 
 // C includes
 #include <netinet/tcp.h>
