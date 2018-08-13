@@ -21,7 +21,7 @@ int swissquote_fix_session_execution_report(struct swissquote_fix_session *sessi
                                             long nr_fields);
 
 int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, char direction,
-                                            const double *lot_size, struct swissquote_fix_message *response);
+                                            const double *lot_size, struct swissquote_fix_message **response);
 
 int swissquote_fix_session_resend_request(struct swissquote_fix_session *session, unsigned long bgn, unsigned long end);
 

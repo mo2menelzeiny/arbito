@@ -414,7 +414,7 @@ int lmax_fix_session_marketdata_request(struct lmax_fix_session *session) {
 }
 
 int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char direction, const double *lot_size,
-                                      struct lmax_fix_message *response) {
+                                      struct lmax_fix_message **response) {
 	char id[16];
 	sprintf(id, "%i", rand());
 	struct lmax_fix_field fields[] = {
@@ -437,18 +437,18 @@ int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char dir
 	session->active = true;
 
 	retry:
-	if (lmax_fix_session_recv(session, &response, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+	if (lmax_fix_session_recv(session, response, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
 		goto retry;
 
-	if (!lmax_fix_msg_expected(session, response)) {
-		if (lmax_fix_do_unexpected(session, response)) {
+	if (!lmax_fix_msg_expected(session, *response)) {
+		if (lmax_fix_do_unexpected(session, *response)) {
 			fprintf(stderr, "Order failed due to unexpected sequence number\n");
 			return -1;
 		}
 		goto retry;
 	}
 
-	if (!lmax_fix_message_type_is(response, LMAX_FIX_MSG_TYPE_EXECUTION_REPORT)) {
+	if (!lmax_fix_message_type_is(*response, LMAX_FIX_MSG_TYPE_EXECUTION_REPORT)) {
 		fprintf(stderr, "Order failed due to unexpected message\n");
 		return -1;
 	}

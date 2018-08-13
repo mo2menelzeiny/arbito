@@ -31,7 +31,7 @@ public:
 	Recorder(const char *uri_string, int broker_num);
 	void recordSystem(const char *message, SystemRecordType type);
 	void recordArbitrage(ArbitrageDataEvent &event);
-	void recordOrder();
+	void recordOrder(double *broker_price, double *trigger_price, OrderRecordType type);
 
 private:
 	int ping();
