@@ -379,8 +379,7 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_MDEntryType, '0'),
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_MDEntryType, '1'),
 			SWISSQUOTE_FIX_INT_FIELD(swissquote_NoRelatedSym, 1),
-			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD"),
-			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityDesc, "SQEU")
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD")
 	};
 
 	struct swissquote_fix_message request_msg = (struct swissquote_fix_message) {
@@ -418,13 +417,13 @@ int swissquote_fix_session_new_order_single(struct swissquote_fix_session *sessi
 	sprintf(id, "%i", rand());
 	struct swissquote_fix_field fields[] = {
 			SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
-			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityID, "4001"),
-			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityIDSource, "8"),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Account, "1467275"),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD"),
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, direction), // SELL
 			SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, session->str_now),
 			SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, *lot_size),
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
-			// TODO: add account tag1
+
 	};
 	struct swissquote_fix_message order_msg = (struct swissquote_fix_message) {
 			.type = SWISSQUOTE_FIX_MSG_TYPE_NEW_ORDER_SINGLE,
@@ -447,9 +446,13 @@ int swissquote_fix_session_new_order_single(struct swissquote_fix_session *sessi
 		goto retry;
 	}
 
+	if(swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST)) {
+		swissquote_fix_session_admin(session, response);
+		goto retry;
+	}
+
 	if (!swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT)) {
-		fprintf(stderr, "Order failed due to unexpected message\n");
-		return -1;
+		goto retry;
 	}
 
 	return 0;
