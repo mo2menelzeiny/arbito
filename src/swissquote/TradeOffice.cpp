@@ -132,7 +132,7 @@ namespace SWISSQUOTE {
 	void TradeOffice::poll() {
 		bool check_timeout = false;
 		time_t counter = time(0);
-		time_t timeout = DELAY_SECONDS;
+		time_t timeout = SWISSQUOTE_DELAY_SECONDS;
 		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 
@@ -163,7 +163,7 @@ namespace SWISSQUOTE {
 						return false;
 					}
 
-					if (m_deals_count < MAX_DEALS && data.currentDifference1() >= m_diff_open) {
+					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.currentDifference1() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
 							fprintf(stderr, "Buy order FAILED\n");
@@ -195,7 +195,7 @@ namespace SWISSQUOTE {
 						return false;
 					}
 
-					if (m_deals_count < MAX_DEALS && data.currentDifference2() >= m_diff_open) {
+					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.currentDifference2() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
 							fprintf(stderr, "Buy order FAILED\n");

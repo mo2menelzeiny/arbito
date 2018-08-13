@@ -231,7 +231,7 @@ namespace LMAX {
 			switch (msg->type) {
 				case LMAX_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
 					// Filter market data based on spread, bid lot size and offer lot size
-					if (m_spread > (lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value -
+					if (m_spread < (lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value -
 					                lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
 					    || m_bid_lot_size > lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)
 					    || m_offer_lot_size > lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value) {

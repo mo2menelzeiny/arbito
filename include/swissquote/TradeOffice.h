@@ -2,8 +2,8 @@
 #ifndef ARBITO_SWISSQUOTE_TRADEOFFICE_H
 #define ARBITO_SWISSQUOTE_TRADEOFFICE_H
 
-#define MAX_DEALS 5
-#define DELAY_SECONDS 60
+#define SWISSQUOTE_MAX_DEALS 5
+#define SWISSQUOTE_DELAY_SECONDS 60
 
 // C includes
 #include <netinet/tcp.h>

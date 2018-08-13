@@ -130,7 +130,7 @@ namespace LMAX {
 	void TradeOffice::poll() {
 		bool check_timeout = false;
 		time_t counter = time(0);
-		time_t timeout = DELAY_SECONDS;
+		time_t timeout = LMAX_DELAY_SECONDS;
 		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 
@@ -161,7 +161,7 @@ namespace LMAX {
 						return false;
 					}
 
-					if (data.currentDifference1() >= m_diff_open && m_deals_count < MAX_DEALS) {
+					if (data.currentDifference1() >= m_diff_open && m_deals_count < LMAX_MAX_DEALS) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
 							fprintf(stderr, "Buy order FAILED\n");
@@ -193,7 +193,7 @@ namespace LMAX {
 						return false;
 					}
 
-					if (data.currentDifference2() >= m_diff_open && m_deals_count < MAX_DEALS) {
+					if (data.currentDifference2() >= m_diff_open && m_deals_count < LMAX_MAX_DEALS) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
 							fprintf(stderr, "Buy order FAILED\n");
