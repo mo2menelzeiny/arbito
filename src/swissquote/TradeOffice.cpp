@@ -159,6 +159,7 @@ namespace SWISSQUOTE {
 						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
 						counter = time(0);
+						check_timeout = true;
 						return false;
 					}
 
@@ -173,6 +174,7 @@ namespace SWISSQUOTE {
 						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
 						counter = time(0);
+						check_timeout = true;
 						return false;
 					}
 				}
