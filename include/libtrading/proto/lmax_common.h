@@ -38,7 +38,7 @@ int lmax_fix_session_logon(struct lmax_fix_session *session);
 int lmax_fix_session_marketdata_request(struct lmax_fix_session *session);
 
 int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char direction, const double *lot_size,
-                                      struct lmax_fix_message *response);
+                                      struct lmax_fix_message **response);
 
 #ifdef __cplusplus
 }

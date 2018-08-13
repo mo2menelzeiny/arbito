@@ -411,8 +411,9 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 	return 0;
 }
 
-int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, char direction, const double *lot_size,
-		struct swissquote_fix_message *response) {
+int swissquote_fix_session_new_order_single(struct swissquote_fix_session *session, char direction,
+                                            const double *lot_size,
+                                            struct swissquote_fix_message **response) {
 	char id[16];
 	sprintf(id, "%i", rand());
 	struct swissquote_fix_field fields[] = {
@@ -435,23 +436,23 @@ int swissquote_fix_session_new_order_single(struct swissquote_fix_session *sessi
 	session->active = true;
 
 	retry:
-	if (swissquote_fix_session_recv(session, &response, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
+	if (swissquote_fix_session_recv(session, response, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0)
 		goto retry;
 
-	if (!swissquote_fix_msg_expected(session, response)) {
-		if (swissquote_fix_do_unexpected(session, response)) {
+	if (!swissquote_fix_msg_expected(session, *response)) {
+		if (swissquote_fix_do_unexpected(session, *response)) {
 			fprintf(stderr, "Order failed due to unexpected sequence number\n");
 			return -1;
 		}
 		goto retry;
 	}
 
-	if(swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST)) {
-		swissquote_fix_session_admin(session, response);
+	if(swissquote_fix_message_type_is(*response, SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST)) {
+		swissquote_fix_session_admin(session, *response);
 		goto retry;
 	}
 
-	if (!swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT)) {
+	if (!swissquote_fix_message_type_is(*response, SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT)) {
 		goto retry;
 	}
 

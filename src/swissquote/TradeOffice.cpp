@@ -150,11 +150,14 @@ namespace SWISSQUOTE {
 				case CURRENT_DIFFERENCE_1: {
 					if (data.currentDifference2() >= m_diff_close) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
 						};
+
+						m_recorder->recordOrder(&swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						&data.l1.bid, ORDER_RECORD_TYPE_SELL);
 
 						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
@@ -165,11 +168,14 @@ namespace SWISSQUOTE {
 
 					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.currentDifference1() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
+
+						m_recorder->recordOrder(&swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						                        &data.l1.offer, ORDER_RECORD_TYPE_BUY);
 
 						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
@@ -182,11 +188,14 @@ namespace SWISSQUOTE {
 				case CURRENT_DIFFERENCE_2: {
 					if (data.currentDifference1() >= m_diff_close) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
 						};
+
+						m_recorder->recordOrder(&swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						                        &data.l1.bid, ORDER_RECORD_TYPE_SELL);
 
 						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
@@ -197,11 +206,14 @@ namespace SWISSQUOTE {
 
 					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.currentDifference2() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
+
+						m_recorder->recordOrder(&swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						                        &data.l1.offer, ORDER_RECORD_TYPE_BUY);
 
 						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
@@ -215,11 +227,14 @@ namespace SWISSQUOTE {
 				case NO_DEALS: {
 					if (data.currentDifference1() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
+
+						m_recorder->recordOrder(&swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						                        &data.l1.offer, ORDER_RECORD_TYPE_BUY);
 
 						fprintf(stdout, "Buy order OK\n");
 						m_open_state = CURRENT_DIFFERENCE_1;
@@ -231,11 +246,14 @@ namespace SWISSQUOTE {
 
 					if (data.currentDifference2() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
 						};
+
+						m_recorder->recordOrder(&swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						                        &data.l1.bid, ORDER_RECORD_TYPE_SELL);
 
 						fprintf(stdout, "Sell order OK\n");
 						m_open_state = CURRENT_DIFFERENCE_2;
