@@ -117,7 +117,8 @@ void Recorder::recordArbitrage(ArbitrageDataEvent &event) {
 	mongoc_client_pool_push(m_pool, client);
 }
 
-void Recorder::recordOrder(double *broker_price, double *trigger_price, OrderRecordType type) {
+void Recorder::recordOrder(double broker_price, double trigger_price, OrderRecordType order_type, double trigger_diff,
+                           OrderTriggerType trigger_type, OrderRecordState order_state) {
 	bson_error_t error;
 	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
 	mongoc_collection_t *coll_system = mongoc_client_get_collection(client, "db_arbito", "coll_orders");
@@ -125,15 +126,34 @@ void Recorder::recordOrder(double *broker_price, double *trigger_price, OrderRec
 	bson_t *insert = BCON_NEW (
 			"broker_name", BCON_UTF8(m_broker_name),
 			"created_at", BCON_DATE_TIME(milliseconds_since_epoch),
-			"slippage", BCON_DOUBLE(*broker_price - *trigger_price)
+			"slippage", BCON_DOUBLE(broker_price - trigger_price),
+			"trigger_diff", BCON_DOUBLE(trigger_diff)
 	);
 
-	switch (type) {
+	switch (order_type) {
 		case ORDER_RECORD_TYPE_BUY:
 			BSON_APPEND_UTF8(insert, "order_type", "BUY");
 			break;
 		case ORDER_RECORD_TYPE_SELL:
 			BSON_APPEND_UTF8(insert, "order_type", "SELL");
+			break;
+	}
+
+	switch (order_state) {
+		case ORDER_RECORD_STATE_OPEN:
+			BSON_APPEND_UTF8(insert, "order_state", "OPEN");
+			break;
+		case ORDER_RECORD_STATE_CLOSE:
+			BSON_APPEND_UTF8(insert, "order_state", "CLOSE");
+			break;
+	}
+
+	switch (trigger_type) {
+		case ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2:
+			BSON_APPEND_UTF8(insert, "order_trigger", "offer1 - bid2");
+			break;
+		case ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1:
+			BSON_APPEND_UTF8(insert, "order_trigger", "offer2 - bid1");
 			break;
 	}
 

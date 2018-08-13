@@ -146,7 +146,7 @@ namespace LMAX {
 			// current difference 2 -> offer2 - bid1
 			switch (m_open_state) {
 				case CURRENT_DIFFERENCE_1: {
-					if (data.currentDifference2() >= m_diff_close) {
+					if (data.offer2_minus_bid1() >= m_diff_close) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
@@ -161,7 +161,7 @@ namespace LMAX {
 						return false;
 					}
 
-					if (data.currentDifference1() >= m_diff_open && m_deals_count < LMAX_MAX_DEALS) {
+					if (data.offer1_minus_bid2() >= m_diff_open && m_deals_count < LMAX_MAX_DEALS) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
@@ -178,7 +178,7 @@ namespace LMAX {
 				}
 					break;
 				case CURRENT_DIFFERENCE_2: {
-					if (data.currentDifference1() >= m_diff_close) {
+					if (data.offer1_minus_bid2() >= m_diff_close) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
@@ -193,7 +193,7 @@ namespace LMAX {
 						return false;
 					}
 
-					if (data.currentDifference2() >= m_diff_open && m_deals_count < LMAX_MAX_DEALS) {
+					if (data.offer2_minus_bid1() >= m_diff_open && m_deals_count < LMAX_MAX_DEALS) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
@@ -211,7 +211,7 @@ namespace LMAX {
 					break;
 
 				case NO_DEALS: {
-					if (data.currentDifference1() >= m_diff_open) {
+					if (data.offer1_minus_bid2() >= m_diff_open) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
@@ -227,7 +227,7 @@ namespace LMAX {
 						return false;
 					}
 
-					if (data.currentDifference2() >= m_diff_open) {
+					if (data.offer2_minus_bid1() >= m_diff_open) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");

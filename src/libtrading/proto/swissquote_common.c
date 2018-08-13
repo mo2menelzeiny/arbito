@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <swissquote/Utilities.h>
 
 bool swissquote_fix_session_keepalive(struct swissquote_fix_session *session, struct timespec *now) {
 	int diff;
@@ -379,7 +380,8 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_MDEntryType, '0'),
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_MDEntryType, '1'),
 			SWISSQUOTE_FIX_INT_FIELD(swissquote_NoRelatedSym, 1),
-			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD")
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD"),
+			SWISSQUOTE_FIX_STRING_FIELD(swissquote_SecurityDesc, "SQEU")
 	};
 
 	struct swissquote_fix_message request_msg = (struct swissquote_fix_message) {
@@ -403,6 +405,11 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 		goto retry;
 	}
 
+	if(swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST)) {
+		swissquote_fix_session_admin(session, response);
+		goto retry;
+	}
+
 	if (swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_REQUEST_REJECT)) {
 		fprintf(stderr, "Market data request rejected\n");
 		return -1;
@@ -418,7 +425,6 @@ int swissquote_fix_session_new_order_single(struct swissquote_fix_session *sessi
 	sprintf(id, "%i", rand());
 	struct swissquote_fix_field fields[] = {
 			SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
-			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Account, "1467275"),
 			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD"),
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, direction), // SELL
 			SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, session->str_now),
