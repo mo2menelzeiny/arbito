@@ -147,7 +147,7 @@ namespace SWISSQUOTE {
 			// current difference 1 -> offer1 - bid2
 			// current difference 2 -> offer2 - bid1
 			switch (m_open_state) {
-				case OFFER1_MINUS_BID2: {
+				case CURRENT_DIFF_1: {
 
 					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.offer1_minus_bid2() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
@@ -159,7 +159,7 @@ namespace SWISSQUOTE {
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
-						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_OPEN);
+						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_OPEN);
 
 						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
@@ -178,7 +178,7 @@ namespace SWISSQUOTE {
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
-						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_CLOSE);
+						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
 
 						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
@@ -189,7 +189,7 @@ namespace SWISSQUOTE {
 				}
 					break;
 
-				case OFFER2_MINUS_BID1: {
+				case CURRENT_DIFF_2: {
 
 					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.offer2_minus_bid1() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
@@ -201,7 +201,7 @@ namespace SWISSQUOTE {
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
-						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_OPEN);
+						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_OPEN);
 
 						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
@@ -220,7 +220,7 @@ namespace SWISSQUOTE {
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
-						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_CLOSE);
+						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_CLOSE);
 
 						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
@@ -242,10 +242,10 @@ namespace SWISSQUOTE {
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
-						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_INIT);
+						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_INIT);
 
 						fprintf(stdout, "Buy order OK\n");
-						m_open_state = OFFER1_MINUS_BID2;
+						m_open_state = CURRENT_DIFF_1;
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -262,10 +262,10 @@ namespace SWISSQUOTE {
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
-						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_INIT);
+						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
 
 						fprintf(stdout, "Sell order OK\n");
-						m_open_state = OFFER2_MINUS_BID1;
+						m_open_state = CURRENT_DIFF_2;
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
