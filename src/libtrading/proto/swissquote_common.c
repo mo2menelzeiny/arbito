@@ -462,6 +462,12 @@ int swissquote_fix_session_new_order_single(struct swissquote_fix_session *sessi
 		goto retry;
 	}
 
+	if (swissquote_fix_message_type_is(*response, SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT)) {
+		if (swissquote_fix_get_field(*response, swissquote_ExecType)->string_value[0] != '2'){
+			goto retry;
+		}
+	}
+
 	return 0;
 }
 

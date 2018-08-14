@@ -62,8 +62,8 @@ namespace LMAX {
 
 	enum MarketState {
 		NO_DEALS = 0,
-		CURRENT_DIFFERENCE_1 = 1,
-		CURRENT_DIFFERENCE_2 = 2
+		OFFER1_MINUS_BID2 = 1,
+		OFFER2_MINUS_BID1 = 2
 	};
 
 	class TradeOffice {

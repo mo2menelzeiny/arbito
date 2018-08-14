@@ -144,20 +144,20 @@ namespace SWISSQUOTE {
 
 		// Session login
 		if (swissquote_fix_session_logon(m_session)) {
-			fprintf(stderr, "Client Logon FAILED\n");
+			fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
 			m_recorder->recordSystem("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
-		fprintf(stdout, "Client Logon OK\n");
+		fprintf(stdout, "MarketOffice: Client Logon OK\n");
 		m_recorder->recordSystem("MarketOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// Market data request
 		if (swissquote_fix_session_marketdata_request(m_session)) {
-			fprintf(stderr, "market data request FAILED\n");
+			fprintf(stderr, "MarketOffice: market data request FAILED\n");
 			m_recorder->recordSystem("MarketOffice: market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
-		fprintf(stdout, "Market data request OK\n");
+		fprintf(stdout, "MarketOffice: Market data request OK\n");
 		m_recorder->recordSystem("MarketOffice: market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// Polling thread loop
