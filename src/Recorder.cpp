@@ -152,11 +152,11 @@ void Recorder::recordOrder(double broker_price, double trigger_price, OrderRecor
 	}
 
 	switch (trigger_type) {
-		case ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2:
-			BSON_APPEND_UTF8(insert, "order_trigger", "offer1 - bid2");
+		case ORDER_TRIGGER_TYPE_CURRENT_DIFF_2:
+			BSON_APPEND_UTF8(insert, "order_trigger", "CURRENT DIFF 2");
 			break;
-		case ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1:
-			BSON_APPEND_UTF8(insert, "order_trigger", "offer2 - bid1");
+		case ORDER_TRIGGER_TYPE_CURRENT_DIFF_1:
+			BSON_APPEND_UTF8(insert, "order_trigger", "CURRENT DIFF 1");
 			break;
 	}
 
