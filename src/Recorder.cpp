@@ -126,15 +126,16 @@ void Recorder::recordOrder(double broker_price, double trigger_price, OrderRecor
 	bson_t *insert = BCON_NEW (
 			"broker_name", BCON_UTF8(m_broker_name),
 			"created_at", BCON_DATE_TIME(milliseconds_since_epoch),
-			"slippage", BCON_DOUBLE(broker_price - trigger_price),
 			"trigger_diff", BCON_DOUBLE(trigger_diff)
 	);
 
 	switch (order_type) {
 		case ORDER_RECORD_TYPE_BUY:
+			BSON_APPEND_DOUBLE(insert, "slippage", trigger_price - broker_price);
 			BSON_APPEND_UTF8(insert, "order_type", "BUY");
 			break;
 		case ORDER_RECORD_TYPE_SELL:
+			BSON_APPEND_DOUBLE(insert, "slippage", - broker_price - trigger_price);
 			BSON_APPEND_UTF8(insert, "order_type", "SELL");
 			break;
 	}
