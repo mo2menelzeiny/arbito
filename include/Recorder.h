@@ -23,7 +23,9 @@ enum OrderRecordType {
 
 enum OrderRecordState {
 	ORDER_RECORD_STATE_OPEN = 0,
-	ORDER_RECORD_STATE_CLOSE = 1
+	ORDER_RECORD_STATE_CLOSE = 1,
+	ORDER_RECORD_STATE_INIT = 2
+
 };
 
 enum OrderTriggerType {

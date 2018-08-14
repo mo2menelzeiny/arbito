@@ -147,6 +147,8 @@ void Recorder::recordOrder(double broker_price, double trigger_price, OrderRecor
 		case ORDER_RECORD_STATE_CLOSE:
 			BSON_APPEND_UTF8(insert, "order_state", "CLOSE");
 			break;
+		case ORDER_RECORD_STATE_INIT:
+			BSON_APPEND_UTF8(insert, "order_state", "INITIAL OPEN");
 	}
 
 	switch (trigger_type) {
