@@ -145,7 +145,7 @@ namespace LMAX {
 			// current difference 1 -> offer1 - bid2
 			// current difference 2 -> offer2 - bid1
 			switch (m_open_state) {
-				case CURRENT_DIFFERENCE_1: {
+				case OFFER1_MINUS_BID2: {
 					if (data.offer2_minus_bid1() >= m_diff_close) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
@@ -154,6 +154,10 @@ namespace LMAX {
 							return false;
 						};
 
+						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
+						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_CLOSE);
+
 						fprintf(stdout, "Sell order OK\n");
 						--m_deals_count;
 						counter = time(0);
@@ -161,13 +165,17 @@ namespace LMAX {
 						return false;
 					}
 
-					if (data.offer1_minus_bid2() >= m_diff_open && m_deals_count < LMAX_MAX_DEALS) {
+					if (m_deals_count < LMAX_MAX_DEALS && data.offer1_minus_bid2() >= m_diff_open) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
 						};
+
+						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
+						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_OPEN);
 
 						fprintf(stdout, "Buy order OK\n");
 						++m_deals_count;
@@ -177,23 +185,8 @@ namespace LMAX {
 					}
 				}
 					break;
-				case CURRENT_DIFFERENCE_2: {
+				case OFFER2_MINUS_BID1: {
 					if (data.offer1_minus_bid2() >= m_diff_close) {
-						struct lmax_fix_message *response = nullptr;
-						if (lmax_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
-							fprintf(stderr, "Sell order FAILED\n");
-							counter = time(0);
-							return false;
-						};
-
-						fprintf(stdout, "Sell order OK\n");
-						--m_deals_count;
-						counter = time(0);
-						check_timeout = true;
-						return false;
-					}
-
-					if (data.offer2_minus_bid1() >= m_diff_open && m_deals_count < LMAX_MAX_DEALS) {
 						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
@@ -201,7 +194,31 @@ namespace LMAX {
 							return false;
 						};
 
+
+						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
+						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_CLOSE);
+
 						fprintf(stdout, "Buy order OK\n");
+						--m_deals_count;
+						counter = time(0);
+						check_timeout = true;
+						return false;
+					}
+
+					if (m_deals_count < LMAX_MAX_DEALS && data.offer2_minus_bid1() >= m_diff_open) {
+						struct lmax_fix_message *response = nullptr;
+						if (lmax_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
+							fprintf(stderr, "Sell order FAILED\n");
+							counter = time(0);
+							return false;
+						};
+
+						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
+						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_OPEN);
+
+						fprintf(stdout, "Sell order OK\n");
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -219,8 +236,12 @@ namespace LMAX {
 							return false;
 						};
 
+						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
+						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_OPEN);
+
 						fprintf(stdout, "Buy order OK\n");
-						m_open_state = CURRENT_DIFFERENCE_1;
+						m_open_state = OFFER1_MINUS_BID2;
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
@@ -235,9 +256,13 @@ namespace LMAX {
 							return false;
 						};
 
+						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
+						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_OPEN);
+
 						fprintf(stdout, "Sell order OK\n");
 
-						m_open_state = CURRENT_DIFFERENCE_2;
+						m_open_state = OFFER2_MINUS_BID1;
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;

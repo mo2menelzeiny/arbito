@@ -115,11 +115,11 @@ namespace SWISSQUOTE {
 
 		// Session login
 		if (swissquote_fix_session_logon(m_session)) {
-			fprintf(stderr, "Client Logon FAILED\n");
+			fprintf(stderr, "TradeOffice: Client Logon FAILED\n");
 			m_recorder->recordSystem("TradeOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
-		fprintf(stdout, "Client Logon OK\n");
+		fprintf(stdout, "TradeOffice: Client Logon OK\n");
 		m_recorder->recordSystem("TradeOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		// Polling thread loop
@@ -156,7 +156,7 @@ namespace SWISSQUOTE {
 							return false;
 						};
 
-						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
 						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_CLOSE);
 
@@ -175,7 +175,7 @@ namespace SWISSQUOTE {
 							return false;
 						};
 
-						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
 						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_OPEN);
 
@@ -196,7 +196,7 @@ namespace SWISSQUOTE {
 							return false;
 						};
 
-						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
 						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_CLOSE);
 
@@ -215,7 +215,7 @@ namespace SWISSQUOTE {
 							return false;
 						};
 
-						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
 						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_OPEN);
 
@@ -237,7 +237,7 @@ namespace SWISSQUOTE {
 							return false;
 						};
 
-						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
 						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_OPEN);
 
@@ -257,7 +257,7 @@ namespace SWISSQUOTE {
 							return false;
 						};
 
-						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_Price)->float_value,
+						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
 						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_OPEN);
 
@@ -315,8 +315,6 @@ namespace SWISSQUOTE {
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:
 					swissquote_fix_session_admin(m_session, msg);
-					continue;
-				case SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT:
 					continue;
 				default:
 					continue;

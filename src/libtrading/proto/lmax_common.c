@@ -449,8 +449,13 @@ int lmax_fix_session_new_order_single(struct lmax_fix_session *session, char dir
 	}
 
 	if (!lmax_fix_message_type_is(*response, LMAX_FIX_MSG_TYPE_EXECUTION_REPORT)) {
-		fprintf(stderr, "Order failed due to unexpected message\n");
-		return -1;
+		goto retry;
+	}
+
+	if (lmax_fix_message_type_is(*response, LMAX_FIX_MSG_TYPE_EXECUTION_REPORT)) {
+		if (lmax_fix_get_field(*response, lmax_ExecType)->string_value[0] != 'F') {
+			goto retry;
+		}
 	}
 
 	return 0;
