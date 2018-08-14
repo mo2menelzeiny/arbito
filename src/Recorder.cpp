@@ -135,7 +135,7 @@ void Recorder::recordOrder(double broker_price, double trigger_price, OrderRecor
 			BSON_APPEND_UTF8(insert, "order_type", "BUY");
 			break;
 		case ORDER_RECORD_TYPE_SELL:
-			BSON_APPEND_DOUBLE(insert, "slippage", - broker_price - trigger_price);
+			BSON_APPEND_DOUBLE(insert, "slippage", broker_price - trigger_price);
 			BSON_APPEND_UTF8(insert, "order_type", "SELL");
 			break;
 	}
