@@ -240,7 +240,7 @@ namespace LMAX {
 
 						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
-						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_OPEN);
+						                        ORDER_TRIGGER_TYPE_OFFER1_MINUS_BID2, ORDER_RECORD_STATE_INIT);
 
 						fprintf(stdout, "Buy order OK\n");
 						m_open_state = OFFER1_MINUS_BID2;
@@ -260,7 +260,7 @@ namespace LMAX {
 
 						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
-						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_OPEN);
+						                        ORDER_TRIGGER_TYPE_OFFER2_MINUS_BID1, ORDER_RECORD_STATE_INIT);
 
 						fprintf(stdout, "Sell order OK\n");
 
