@@ -426,7 +426,7 @@ int swissquote_fix_session_new_order_single(struct swissquote_fix_session *sessi
 	struct swissquote_fix_field fields[] = {
 			SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
 			SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD"),
-			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, direction), // SELL
+			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, direction),
 			SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, session->str_now),
 			SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, *lot_size),
 			SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market
