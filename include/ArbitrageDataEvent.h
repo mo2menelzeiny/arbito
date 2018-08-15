@@ -8,12 +8,12 @@ struct ArbitrageDataEvent {
 	MarketDataEvent l1, l2;
 	const char *timestamp;
 
-	double offer1_minus_bid2() {
-		return l1.offer - l2.bid;
+	double bid1_minus_offer2() {
+		return l1.bid - l2.offer;
 	};
 
-	double offer2_minus_bid1() {
-		return l2.offer - l1.bid;
+	double bid2_minus_offer1() {
+		return l2.bid - l1.offer;
 	}
 
 };
