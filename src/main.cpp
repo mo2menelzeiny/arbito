@@ -43,10 +43,11 @@ int main() {
 		int heartbeat = atoi(getenv("HEARTBEAT"));
 		int broker = atoi(getenv("BROKER"));
 		const char *uri_string = getenv("MONGO_URI");
+		const char *db_name = getenv("MONGO_DB");
 
 		fprintf(stdout, "Main: System starting..\n");
 
-		auto recorder = std::make_shared<Recorder>(uri_string, broker);
+		auto recorder = std::make_shared<Recorder>(uri_string, broker, db_name);
 
 		recorder->recordSystem("Main: initialize OK", SYSTEM_RECORD_TYPE_SUCCESS);
 

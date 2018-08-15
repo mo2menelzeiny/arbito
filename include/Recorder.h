@@ -35,7 +35,7 @@ enum OrderTriggerType {
 
 class Recorder {
 public:
-	Recorder(const char *uri_string, int broker_num);
+	Recorder(const char *uri_string, int broker_num, const char *db_name);
 
 	void recordSystem(const char *message, SystemRecordType type);
 
@@ -51,6 +51,7 @@ private:
 	mongoc_uri_t *m_uri;
 	mongoc_client_pool_t *m_pool;
 	const char *m_broker_name;
+	const char *m_db_name;
 };
 
 
