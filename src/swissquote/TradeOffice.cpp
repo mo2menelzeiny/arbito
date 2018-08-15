@@ -135,7 +135,6 @@ namespace SWISSQUOTE {
 		time_t timeout = SWISSQUOTE_DELAY_SECONDS;
 		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-
 			if (check_timeout && (time(0) - counter < timeout)) {
 				return false;
 			}
