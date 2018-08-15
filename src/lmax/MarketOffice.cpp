@@ -167,7 +167,7 @@ namespace LMAX {
 	}
 
 	void MarketOffice::poll() {
-		MarketDataEvent broker_market_data{.bid = 99.0, .bid_qty = 0, .offer = -99.0, .offer_qty = 0};
+		MarketDataEvent broker_market_data{.bid = -99.0, .bid_qty = 0, .offer = 99.0, .offer_qty = 0};
 		aeron::BusySpinIdleStrategy messengerIdleStrategy;
 		sbe::MessageHeader msgHeader;
 		sbe::MarketData marketData;
