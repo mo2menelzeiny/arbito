@@ -242,7 +242,7 @@ namespace SWISSQUOTE {
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.offer1_minus_bid2(),
-						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_INIT);
+						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
 
 						fprintf(stdout, "Buy order OK\n");
 						m_open_state = CURRENT_DIFF_1;
@@ -262,7 +262,7 @@ namespace SWISSQUOTE {
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
 						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.offer2_minus_bid1(),
-						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
+						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_INIT);
 
 						fprintf(stdout, "Sell order OK\n");
 						m_open_state = CURRENT_DIFF_2;
