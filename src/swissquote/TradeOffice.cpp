@@ -204,7 +204,7 @@ namespace SWISSQUOTE {
 						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_OPEN);
 
 						fprintf(stdout, "Buy order OK\n");
-						--m_deals_count;
+						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
 						return false;
@@ -223,7 +223,7 @@ namespace SWISSQUOTE {
 						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
 
 						fprintf(stdout, "Sell order OK\n");
-						++m_deals_count;
+						--m_deals_count;
 						counter = time(0);
 						check_timeout = true;
 						return false;
