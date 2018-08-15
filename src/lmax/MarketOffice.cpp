@@ -29,7 +29,7 @@ namespace LMAX {
 		initMessengerChannel();
 		initBrokerClient();
 		// broker market data disruptor handler
-		m_broker_market_data_handler = std::make_shared<BrokerMarketDataHandler>(m_messenger_pub);
+		m_broker_market_data_handler = std::make_shared<BrokerMarketDataHandler>(m_messenger_pub, m_recorder);
 		m_broker_market_data_disruptor->handleEventsWith(m_broker_market_data_handler);
 	}
 
@@ -54,7 +54,7 @@ namespace LMAX {
 		}
 		printf("MarketOffice: subscription found!\n");
 
-		while(m_messenger_sub->imageCount() < 0) {
+		while(m_messenger_sub->imageCount()) {
 			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
 		}
 
@@ -177,6 +177,7 @@ namespace LMAX {
 		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
+			m_recorder->recordSystem("Test: Price received", SYSTEM_RECORD_TYPE_SUCCESS);
 			// TODO: implement on the fly decode
 			// decode header
 			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
