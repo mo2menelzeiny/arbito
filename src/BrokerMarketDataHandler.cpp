@@ -1,6 +1,10 @@
 
 #include "BrokerMarketDataHandler.h"
 
+BrokerMarketDataHandler::BrokerMarketDataHandler(const std::shared_ptr<aeron::Publication> &messenger_pub)
+		: m_messenger_pub(messenger_pub) {
+}
+
 void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) {
 	sbe::MessageHeader m_msg_header;
 	m_msg_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, PUB_BUFFER_SIZE)
@@ -24,6 +28,3 @@ void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequen
 		result = m_messenger_pub->offer(srcBuffer, 0, len);
 	} while (result < 0UL);
 }
-
-BrokerMarketDataHandler::BrokerMarketDataHandler(const std::shared_ptr<aeron::Publication> &messenger_pub)
-		: m_messenger_pub(messenger_pub) {}
