@@ -54,6 +54,10 @@ namespace LMAX {
 		}
 		printf("MarketOffice: subscription found!\n");
 
+		while(m_messenger_sub->imageCount() < 0) {
+			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
+		}
+
 		m_recorder->recordSystem("MarketOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
