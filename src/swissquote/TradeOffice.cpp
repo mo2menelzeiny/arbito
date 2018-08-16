@@ -8,12 +8,10 @@ namespace SWISSQUOTE {
 	                         const char *m_host, int m_port, const char *username, const char *password,
 	                         const char *sender_comp_id,
 	                         const char *target_comp_id, int heartbeat, double diff_open, double diff_close,
-	                         double bid_lot_size,
-	                         double offer_lot_size)
+	                         double lot_size)
 			: m_recorder(recorder), m_messenger(messenger), m_arbitrage_data_disruptor(arbitrage_data_disruptor),
 			  m_host(m_host),
-			  m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close), m_bid_lot_size(bid_lot_size),
-			  m_offer_lot_size(offer_lot_size) {
+			  m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close), m_lot_size(lot_size) {
 		// Session configurations
 		swissquote_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &swissquote_fix_dialects[SWISSQUOTE_FIX_4_4];
@@ -150,7 +148,7 @@ namespace SWISSQUOTE {
 
 					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.bid1_minus_offer2() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
@@ -169,7 +167,7 @@ namespace SWISSQUOTE {
 
 					if (data.bid2_minus_offer1() >= m_diff_close) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
@@ -192,7 +190,7 @@ namespace SWISSQUOTE {
 
 					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.bid2_minus_offer1() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;
@@ -211,7 +209,7 @@ namespace SWISSQUOTE {
 
 					if (data.bid1_minus_offer2() >= m_diff_close) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
@@ -233,7 +231,7 @@ namespace SWISSQUOTE {
 				case NO_DEALS: {
 					if (data.bid1_minus_offer2() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '2', &m_bid_lot_size, &response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
 							return false;
@@ -253,7 +251,7 @@ namespace SWISSQUOTE {
 
 					if (data.bid2_minus_offer1() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
-						if (swissquote_fix_session_new_order_single(m_session, '1', &m_offer_lot_size, &response)) {
+						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
 							return false;

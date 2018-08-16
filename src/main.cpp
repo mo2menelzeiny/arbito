@@ -21,8 +21,7 @@ int main() {
 
 	try {
 		double spread = atof(getenv("SPREAD"));
-		double offer_lot_size = atof(getenv("OFFER_LOT_SIZE"));
-		double bid_lot_size = atof(getenv("BID_LOT_SIZE"));
+		double lot_size = atof(getenv("LOT_SIZE"));
 		double diff_open = atof(getenv("DIFF_OPEN"));
 		double diff_close = atof(getenv("DIFF_CLOSE"));
 		const char *pub_channel = getenv("PUB_CHANNEL");
@@ -95,8 +94,7 @@ int main() {
 				                                                          sub_channel,
 				                                                          sub_stream_id,
 				                                                          spread,
-				                                                          bid_lot_size,
-				                                                          offer_lot_size);
+				                                                          lot_size);
 				lmax_trade_office = std::make_shared<LMAX::TradeOffice>(recorder,
 				                                                        messenger,
 				                                                        arbitrage_data_disruptor,
@@ -109,11 +107,10 @@ int main() {
 				                                                        heartbeat,
 				                                                        diff_open,
 				                                                        diff_close,
-				                                                        bid_lot_size,
-				                                                        offer_lot_size);
+				                                                        lot_size);
 			}
-				lmax_market_office->start();
 				lmax_trade_office->start();
+				lmax_market_office->start();
 				break;
 
 			case 2: {
@@ -133,8 +130,7 @@ int main() {
 				                                                                      sub_channel,
 				                                                                      sub_stream_id,
 				                                                                      spread,
-				                                                                      bid_lot_size,
-				                                                                      offer_lot_size);
+				                                                                      lot_size);
 				swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
 				                                                                    messenger,
 				                                                                    arbitrage_data_disruptor,
@@ -147,11 +143,10 @@ int main() {
 				                                                                    heartbeat,
 				                                                                    diff_open,
 				                                                                    diff_close,
-				                                                                    bid_lot_size,
-				                                                                    offer_lot_size);
+				                                                                    lot_size);
 			}
-				swissquote_market_office->start();
 				swissquote_trade_office->start();
+				swissquote_market_office->start();
 				break;
 
 			default:
