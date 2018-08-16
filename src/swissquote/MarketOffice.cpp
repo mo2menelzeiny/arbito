@@ -55,7 +55,7 @@ namespace SWISSQUOTE {
 		}
 		printf("MarketOffice: Subscription found\n");
 
-		while(m_messenger_sub->imageCount()) {
+		while(!m_messenger_sub->imageCount()) {
 			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
 		}
 

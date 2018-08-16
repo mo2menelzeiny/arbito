@@ -54,7 +54,7 @@ namespace LMAX {
 		}
 		printf("MarketOffice: subscription found!\n");
 
-		while(m_messenger_sub->imageCount()) {
+		while(!m_messenger_sub->imageCount()) {
 			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
 		}
 
