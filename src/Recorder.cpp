@@ -60,7 +60,7 @@ void Recorder::recordSystem(const char *message, SystemRecordType type) {
 	auto milliseconds_since_epoch = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
 	bson_error_t error;
 	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-	mongoc_collection_t *coll_system = mongoc_client_get_collection(client, m_db_name, "coll_system");
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_system");
 	bson_t *insert = BCON_NEW (
 			"broker_name", BCON_UTF8(m_broker_name),
 			"message", BCON_UTF8(message),
@@ -76,11 +76,12 @@ void Recorder::recordSystem(const char *message, SystemRecordType type) {
 			break;
 	}
 
-	if (!mongoc_collection_insert_one(coll_system, insert, NULL, NULL, &error)) {
+	if (!mongoc_collection_insert_one(collection, insert, NULL, NULL, &error)) {
 		fprintf(stderr, "Recorder: %s\n", error.message);
 	}
 
 	bson_destroy(insert);
+	mongoc_collection_destroy(collection);
 	mongoc_client_pool_push(m_pool, client);
 }
 
@@ -88,7 +89,7 @@ void Recorder::recordArbitrage(ArbitrageDataEvent &event) {
 	auto milliseconds_since_epoch = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
 	bson_error_t error;
 	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-	mongoc_collection_t *coll_system = mongoc_client_get_collection(client, m_db_name, "coll_arbitrage");
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_arbitrage");
 	bson_t *insert = BCON_NEW (
 			"broker_name", BCON_UTF8(m_broker_name),
 			"created_at", BCON_DATE_TIME(milliseconds_since_epoch),
@@ -109,11 +110,12 @@ void Recorder::recordArbitrage(ArbitrageDataEvent &event) {
 			"}"
 	);
 
-	if (!mongoc_collection_insert_one(coll_system, insert, NULL, NULL, &error)) {
+	if (!mongoc_collection_insert_one(collection, insert, NULL, NULL, &error)) {
 		fprintf(stderr, "Recorder: %s\n", error.message);
 	}
 
 	bson_destroy(insert);
+	mongoc_collection_destroy(collection);
 	mongoc_client_pool_push(m_pool, client);
 }
 
@@ -122,7 +124,7 @@ void Recorder::recordOrder(double broker_price, double trigger_price, OrderRecor
 	auto milliseconds_since_epoch = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
 	bson_error_t error;
 	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-	mongoc_collection_t *coll_system = mongoc_client_get_collection(client, m_db_name, "coll_orders");
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_orders");
 	bson_t *insert = BCON_NEW (
 			"broker_name", BCON_UTF8(m_broker_name),
 			"created_at", BCON_DATE_TIME(milliseconds_since_epoch),
@@ -160,10 +162,11 @@ void Recorder::recordOrder(double broker_price, double trigger_price, OrderRecor
 			break;
 	}
 
-	if (!mongoc_collection_insert_one(coll_system, insert, NULL, NULL, &error)) {
+	if (!mongoc_collection_insert_one(collection, insert, NULL, NULL, &error)) {
 		fprintf(stderr, "Recorder: %s\n", error.message);
 	}
 
 	bson_destroy(insert);
+	mongoc_collection_destroy(collection);
 	mongoc_client_pool_push(m_pool, client);
 }
