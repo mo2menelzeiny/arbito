@@ -51,19 +51,21 @@ int main() {
 
 		recorder->recordSystem("Main: initialize OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
-		auto task_scheduler = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
+		auto task_scheduler_1 = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
 
 		auto broker_market_data_disruptor = std::make_shared<Disruptor::disruptor<MarketDataEvent>>(
 				[]() { return MarketDataEvent(); },
 				1024,
-				task_scheduler,
+				task_scheduler_1,
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
+		auto task_scheduler_2 = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
 
 		auto arbitrage_data_disruptor = std::make_shared<Disruptor::disruptor<ArbitrageDataEvent>>(
 				[]() { return ArbitrageDataEvent(); },
 				1024,
-				task_scheduler,
+				task_scheduler_2,
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
@@ -157,8 +159,9 @@ int main() {
 				return EXIT_FAILURE;
 		}
 
-		task_scheduler->start();
+		task_scheduler_1->start();
 		broker_market_data_disruptor->start();
+		task_scheduler_2->start();
 		arbitrage_data_disruptor->start();
 
 		recorder->recordSystem("Main: all OK", SYSTEM_RECORD_TYPE_SUCCESS);
