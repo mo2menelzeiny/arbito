@@ -28,7 +28,7 @@ namespace SWISSQUOTE {
 		initMessengerChannel();
 		initBrokerClient();
 		// broker market data disruptor handler
-		m_broker_market_data_handler = std::make_shared<BrokerMarketDataHandler>(m_messenger_pub, m_recorder);
+		m_broker_market_data_handler = std::make_shared<BrokerMarketDataHandler>(m_messenger_pub);
 		m_broker_market_data_disruptor->handleEventsWith(m_broker_market_data_handler);
 	}
 
