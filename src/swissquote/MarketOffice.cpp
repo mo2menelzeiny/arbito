@@ -178,7 +178,6 @@ namespace SWISSQUOTE {
 		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
-			m_recorder->recordSystem("Test: Price received", SYSTEM_RECORD_TYPE_SUCCESS);
 			// TODO: implement on the fly decode
 			// decode header
 			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
@@ -209,8 +208,6 @@ namespace SWISSQUOTE {
 
 		while (m_session->active) {
 
-			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
-
 			clock_gettime(CLOCK_MONOTONIC, &cur);
 
 			diff = (cur.tv_sec - prev.tv_sec);
@@ -229,6 +226,7 @@ namespace SWISSQUOTE {
 				break;
 			}
 
+			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			struct swissquote_fix_message *msg = nullptr;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
