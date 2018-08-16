@@ -20,29 +20,30 @@
 int main() {
 
 	try {
-		double spread = atof(getenv("SPREAD"));
-		double lot_size = atof(getenv("LOT_SIZE"));
-		double diff_open = atof(getenv("DIFF_OPEN"));
-		double diff_close = atof(getenv("DIFF_CLOSE"));
-		const char *pub_channel = getenv("PUB_CHANNEL");
-		int pub_stream_id = atoi(getenv("PUB_STREAM_ID"));
-		const char *sub_channel = getenv("SUB_CHANNEL");
-		int sub_stream_id = atoi(getenv("SUB_STREAM_ID"));
-		const char *mo_host = getenv("MO_HOST");
-		const char *mo_username = getenv("MO_USERNAME");
-		const char *mo_password = getenv("MO_PASSWORD");
-		const char *mo_sender = getenv("MO_SENDER");
-		const char *mo_receiver = getenv("MO_RECEIVER");
-		const char *to_host = getenv("TO_HOST");
-		const char *to_username = getenv("TO_USERNAME");
-		const char *to_password = getenv("TO_PASSWORD");
-		const char *to_sender = getenv("TO_SENDER");
-		const char *to_receiver = getenv("TO_RECEIVER");
-		int port = atoi(getenv("PORT"));
-		int heartbeat = atoi(getenv("HEARTBEAT"));
-		int broker = atoi(getenv("BROKER"));
-		const char *uri_string = getenv("MONGO_URI");
-		const char *db_name = getenv("MONGO_DB");
+		double spread = getenv("SPREAD") ? atof(getenv("SPREAD")) : 0.0001;
+		double lot_size = getenv("LOT_SIZE") ? atof(getenv("LOT_SIZE")) : 1.0;
+		double diff_open = getenv("DIFF_OPEN") ? atof(getenv("DIFF_OPEN")) : -1.0;
+		double diff_close = getenv("DIFF_CLOSE") ? atof(getenv("DIFF_CLOSE")) : -1.0;
+		const char *pub_channel = getenv("PUB_CHANNEL") ? getenv("PUB_CHANNEL") : "aeron:udp?endpoint=localhost:50501";
+		int pub_stream_id = getenv("PUB_STREAM_ID") ? atoi(getenv("PUB_STREAM_ID")) : 51;
+		const char *sub_channel = getenv("SUB_CHANNEL") ? getenv("SUB_CHANNEL") : "aeron:udp?endpoint=0.0.0.0:50501";
+		int sub_stream_id = getenv("SUB_STREAM_ID") ? atoi(getenv("SUB_STREAM_ID")) : 51;
+		const char *mo_host = getenv("MO_HOST") ? getenv("MO_HOST") : "fix-marketdata.london-demo.lmax.com";
+		const char *mo_username = getenv("MO_USERNAME") ? getenv("MO_USERNAME") : "AhmedDEMO";
+		const char *mo_password = getenv("MO_PASSWORD") ? getenv("MO_PASSWORD") : "password1";
+		const char *mo_sender = getenv("MO_SENDER") ? getenv("MO_SENDER") : "AhmedDEMO";
+		const char *mo_receiver = getenv("MO_RECEIVER") ? getenv("MO_RECEIVER") : "LMXBDM";
+		const char *to_host = getenv("TO_HOST") ? getenv("TO_HOST") : "fix-order.london-demo.lmax.com";
+		const char *to_username = getenv("TO_USERNAME") ? getenv("TO_USERNAME") : "AhmedDEMO";
+		const char *to_password = getenv("TO_PASSWORD") ? getenv("TO_PASSWORD") : "password1";
+		const char *to_sender = getenv("TO_SENDER") ? getenv("TO_SENDER") : "AhmedDEMO";
+		const char *to_receiver = getenv("TO_RECEIVER") ? getenv("TO_RECEIVER") : "LMXBD";
+		int port = getenv("PORT") ? atoi(getenv("PORT")) : 443;
+		int heartbeat = getenv("HEARTBEAT") ? atoi(getenv("HEARTBEAT")) : 30;
+		int broker = getenv("BROKER") ? atoi(getenv("BROKER")) : 1;
+		const char *uri_string = getenv("MONGO_URI")
+				? getenv("MONGO_URI") : "mongodb://arbito:mlab_6852@ds123012.mlab.com:23012/db_arbito_local";
+		const char *db_name = getenv("MONGO_DB") ? getenv("MONGO_DB") : "db_arbito_local";
 
 		fprintf(stdout, "Main: System starting..\n");
 
