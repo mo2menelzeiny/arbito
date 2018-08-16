@@ -209,6 +209,8 @@ namespace SWISSQUOTE {
 
 		while (m_session->active) {
 
+			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
+
 			clock_gettime(CLOCK_MONOTONIC, &cur);
 
 			diff = (cur.tv_sec - prev.tv_sec);
@@ -227,7 +229,6 @@ namespace SWISSQUOTE {
 				break;
 			}
 
-			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			struct swissquote_fix_message *msg = nullptr;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
