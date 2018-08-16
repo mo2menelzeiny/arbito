@@ -20,15 +20,13 @@
 
 struct BrokerMarketDataHandler : public Disruptor::IEventHandler<MarketDataEvent> {
 
-	explicit BrokerMarketDataHandler(const std::shared_ptr<aeron::Publication> &messenger_pub,
-	                                 const std::shared_ptr<Recorder> &recorder);
+	explicit BrokerMarketDataHandler(const std::shared_ptr<aeron::Publication> &messenger_pub);
 
 	void onEvent(MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) override;
 
 private:
 	std::shared_ptr<aeron::Publication> m_messenger_pub;
 	uint8_t m_buffer[PUB_BUFFER_SIZE];
-	std::shared_ptr<Recorder> m_recorder;
 	sbe::MessageHeader m_msg_header;
 	sbe::MarketData m_market_data;
 };

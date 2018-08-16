@@ -1,9 +1,8 @@
 
 #include "BrokerMarketDataHandler.h"
 
-BrokerMarketDataHandler::BrokerMarketDataHandler(const std::shared_ptr<aeron::Publication> &messenger_pub,
-                                                 const std::shared_ptr<Recorder> &recorder)
-		: m_messenger_pub(messenger_pub), m_recorder(recorder) {
+BrokerMarketDataHandler::BrokerMarketDataHandler(const std::shared_ptr<aeron::Publication> &messenger_pub)
+		: m_messenger_pub(messenger_pub) {
 }
 
 void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) {
