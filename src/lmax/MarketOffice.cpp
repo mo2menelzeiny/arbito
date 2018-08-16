@@ -208,6 +208,8 @@ namespace LMAX {
 
 		while (m_session->active) {
 
+			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
+
 			clock_gettime(CLOCK_MONOTONIC, &cur);
 
 			diff = (cur.tv_sec - prev.tv_sec);
@@ -226,7 +228,6 @@ namespace LMAX {
 				break;
 			}
 
-			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
