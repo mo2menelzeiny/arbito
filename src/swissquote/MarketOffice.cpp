@@ -7,14 +7,13 @@ namespace SWISSQUOTE {
 	                           const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
 	                           const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
 	                           const char *m_host, int m_port, const char *username, const char *password,
-	                           const char *sender_comp_id, const char *target_comp_id, int heartbeat,
-	                           const char *pub_channel, int pub_stream_id, const char *sub_channel, int sub_stream_id,
-	                           double spread, double bid_lot_size, double offer_lot_size)
+	                           const char *sender_comp_id,
+	                           const char *target_comp_id, int heartbeat, const char *pub_channel, int pub_stream_id,
+	                           const char *sub_channel, int sub_stream_id, double spread, double lot_size)
 			: m_recorder(recorder), m_messenger(messenger),
 			  m_broker_market_data_disruptor(broker_market_data_disruptor),
 			  m_arbitrage_data_disruptor(arbitrage_data_disruptor), m_host(m_host), m_port(m_port), m_spread(spread),
-			  m_bid_lot_size(bid_lot_size), m_offer_lot_size(offer_lot_size),
-			  m_messenger_config{pub_channel, pub_stream_id, sub_channel, sub_stream_id} {
+			  m_lot_size(lot_size), m_messenger_config{pub_channel, pub_stream_id, sub_channel, sub_stream_id} {
 		// Session configurations
 		swissquote_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &swissquote_fix_dialects[SWISSQUOTE_FIX_4_4];
@@ -237,8 +236,8 @@ namespace SWISSQUOTE {
 					// Filter market data based on spread, bid lot size and offer lot size
 					if (m_spread < (swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value -
 					                swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0))
-					    || m_bid_lot_size > swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)
-					    || m_offer_lot_size > swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value) {
+					    || m_lot_size > swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)
+					    || m_lot_size > swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value) {
 						continue;
 					}
 

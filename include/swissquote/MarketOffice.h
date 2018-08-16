@@ -70,8 +70,7 @@ namespace SWISSQUOTE {
 		             const char *m_host, int m_port, const char *username, const char *password,
 		             const char *sender_comp_id,
 		             const char *target_comp_id, int heartbeat, const char *pub_channel, int pub_stream_id,
-		             const char *sub_channel, int sub_stream_id, double spread, double bid_lot_size,
-		             double offer_lot_size);
+		             const char *sub_channel, int sub_stream_id, double spread, double lot_size);
 
 		void start();
 
@@ -84,8 +83,7 @@ namespace SWISSQUOTE {
 		void poll();
 
 	private:
-		double m_bid_lot_size;
-		double m_offer_lot_size;
+		double m_lot_size;
 		double m_spread;
 		int m_port;
 		const char *m_host;

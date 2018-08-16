@@ -65,13 +65,12 @@ namespace LMAX {
 
 	public:
 		MarketOffice(const std::shared_ptr<Recorder> &recorder, const std::shared_ptr<Messenger> &messenger,
-		             const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
-		             const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
-		             const char *m_host, int m_port, const char *username, const char *password,
-		             const char *sender_comp_id,
-		             const char *target_comp_id, int heartbeat, const char *pub_channel, int pub_stream_id,
-		             const char *sub_channel, int sub_stream_id, double spread, double bid_lot_size,
-		             double offer_lot_size);
+				             const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
+				             const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
+				             const char *m_host, int m_port, const char *username, const char *password,
+				             const char *sender_comp_id, const char *target_comp_id, int heartbeat,
+				             const char *pub_channel, int pub_stream_id, const char *sub_channel, int sub_stream_id,
+				             double spread, double lot_size);
 
 		void start();
 
@@ -84,8 +83,7 @@ namespace LMAX {
 		void poll();
 
 	private:
-		double m_bid_lot_size;
-		double m_offer_lot_size;
+		double m_lot_size;
 		double m_spread;
 		int m_port;
 		const char *m_host;
