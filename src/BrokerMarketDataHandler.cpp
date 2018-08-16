@@ -25,8 +25,7 @@ void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequen
 	std::int64_t result, timeout = 0;
 	do {
 		result = m_messenger_pub->offer(srcBuffer, 0, len);
-		++timeout;
-	} while (result < 0L || timeout < 100);
+	} while (result < -1); // exclude aeron::NOT_CONNECTED
 
 	if (result > 0L) m_recorder->recordSystem("Test: Price sent", SYSTEM_RECORD_TYPE_SUCCESS);
 }
