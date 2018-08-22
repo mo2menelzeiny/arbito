@@ -4,12 +4,12 @@
 namespace SWISSQUOTE {
 
 	TradeOffice::TradeOffice(const std::shared_ptr<Recorder> &recorder, const std::shared_ptr<Messenger> &messenger,
-	                         const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
+	                         const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
 	                         const char *m_host, int m_port, const char *username, const char *password,
 	                         const char *sender_comp_id,
 	                         const char *target_comp_id, int heartbeat, double diff_open, double diff_close,
 	                         double lot_size)
-			: m_recorder(recorder), m_messenger(messenger), m_arbitrage_data_disruptor(arbitrage_data_disruptor),
+			: m_recorder(recorder), m_messenger(messenger), m_arbitrage_data_ringbuffer(arbitrage_data_ringbuffer),
 			  m_host(m_host),
 			  m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close), m_lot_size(lot_size) {
 		// Session configurations
@@ -131,11 +131,11 @@ namespace SWISSQUOTE {
 		bool check_timeout = false;
 		time_t counter = time(0);
 		time_t timeout = SWISSQUOTE_DELAY_SECONDS;
-		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
-		m_arbitrage_data_disruptor->ringBuffer()->addGatingSequences({arbitrage_data_poller->sequence()});
+		auto arbitrage_data_poller = m_arbitrage_data_ringbuffer->newPoller();
+		m_arbitrage_data_ringbuffer->addGatingSequences({arbitrage_data_poller->sequence()});
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 			if (check_timeout && (time(0) - counter < timeout)) {
-				return false;
+				return true;
 			}
 			check_timeout = false;
 
@@ -152,7 +152,7 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
-							return false;
+							return true;
 						};
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
@@ -163,7 +163,7 @@ namespace SWISSQUOTE {
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return false;
+						return true;
 					}
 
 					if (data.bid2_minus_offer1() >= m_diff_close) {
@@ -171,7 +171,7 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
-							return false;
+							return true;
 						};
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
@@ -182,7 +182,7 @@ namespace SWISSQUOTE {
 						--m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return false;
+						return true;
 					}
 				}
 					break;
@@ -194,7 +194,7 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
-							return false;
+							return true;
 						};
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
@@ -205,7 +205,7 @@ namespace SWISSQUOTE {
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return false;
+						return true;
 					}
 
 					if (data.bid1_minus_offer2() >= m_diff_close) {
@@ -213,7 +213,7 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
-							return false;
+							return true;
 						};
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
@@ -224,7 +224,7 @@ namespace SWISSQUOTE {
 						--m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return false;
+						return true;
 					}
 				}
 					break;
@@ -235,7 +235,7 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
 							counter = time(0);
-							return false;
+							return true;
 						};
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
@@ -247,7 +247,7 @@ namespace SWISSQUOTE {
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return false;
+						return true;
 					}
 
 					if (data.bid2_minus_offer1() >= m_diff_open) {
@@ -255,7 +255,7 @@ namespace SWISSQUOTE {
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
 							counter = time(0);
-							return false;
+							return true;
 						};
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
@@ -267,13 +267,13 @@ namespace SWISSQUOTE {
 						++m_deals_count;
 						counter = time(0);
 						check_timeout = true;
-						return false;
+						return true;
 					}
 				}
 					break;
 			}
 
-			return false;
+			return true;
 
 		};
 

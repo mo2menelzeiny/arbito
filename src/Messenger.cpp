@@ -26,9 +26,9 @@ void Messenger::mediaDriver() {
 		goto cleanup;
 	}
 
-	loop:
-	aeron_driver_main_idle_strategy(driver, aeron_driver_main_do_work(driver));
-	goto loop;
+	while (true) {
+		aeron_driver_main_idle_strategy(driver, aeron_driver_main_do_work(driver));
+	}
 
 	cleanup:
 	aeron_driver_close(driver);
