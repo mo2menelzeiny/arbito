@@ -21,7 +21,7 @@ void BrokerMarketDataHandler::onEvent(MarketDataEvent &data, std::int64_t sequen
 	aeron::index_t len = m_msg_header.encodedLength() + m_market_data.encodedLength();
 	aeron::concurrent::AtomicBuffer srcBuffer(m_buffer, PUB_BUFFER_SIZE);
 	srcBuffer.putBytes(0, reinterpret_cast<const uint8_t *>(m_buffer), len);
-	std::int64_t result, timeout = 0;
+	std::int64_t result;
 	do {
 		result = m_messenger_pub->offer(srcBuffer, 0, len);
 	} while (result < -1); // exclude aeron::NOT_CONNECTED

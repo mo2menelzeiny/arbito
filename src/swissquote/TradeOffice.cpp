@@ -132,6 +132,7 @@ namespace SWISSQUOTE {
 		time_t counter = time(0);
 		time_t timeout = SWISSQUOTE_DELAY_SECONDS;
 		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
+		m_arbitrage_data_disruptor->ringBuffer()->addGatingSequences({arbitrage_data_poller->sequence()});
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 			if (check_timeout && (time(0) - counter < timeout)) {
 				return false;
@@ -308,9 +309,6 @@ namespace SWISSQUOTE {
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
 			}
-
-			/*printf("TradeOffice:\n");
-			swissquote_fprintmsg(stdout, msg);*/
 
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:

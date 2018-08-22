@@ -127,6 +127,7 @@ namespace LMAX {
 		time_t counter = time(0);
 		time_t timeout = LMAX_DELAY_SECONDS;
 		auto arbitrage_data_poller = m_arbitrage_data_disruptor->ringBuffer()->newPoller();
+		m_arbitrage_data_disruptor->ringBuffer()->addGatingSequences({arbitrage_data_poller->sequence()});
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 			if (check_timeout && (time(0) - counter < timeout)) {
 				return false;
@@ -296,12 +297,13 @@ namespace LMAX {
 				break;
 			}
 
+			arbitrage_data_poller->poll(arbitrage_data_handler);
+
 			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
 			}
 
-			arbitrage_data_poller->poll(arbitrage_data_handler);
 		}
 
 		// Reconnection condition
