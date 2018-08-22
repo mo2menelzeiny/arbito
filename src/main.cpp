@@ -10,7 +10,7 @@
 
 // Disruptor
 #include "Disruptor/Disruptor.h"
-#include "Disruptor/ThreadPerTaskScheduler.h"
+#include "Disruptor/RoundRobinThreadAffinedTaskScheduler.h"
 #include "Disruptor/BusySpinWaitStrategy.h"
 #include "Disruptor/SleepingWaitStrategy.h"
 
@@ -42,7 +42,8 @@ int main() {
 		int heartbeat = getenv("HEARTBEAT") ? atoi(getenv("HEARTBEAT")) : 30;
 		int broker = getenv("BROKER") ? atoi(getenv("BROKER")) : 1;
 		const char *uri_string = getenv("MONGO_URI")
-				? getenv("MONGO_URI") : "mongodb://arbito:mlab_6852@ds123012.mlab.com:23012/db_arbito_local";
+		                         ? getenv("MONGO_URI")
+		                         : "mongodb://arbito:mlab_6852@ds123012.mlab.com:23012/db_arbito_local";
 		const char *db_name = getenv("MONGO_DB") ? getenv("MONGO_DB") : "db_arbito_local";
 
 		fprintf(stdout, "Main: System starting..\n");
@@ -51,21 +52,19 @@ int main() {
 
 		recorder->recordSystem("Main: initialize OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
-		auto task_scheduler_1 = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
+		auto task_scheduler = std::make_shared<Disruptor::RoundRobinThreadAffinedTaskScheduler>();
 
 		auto broker_market_data_disruptor = std::make_shared<Disruptor::disruptor<MarketDataEvent>>(
 				[]() { return MarketDataEvent(); },
-				1024,
-				task_scheduler_1,
+				16,
+				task_scheduler,
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-		auto task_scheduler_2 = std::make_shared<Disruptor::ThreadPerTaskScheduler>();
-
 		auto arbitrage_data_disruptor = std::make_shared<Disruptor::disruptor<ArbitrageDataEvent>>(
 				[]() { return ArbitrageDataEvent(); },
-				1024,
-				task_scheduler_2,
+				16,
+				task_scheduler,
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
@@ -155,15 +154,14 @@ int main() {
 				return EXIT_FAILURE;
 		}
 
-		task_scheduler_1->start();
+		task_scheduler->start(2);
 		broker_market_data_disruptor->start();
-		task_scheduler_2->start();
 		arbitrage_data_disruptor->start();
 
 		recorder->recordSystem("Main: all OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		while (true) {
-			std::this_thread::sleep_for(std::chrono::microseconds(1));
+			std::this_thread::sleep_for(std::chrono::microseconds(100));
 		}
 
 	} catch (const std::exception &e) {

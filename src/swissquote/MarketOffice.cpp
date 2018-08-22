@@ -228,9 +228,6 @@ namespace SWISSQUOTE {
 				continue;
 			}
 
-			/*printf("MarketOffice:\n");
-			swissquote_fprintmsg(stdout, msg);*/
-
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
 					// Filter market data based on spread, bid lot size and offer lot size
