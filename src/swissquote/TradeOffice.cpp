@@ -217,7 +217,7 @@ namespace SWISSQUOTE {
 						};
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.bid2_minus_offer1(),
+						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.bid1_minus_offer2(),
 						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
 
 						fprintf(stdout, "Sell order OK\n");
@@ -239,7 +239,7 @@ namespace SWISSQUOTE {
 						};
 
 						m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.bid2_minus_offer1(),
+						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.bid1_minus_offer2(),
 						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
 
 						fprintf(stdout, "Sell order OK\n");
