@@ -10,6 +10,7 @@
 
 // Disruptor
 #include "Disruptor/Disruptor.h"
+#include "Disruptor/RingBuffer.h"
 #include "Disruptor/RoundRobinThreadAffinedTaskScheduler.h"
 #include "Disruptor/BusySpinWaitStrategy.h"
 #include "Disruptor/SleepingWaitStrategy.h"
@@ -61,11 +62,9 @@ int main() {
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-		auto arbitrage_data_disruptor = std::make_shared<Disruptor::disruptor<ArbitrageDataEvent>>(
+		auto arbitrage_data_ringbuffer = Disruptor::RingBuffer<ArbitrageDataEvent>::createSingleProducer(
 				[]() { return ArbitrageDataEvent(); },
 				16,
-				task_scheduler,
-				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		std::shared_ptr<Messenger> messenger = std::make_shared<Messenger>(recorder);
@@ -81,7 +80,7 @@ int main() {
 				lmax_market_office = std::make_shared<LMAX::MarketOffice>(recorder,
 				                                                          messenger,
 				                                                          broker_market_data_disruptor,
-				                                                          arbitrage_data_disruptor,
+				                                                          arbitrage_data_ringbuffer,
 				                                                          mo_host,
 				                                                          port,
 				                                                          mo_username,
@@ -97,7 +96,7 @@ int main() {
 				                                                          lot_size);
 				lmax_trade_office = std::make_shared<LMAX::TradeOffice>(recorder,
 				                                                        messenger,
-				                                                        arbitrage_data_disruptor,
+				                                                        arbitrage_data_ringbuffer,
 				                                                        to_host,
 				                                                        port,
 				                                                        to_username,
@@ -117,7 +116,7 @@ int main() {
 				swissquote_market_office = std::make_shared<SWISSQUOTE::MarketOffice>(recorder,
 				                                                                      messenger,
 				                                                                      broker_market_data_disruptor,
-				                                                                      arbitrage_data_disruptor,
+				                                                                      arbitrage_data_ringbuffer,
 				                                                                      mo_host,
 				                                                                      port,
 				                                                                      mo_username,
@@ -133,7 +132,7 @@ int main() {
 				                                                                      lot_size);
 				swissquote_trade_office = std::make_shared<SWISSQUOTE::TradeOffice>(recorder,
 				                                                                    messenger,
-				                                                                    arbitrage_data_disruptor,
+				                                                                    arbitrage_data_ringbuffer,
 				                                                                    to_host,
 				                                                                    port,
 				                                                                    to_username,
@@ -154,9 +153,8 @@ int main() {
 				return EXIT_FAILURE;
 		}
 
-		task_scheduler->start(2);
+		task_scheduler->start(1);
 		broker_market_data_disruptor->start();
-		arbitrage_data_disruptor->start();
 
 		recorder->recordSystem("Main: all OK", SYSTEM_RECORD_TYPE_SUCCESS);
 

@@ -70,7 +70,7 @@ namespace SWISSQUOTE {
 
 	public:
 		TradeOffice(const std::shared_ptr<Recorder> &recorder, const std::shared_ptr<Messenger> &messenger,
-		            const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> &arbitrage_data_disruptor,
+		            const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
 		            const char *m_host, int m_port, const char *username, const char *password,
 		            const char *sender_comp_id, const char *target_comp_id, int heartbeat, double diff_open,
 		            double diff_close, double lot_size);
@@ -95,7 +95,7 @@ namespace SWISSQUOTE {
 		struct swissquote_fix_session *m_session;
 		std::thread poller;
 		const std::shared_ptr<Messenger> m_messenger;
-		const std::shared_ptr<Disruptor::disruptor<ArbitrageDataEvent>> m_arbitrage_data_disruptor;
+		const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> m_arbitrage_data_ringbuffer;
 		const std::shared_ptr<Recorder> m_recorder;
 	};
 }
