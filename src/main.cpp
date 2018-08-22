@@ -57,14 +57,14 @@ int main() {
 
 		auto broker_market_data_disruptor = std::make_shared<Disruptor::disruptor<MarketDataEvent>>(
 				[]() { return MarketDataEvent(); },
-				16,
+				8,
 				task_scheduler,
 				Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto arbitrage_data_ringbuffer = Disruptor::RingBuffer<ArbitrageDataEvent>::createSingleProducer(
 				[]() { return ArbitrageDataEvent(); },
-				16,
+				8,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		std::shared_ptr<Messenger> messenger = std::make_shared<Messenger>(recorder);
