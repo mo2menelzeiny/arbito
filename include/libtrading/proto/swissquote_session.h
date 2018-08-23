@@ -11,7 +11,7 @@ extern "C" {
 
 #include <stdbool.h>
 
-#define RECV_BUFFER_SIZE    8096UL
+#define RECV_BUFFER_SIZE    4096UL
 #define FIX_TX_HEAD_BUFFER_SIZE    FIX_MAX_HEAD_LEN
 #define FIX_TX_BODY_BUFFER_SIZE    FIX_MAX_BODY_LEN
 #ifndef TIMESPEC_TO_TIMEVAL

@@ -309,7 +309,7 @@ int swissquote_fix_session_test_request(struct swissquote_fix_session *session) 
 }
 
 int swissquote_fix_session_resend_request(struct swissquote_fix_session *session, unsigned long bgn,
-		unsigned long end) {
+                                          unsigned long end) {
 	struct swissquote_fix_message resend_request_msg;
 	struct swissquote_fix_field fields[] = {
 			SWISSQUOTE_FIX_INT_FIELD(swissquote_BeginSeqNo, bgn),
@@ -405,11 +405,6 @@ int swissquote_fix_session_marketdata_request(struct swissquote_fix_session *ses
 		goto retry;
 	}
 
-	if(swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST)) {
-		swissquote_fix_session_admin(session, response);
-		goto retry;
-	}
-
 	if (swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_MARKET_DATA_REQUEST_REJECT)) {
 		fprintf(stderr, "Market data request rejected\n");
 		return -1;
@@ -453,7 +448,7 @@ int swissquote_fix_session_new_order_single(struct swissquote_fix_session *sessi
 		goto retry;
 	}
 
-	if(swissquote_fix_message_type_is(*response, SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST)) {
+	if (swissquote_fix_message_type_is(*response, SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST)) {
 		swissquote_fix_session_admin(session, *response);
 		goto retry;
 	}
@@ -463,7 +458,7 @@ int swissquote_fix_session_new_order_single(struct swissquote_fix_session *sessi
 	}
 
 	if (swissquote_fix_message_type_is(*response, SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT)) {
-		if (swissquote_fix_get_field(*response, swissquote_ExecType)->string_value[0] != '2'){
+		if (swissquote_fix_get_field(*response, swissquote_ExecType)->string_value[0] != '2') {
 			goto retry;
 		}
 	}
