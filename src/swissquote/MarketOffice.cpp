@@ -141,6 +141,8 @@ namespace SWISSQUOTE {
 		printf("\t issuer: %s\n", str);
 		OPENSSL_free(str);
 
+		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
+
 		// Session login
 		if (swissquote_fix_session_logon(m_session)) {
 			fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
@@ -173,10 +175,7 @@ namespace SWISSQUOTE {
 		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
-			// TODO: implement on the fly decode
-			// decode header
 			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
-			// decode body
 			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
 			                         MESSEGNER_BUFFER);
@@ -223,7 +222,7 @@ namespace SWISSQUOTE {
 
 			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
-			struct swissquote_fix_message *msg = nullptr;
+			struct swissquote_fix_message *msg;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
 			}
@@ -250,7 +249,6 @@ namespace SWISSQUOTE {
 					auto next_sequence_1 = m_broker_market_data_disruptor->ringBuffer()->next();
 					(*m_broker_market_data_disruptor->ringBuffer())[next_sequence_1] = broker_market_data;
 					m_broker_market_data_disruptor->ringBuffer()->publish(next_sequence_1);
-
 					continue;
 				}
 				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:

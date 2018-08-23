@@ -140,6 +140,8 @@ namespace LMAX {
 		printf("\t issuer: %s\n", str);
 		OPENSSL_free(str);
 
+		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
+
 		// Session login
 		if (lmax_fix_session_logon(m_session)) {
 			fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
@@ -172,10 +174,7 @@ namespace LMAX {
 		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
-			// TODO: implement on the fly decode
-			// decode header
 			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
-			// decode body
 			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
 			                         MESSEGNER_BUFFER);
@@ -220,10 +219,9 @@ namespace LMAX {
 				break;
 			}
 
-
 			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
-			struct lmax_fix_message *msg = nullptr;
+			struct lmax_fix_message *msg;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
 			}
@@ -252,6 +250,9 @@ namespace LMAX {
 					m_broker_market_data_disruptor->ringBuffer()->publish(next_sequence_1);
 					continue;
 				}
+				case LMAX_FIX_MSG_TYPE_TEST_REQUEST:
+					lmax_fix_session_admin(m_session, msg);
+					continue;
 				default:
 					continue;
 			}

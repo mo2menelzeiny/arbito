@@ -207,7 +207,7 @@ int swissquote_fix_session_recv(struct swissquote_fix_session *self, struct swis
 
 	size_t size = buffer_remaining(buffer);
 	if (size > FIX_MAX_MESSAGE_SIZE) {
-		ssize_t nr = buffer_recv(buffer, self->sockfd, self->ssl, SSL_pending(self->ssl), swissquote_translate_recv_flags(flags));
+		ssize_t nr = buffer_recv(buffer, self->sockfd, self->ssl, size - FIX_MAX_MESSAGE_SIZE, swissquote_translate_recv_flags(flags));
 		if (nr <= 0) {
 			self->failure_reason = nr == 0 ? SWISSQUOTE_FIX_FAILURE_CONN_CLOSED : SWISSQUOTE_FIX_FAILURE_SYSTEM;
 			return -1;

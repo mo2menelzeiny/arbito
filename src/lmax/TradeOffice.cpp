@@ -110,6 +110,8 @@ namespace LMAX {
 		printf("\t issuer: %s\n", str);
 		OPENSSL_free(str);
 
+		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
+
 		// Session login
 		if (lmax_fix_session_logon(m_session)) {
 			fprintf(stderr, "TradeOffice: Client Logon FAILED\n");
@@ -139,8 +141,7 @@ namespace LMAX {
 			if (!m_deals_count) {
 				m_open_state = NO_DEALS;
 			}
-			// current difference 1 -> offer1 - bid2
-			// current difference 2 -> offer2 - bid1
+
 			switch (m_open_state) {
 				case CURRENT_DIFF_1: {
 
@@ -301,9 +302,17 @@ namespace LMAX {
 
 			arbitrage_data_poller->poll(arbitrage_data_handler);
 
-			struct lmax_fix_message *msg = nullptr;
+			struct lmax_fix_message *msg;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
+			}
+
+			switch (msg->type) {
+				case LMAX_FIX_MSG_TYPE_TEST_REQUEST:
+					lmax_fix_session_admin(m_session, msg);
+					continue;
+				default:
+					continue;
 			}
 
 		}

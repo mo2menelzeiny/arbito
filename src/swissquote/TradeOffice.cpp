@@ -111,6 +111,8 @@ namespace SWISSQUOTE {
 		printf("\t issuer: %s\n", str);
 		OPENSSL_free(str);
 
+		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
+
 		// Session login
 		if (swissquote_fix_session_logon(m_session)) {
 			fprintf(stderr, "TradeOffice: Client Logon FAILED\n");
@@ -128,9 +130,11 @@ namespace SWISSQUOTE {
 	}
 
 	void TradeOffice::poll() {
+
 		bool check_timeout = false;
 		time_t counter = time(0);
 		time_t timeout = SWISSQUOTE_DELAY_SECONDS;
+
 		auto arbitrage_data_poller = m_arbitrage_data_ringbuffer->newPoller();
 		m_arbitrage_data_ringbuffer->addGatingSequences({arbitrage_data_poller->sequence()});
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
@@ -142,8 +146,7 @@ namespace SWISSQUOTE {
 			if (!m_deals_count) {
 				m_open_state = NO_DEALS;
 			}
-			// current difference 1 -> offer1 - bid2
-			// current difference 2 -> offer2 - bid1
+
 			switch (m_open_state) {
 				case CURRENT_DIFF_1: {
 
@@ -282,6 +285,16 @@ namespace SWISSQUOTE {
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
+		/*long count = 0;
+		auto start = std::chrono::steady_clock::now();
+		++count;
+		if (count > 1000000) {
+			auto end = std::chrono::steady_clock::now();
+			printf("%li\n", std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / count);
+			count = 0;
+			start = std::chrono::steady_clock::now();
+		}*/
+
 		while (m_session->active) {
 
 			clock_gettime(CLOCK_MONOTONIC, &cur);
@@ -302,10 +315,9 @@ namespace SWISSQUOTE {
 				break;
 			}
 
-			// polls the events from the arbitrage data disrubtor
 			arbitrage_data_poller->poll(arbitrage_data_handler);
 
-			struct swissquote_fix_message *msg = nullptr;
+			struct swissquote_fix_message *msg;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
 			}
