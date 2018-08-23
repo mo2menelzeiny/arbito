@@ -285,16 +285,6 @@ namespace SWISSQUOTE {
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
-		/*long count = 0;
-		auto start = std::chrono::steady_clock::now();
-		++count;
-		if (count > 1000000) {
-			auto end = std::chrono::steady_clock::now();
-			printf("%li\n", std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count() / count);
-			count = 0;
-			start = std::chrono::steady_clock::now();
-		}*/
-
 		while (m_session->active) {
 
 			clock_gettime(CLOCK_MONOTONIC, &cur);
