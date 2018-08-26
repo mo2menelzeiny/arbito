@@ -143,14 +143,14 @@ namespace SWISSQUOTE {
 			}
 			check_timeout = false;
 
-			if (!m_deals_count) {
+			if (!m_orders_count) {
 				m_open_state = NO_DEALS;
 			}
 
 			switch (m_open_state) {
 				case CURRENT_DIFF_1: {
 
-					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.bid1_minus_offer2() >= m_diff_open) {
+					if (m_orders_count < SWISSQUOTE_MAX_DEALS && data.bid1_minus_offer2() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
 						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
@@ -163,7 +163,7 @@ namespace SWISSQUOTE {
 						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_OPEN);
 
 						fprintf(stdout, "Sell order OK\n");
-						++m_deals_count;
+						++m_orders_count;
 						counter = time(0);
 						check_timeout = true;
 						return true;
@@ -182,7 +182,7 @@ namespace SWISSQUOTE {
 						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_CLOSE);
 
 						fprintf(stdout, "Buy order OK\n");
-						--m_deals_count;
+						--m_orders_count;
 						counter = time(0);
 						check_timeout = true;
 						return true;
@@ -192,7 +192,7 @@ namespace SWISSQUOTE {
 
 				case CURRENT_DIFF_2: {
 
-					if (m_deals_count < SWISSQUOTE_MAX_DEALS && data.bid2_minus_offer1() >= m_diff_open) {
+					if (m_orders_count < SWISSQUOTE_MAX_DEALS && data.bid2_minus_offer1() >= m_diff_open) {
 						struct swissquote_fix_message *response = nullptr;
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
@@ -205,7 +205,7 @@ namespace SWISSQUOTE {
 						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_OPEN);
 
 						fprintf(stdout, "Buy order OK\n");
-						++m_deals_count;
+						++m_orders_count;
 						counter = time(0);
 						check_timeout = true;
 						return true;
@@ -224,7 +224,7 @@ namespace SWISSQUOTE {
 						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
 
 						fprintf(stdout, "Sell order OK\n");
-						--m_deals_count;
+						--m_orders_count;
 						counter = time(0);
 						check_timeout = true;
 						return true;
@@ -247,7 +247,7 @@ namespace SWISSQUOTE {
 
 						fprintf(stdout, "Sell order OK\n");
 						m_open_state = CURRENT_DIFF_1;
-						++m_deals_count;
+						++m_orders_count;
 						counter = time(0);
 						check_timeout = true;
 						return true;
@@ -267,7 +267,7 @@ namespace SWISSQUOTE {
 
 						fprintf(stdout, "Buy order OK\n");
 						m_open_state = CURRENT_DIFF_2;
-						++m_deals_count;
+						++m_orders_count;
 						counter = time(0);
 						check_timeout = true;
 						return true;

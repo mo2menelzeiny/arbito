@@ -24,4 +24,9 @@
         <field name="offerQty" id="4" type="double"/>
         <data name="timestamp" id="5" type="varDataEncoding"/>
     </sbe:message>
+    <sbe:message name="TradeConfirm" id="2" description="Confirmation message that helps keeping nodes in sync">
+        <field name="ordersCount" id="1" type="uint8"/>
+        <field name="openState" id="2" type="uint8"/>
+        <data name="timestamp" id="3" type="varDataEncoding"/>
+    </sbe:message>
 </sbe:messageSchema>
