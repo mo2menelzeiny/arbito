@@ -86,7 +86,7 @@ namespace LMAX {
 		MarketState m_open_state = NO_DEALS;
 		double m_diff_open, m_diff_close;
 		double m_lot_size;
-		int m_deals_count = 0;
+		int m_orders_count = 0;
 		int m_port;
 		const char *m_host;
 		SSL_CTX *m_ssl_ctx;
