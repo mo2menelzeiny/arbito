@@ -3,9 +3,7 @@
 
 namespace LMAX {
 
-	TradeOffice::TradeOffice() {
-
-	}
+	TradeOffice::TradeOffice() = default;
 
 	TradeOffice::TradeOffice(Recorder &recorder, Messenger &messenger,
 	                         const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
@@ -21,11 +19,38 @@ namespace LMAX {
 		strncpy(m_cfg.password, broker_config.password, ARRAY_SIZE(m_cfg.password));
 		strncpy(m_cfg.sender_comp_id, broker_config.sender, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, broker_config.receiver, ARRAY_SIZE(m_cfg.target_comp_id));
+
 		srand(static_cast<unsigned int>(time(nullptr)));
+
+		m_atomic_buffer.wrap(m_buffer, LMAX_TO_MESSENGER_BUFFER);
 	}
 
 	void TradeOffice::start() {
+		initMessengerClient();
 		initBrokerClient();
+	}
+
+	void TradeOffice::initMessengerClient() {
+		std::int64_t publication_id = m_messenger->aeronClient()->addPublication(m_messenger_config.pub_channel,
+		                                                                         m_messenger_config.stream_id);
+		std::int64_t subscription_id = m_messenger->aeronClient()->addSubscription(m_messenger_config.sub_channel,
+		                                                                           m_messenger_config.stream_id);
+
+		m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
+		while (!m_messenger_pub) {
+			std::this_thread::yield();
+			m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
+		}
+		printf("TradeOffice: publication found!\n");
+
+		m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
+		while (!m_messenger_sub) {
+			std::this_thread::yield();
+			m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
+		}
+		printf("TradeOffice: subscription found!\n");
+
+		m_recorder->recordSystem("TradeOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void TradeOffice::initBrokerClient() {
@@ -130,27 +155,31 @@ namespace LMAX {
 
 	void TradeOffice::poll() {
 		bool check_timeout = false;
-		time_t counter = time(0);
+		time_t counter = time(nullptr);
 		time_t timeout = LMAX_DELAY_SECONDS;
+
 		auto arbitrage_data_poller = m_arbitrage_data_ringbuffer->newPoller();
 		m_arbitrage_data_ringbuffer->addGatingSequences({arbitrage_data_poller->sequence()});
 		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-			if (check_timeout && (time(0) - counter < timeout)) {
+			if (check_timeout && ((time(nullptr) - counter) < timeout)) {
 				return true;
 			}
+
 			check_timeout = false;
 
-			if (!m_orders_count) {
+			if (0 == m_orders_count) {
 				m_open_state = NO_DEALS;
 			}
+
+			struct lmax_fix_message *response;
 
 			switch (m_open_state) {
 				case CURRENT_DIFF_1: {
 					if (m_orders_count < LMAX_MAX_DEALS && data.bid2_minus_offer1() >= m_diff_open) {
-						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
-							counter = time(0);
+							counter = time(nullptr);
+							confirmOrders();
 							return true;
 						};
 
@@ -160,16 +189,17 @@ namespace LMAX {
 
 						fprintf(stdout, "Buy order OK\n");
 						++m_orders_count;
-						counter = time(0);
+						counter = time(nullptr);
 						check_timeout = true;
+						confirmOrders();
 						return true;
 					}
 
 					if (data.bid1_minus_offer2() >= m_diff_close) {
-						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
-							counter = time(0);
+							counter = time(nullptr);
+							confirmOrders();
 							return true;
 						};
 
@@ -179,8 +209,9 @@ namespace LMAX {
 
 						fprintf(stdout, "Sell order OK\n");
 						--m_orders_count;
-						counter = time(0);
+						counter = time(nullptr);
 						check_timeout = true;
+						confirmOrders();
 						return true;
 					}
 				}
@@ -188,10 +219,9 @@ namespace LMAX {
 
 				case CURRENT_DIFF_2: {
 					if (m_orders_count < LMAX_MAX_DEALS && data.bid1_minus_offer2() >= m_diff_open) {
-						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
-							counter = time(0);
+							counter = time(nullptr);
 							return true;
 						};
 
@@ -201,16 +231,16 @@ namespace LMAX {
 
 						fprintf(stdout, "Sell order OK\n");
 						++m_orders_count;
-						counter = time(0);
+						counter = time(nullptr);
 						check_timeout = true;
+						confirmOrders();
 						return true;
 					}
 
 					if (data.bid2_minus_offer1() >= m_diff_close) {
-						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
-							counter = time(0);
+							counter = time(nullptr);
 							return true;
 						};
 
@@ -220,8 +250,9 @@ namespace LMAX {
 
 						fprintf(stdout, "Buy order OK\n");
 						--m_orders_count;
-						counter = time(0);
+						counter = time(nullptr);
 						check_timeout = true;
+						confirmOrders();
 						return true;
 					}
 				}
@@ -229,10 +260,10 @@ namespace LMAX {
 
 				case NO_DEALS: {
 					if (data.bid1_minus_offer2() >= m_diff_open) {
-						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
-							counter = time(0);
+							counter = time(nullptr);
+							confirmOrders();
 							return true;
 						};
 
@@ -243,16 +274,17 @@ namespace LMAX {
 						fprintf(stdout, "Sell order OK\n");
 						m_open_state = CURRENT_DIFF_2;
 						++m_orders_count;
-						counter = time(0);
+						counter = time(nullptr);
 						check_timeout = true;
+						confirmOrders();
 						return true;
 					}
 
 					if (data.bid2_minus_offer1() >= m_diff_open) {
-						struct lmax_fix_message *response = nullptr;
 						if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
-							counter = time(0);
+							counter = time(nullptr);
+							confirmOrders();
 							return true;
 						};
 
@@ -263,8 +295,9 @@ namespace LMAX {
 						fprintf(stdout, "Buy order OK\n");
 						m_open_state = CURRENT_DIFF_1;
 						++m_orders_count;
-						counter = time(0);
+						counter = time(nullptr);
 						check_timeout = true;
+						confirmOrders();
 						return true;
 					}
 				}
@@ -272,12 +305,78 @@ namespace LMAX {
 			}
 
 			return true;
-
 		};
+
+		aeron::BusySpinIdleStrategy messengerIdleStrategy;
+		sbe::MessageHeader sbe_msg_header;
+		sbe::TradeConfirm sbe_trade_confirm;
+		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
+		                                                aeron::index_t length, const aeron::Header &header) {
+			sbe_msg_header.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, LMAX_TO_MESSENGER_BUFFER);
+			sbe_trade_confirm.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
+			                                sbe::MessageHeader::encodedLength(), sbe_msg_header.blockLength(),
+			                                sbe_msg_header.version(), LMAX_TO_MESSENGER_BUFFER);
+
+			if (m_orders_count == sbe_trade_confirm.ordersCount()) {
+				return;
+			}
+
+			if (m_orders_count < sbe_trade_confirm.ordersCount()) {
+				confirmOrders();
+				counter = time(nullptr);
+				check_timeout = true;
+				return;
+			}
+
+			if (m_orders_count > sbe_trade_confirm.ordersCount()) {
+				struct lmax_fix_message *response;
+
+				switch (m_open_state) {
+					case CURRENT_DIFF_1:
+						if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
+							fprintf(stderr, "Correction sell order FAILED\n");
+							counter = time(nullptr);
+							confirmOrders();
+							return;
+						};
+
+						m_recorder->recordOrder(0, 0, ORDER_RECORD_TYPE_SELL, 0, ORDER_TRIGGER_TYPE_CORRECTION,
+						                        ORDER_RECORD_STATE_CLOSE);
+
+						fprintf(stdout, "Correction sell order OK\n");
+						--m_orders_count;
+						counter = time(nullptr);
+						check_timeout = true;
+						confirmOrders();
+						return;
+
+					case CURRENT_DIFF_2:
+						if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
+							fprintf(stderr, "Correction buy order FAILED\n");
+							counter = time(nullptr);
+							return;
+						};
+
+						m_recorder->recordOrder(0, 0, ORDER_RECORD_TYPE_BUY, 0, ORDER_TRIGGER_TYPE_CORRECTION,
+						                        ORDER_RECORD_STATE_CLOSE);
+
+						fprintf(stdout, "Correction buy order OK\n");
+						--m_orders_count;
+						counter = time(nullptr);
+						check_timeout = true;
+						confirmOrders();
+						return;
+
+					case NO_DEALS:
+						return;
+				}
+			}
+		});
+
+		confirmOrders();
 
 		struct timespec cur{}, prev{};
 		__time_t diff;
-
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
 		while (m_session->active) {
@@ -300,6 +399,8 @@ namespace LMAX {
 				break;
 			}
 
+			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
+
 			arbitrage_data_poller->poll(arbitrage_data_handler);
 
 			struct lmax_fix_message *msg;
@@ -317,7 +418,6 @@ namespace LMAX {
 
 		}
 
-		// Reconnection condition
 		if (m_session->active) {
 			fprintf(stdout, "Trade office reconnecting..\n");
 			m_recorder->recordSystem("TradeOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
@@ -328,5 +428,26 @@ namespace LMAX {
 			lmax_fix_session_free(m_session);
 			initBrokerClient();
 		}
+	}
+
+	void TradeOffice::confirmOrders() {
+		sbe::MessageHeader sbe_msg_header;
+		sbe::TradeConfirm sbe_trade_confirm;
+		sbe_msg_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, LMAX_TO_MESSENGER_BUFFER)
+				.blockLength(sbe::TradeConfirm::sbeBlockLength())
+				.templateId(sbe::TradeConfirm::sbeTemplateId())
+				.schemaId(sbe::TradeConfirm::sbeSchemaId())
+				.version(sbe::TradeConfirm::sbeSchemaVersion());
+
+		sbe_trade_confirm.wrapForEncode(reinterpret_cast<char *>(m_buffer), sbe::MessageHeader::encodedLength(),
+		                                LMAX_TO_MESSENGER_BUFFER)
+				.ordersCount(static_cast<const uint8_t>(m_orders_count))
+				.openState(m_open_state);
+
+		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_trade_confirm.encodedLength();
+		std::int64_t result;
+		do {
+			result = m_messenger_pub->offer(m_atomic_buffer, 0, len);
+		} while (result < -1);
 	}
 }

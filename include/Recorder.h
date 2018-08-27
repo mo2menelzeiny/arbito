@@ -31,6 +31,7 @@ enum OrderRecordState {
 enum OrderTriggerType {
 	ORDER_TRIGGER_TYPE_CURRENT_DIFF_2 = 0,
 	ORDER_TRIGGER_TYPE_CURRENT_DIFF_1 = 1,
+	ORDER_TRIGGER_TYPE_CORRECTION = 2
 };
 
 class Recorder {

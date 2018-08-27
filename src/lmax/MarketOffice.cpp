@@ -27,7 +27,6 @@ namespace LMAX {
 	void MarketOffice::start() {
 		initMessengerChannel();
 		initBrokerClient();
-		// broker market data disruptor handler
 		m_broker_market_data_handler = std::make_shared<BrokerMarketDataHandler>(m_messenger_pub);
 		m_broker_market_data_disruptor->handleEventsWith(m_broker_market_data_handler);
 	}
@@ -169,15 +168,16 @@ namespace LMAX {
 
 	void MarketOffice::poll() {
 		MarketDataEvent broker_market_data{.bid = -99.0, .bid_qty = 0, .offer = 99.0, .offer_qty = 0};
+
 		aeron::BusySpinIdleStrategy messengerIdleStrategy;
 		sbe::MessageHeader msgHeader;
 		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
-			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSEGNER_BUFFER);
+			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, LMAX_MO_MESSENGER_BUFFER);
 			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
-			                         msgHeader.encodedLength(), msgHeader.blockLength(), msgHeader.version(),
-			                         MESSEGNER_BUFFER);
+			                         sbe::MessageHeader::encodedLength(), msgHeader.blockLength(), msgHeader.version(),
+			                         LMAX_MO_MESSENGER_BUFFER);
 
 			// publish arbitrage data to arbitrage data disruptor
 			auto next_sequence = m_arbitrage_data_ringbuffer->next();
@@ -196,7 +196,6 @@ namespace LMAX {
 
 		struct timespec cur{}, prev{};
 		__time_t diff;
-
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
 		while (m_session->active) {

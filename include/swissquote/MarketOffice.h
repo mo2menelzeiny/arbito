@@ -2,7 +2,7 @@
 #ifndef ARBITO_SWISSQUOTE_MARKETDATACLIENT_H
 #define ARBITO_SWISSQUOTE_MARKETDATACLIENT_H
 
-#define MESSEGNER_BUFFER 1024
+#define SWISSQUOTE_MO_MESSENGER_BUFFER 1024
 
 // C
 #include <netinet/tcp.h>
@@ -45,7 +45,6 @@
 // Aeron media driver
 #include <aeronmd/aeronmd.h>
 #include <aeronmd/concurrent/aeron_atomic64_gcc_x86_64.h>
-#include <BrokerConfig.h>
 
 // SBE
 #include "sbe/sbe.h"
@@ -56,6 +55,7 @@
 #include "ArbitrageDataEvent.h"
 #include "Messenger.h"
 #include "MessengerConfig.h"
+#include "BrokerConfig.h"
 #include "BrokerMarketDataHandler.h"
 #include "swissquote/Utilities.h"
 #include "Recorder.h"

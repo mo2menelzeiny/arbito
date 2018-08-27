@@ -4,6 +4,7 @@
 
 #define LMAX_MAX_DEALS 5
 #define LMAX_DELAY_SECONDS 60
+#define LMAX_TO_MESSENGER_BUFFER 1024
 
 // C includes
 #include <netinet/tcp.h>
@@ -52,6 +53,7 @@
 // SBE
 #include "sbe/sbe.h"
 #include "sbe/MarketData.h"
+#include "sbe/TradeConfirm.h"
 
 // Domain includes
 #include "Utilities.h"
@@ -82,9 +84,13 @@ namespace LMAX {
 		void start();
 
 	private:
+		void initMessengerClient();
+
 		void initBrokerClient();
 
 		void poll();
+
+		void confirmOrders();
 
 	private:
 		MarketState m_open_state = NO_DEALS;
@@ -99,6 +105,8 @@ namespace LMAX {
 		BrokerConfig m_broker_config;
 		MessengerConfig m_messenger_config;
 		Messenger *m_messenger;
+		uint8_t m_buffer[LMAX_TO_MESSENGER_BUFFER];
+		aeron::concurrent::AtomicBuffer m_atomic_buffer;
 		std::shared_ptr<aeron::Publication> m_messenger_pub;
 		std::shared_ptr<aeron::Subscription> m_messenger_sub;
 		const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> m_arbitrage_data_ringbuffer;
