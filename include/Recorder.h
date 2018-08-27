@@ -39,13 +39,8 @@ public:
 
 	void recordSystem(const char *message, SystemRecordType type);
 
-	void recordArbitrage(ArbitrageDataEvent &event);
-
 	void recordOrder(double broker_price, double trigger_price, OrderRecordType order_type, double trigger_diff,
 		                 OrderTriggerType trigger_type, OrderRecordState order_state);
-
-private:
-	int ping();
 
 private:
 	mongoc_uri_t *m_uri;
