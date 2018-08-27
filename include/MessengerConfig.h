@@ -5,9 +5,8 @@
 // struct to contain the Aeron configurations parameters
 struct MessengerConfig {
 	const char *pub_channel;
-	int pub_stream_id;
 	const char *sub_channel;
-	int sub_stream_id;
+	int stream_id;
 };
 
 

@@ -1,7 +1,7 @@
 
 #include "Messenger.h"
 
-Messenger::Messenger(const std::shared_ptr<Recorder> &recorder) : m_recorder(recorder) {}
+Messenger::Messenger(Recorder &recorder) : m_recorder(&recorder) {}
 
 const std::shared_ptr<aeron::Aeron> &Messenger::aeronClient() const {
 	return m_aeron_client;
