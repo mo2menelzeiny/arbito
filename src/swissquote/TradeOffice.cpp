@@ -192,6 +192,7 @@ namespace SWISSQUOTE {
 						++m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
+						std::this_thread::sleep_for(std::chrono::milliseconds(50));
 						confirmOrders();
 						return true;
 					}
@@ -212,6 +213,7 @@ namespace SWISSQUOTE {
 						--m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
+						std::this_thread::sleep_for(std::chrono::milliseconds(50));
 						confirmOrders();
 						return true;
 					}
@@ -235,6 +237,7 @@ namespace SWISSQUOTE {
 						++m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
+						std::this_thread::sleep_for(std::chrono::milliseconds(50));
 						confirmOrders();
 						return true;
 					}
@@ -255,6 +258,7 @@ namespace SWISSQUOTE {
 						--m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
+						std::this_thread::sleep_for(std::chrono::milliseconds(50));
 						confirmOrders();
 						return true;
 					}
@@ -279,6 +283,7 @@ namespace SWISSQUOTE {
 						++m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
+						std::this_thread::sleep_for(std::chrono::milliseconds(50));
 						confirmOrders();
 						return true;
 					}
@@ -300,6 +305,7 @@ namespace SWISSQUOTE {
 						++m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
+						std::this_thread::sleep_for(std::chrono::milliseconds(50));
 						confirmOrders();
 						return true;
 					}
@@ -403,9 +409,10 @@ namespace SWISSQUOTE {
 				break;
 			}
 
-			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			arbitrage_data_poller->poll(arbitrage_data_handler);
+
+			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			struct swissquote_fix_message *msg;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
