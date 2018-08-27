@@ -58,19 +58,19 @@
 #include "MessengerConfig.h"
 #include "BrokerMarketDataHandler.h"
 #include "Recorder.h"
+#include "BrokerConfig.h"
 
 namespace LMAX {
 
 	class MarketOffice {
 
 	public:
-		MarketOffice(const std::shared_ptr<Recorder> &recorder, const std::shared_ptr<Messenger> &messenger,
+		MarketOffice();
+
+		MarketOffice(Recorder &recorder, Messenger &messenger,
 		             const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
 		             const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
-		             const char *m_host, int m_port, const char *username, const char *password,
-		             const char *sender_comp_id, const char *target_comp_id, int heartbeat,
-		             const char *pub_channel, int pub_stream_id, const char *sub_channel, int sub_stream_id,
-		             double spread, double lot_size);
+		             MessengerConfig messenger_config, BrokerConfig broker_config, double spread, double lot_size);
 
 		void start();
 
@@ -85,21 +85,20 @@ namespace LMAX {
 	private:
 		double m_lot_size;
 		double m_spread;
-		int m_port;
-		const char *m_host;
 		SSL_CTX *m_ssl_ctx;
 		SSL *m_ssl;
 		struct lmax_fix_session_cfg m_cfg;
 		struct lmax_fix_session *m_session;
 		std::thread poller;
+		BrokerConfig m_broker_config;
 		MessengerConfig m_messenger_config;
-		const std::shared_ptr<Messenger> m_messenger;
+		Messenger *m_messenger;
 		std::shared_ptr<aeron::Publication> m_messenger_pub;
 		std::shared_ptr<aeron::Subscription> m_messenger_sub;
 		const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> m_broker_market_data_disruptor;
 		const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> m_arbitrage_data_ringbuffer;
 		std::shared_ptr<BrokerMarketDataHandler> m_broker_market_data_handler;
-		const std::shared_ptr<Recorder> m_recorder;
+		Recorder *m_recorder;
 	};
 }
 

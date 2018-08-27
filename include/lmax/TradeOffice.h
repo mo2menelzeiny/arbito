@@ -47,6 +47,7 @@
 // Aeron media driver
 #include <aeronmd/aeronmd.h>
 #include <aeronmd/concurrent/aeron_atomic64_gcc_x86_64.h>
+#include <BrokerConfig.h>
 
 // SBE
 #include "sbe/sbe.h"
@@ -56,7 +57,9 @@
 #include "Utilities.h"
 #include "ArbitrageDataEvent.h"
 #include "Messenger.h"
-#include <Recorder.h>
+#include "Recorder.h"
+#include "MessengerConfig.h"
+#include "BrokerConfig.h"
 
 namespace LMAX {
 
@@ -69,11 +72,12 @@ namespace LMAX {
 	class TradeOffice {
 
 	public:
-		TradeOffice(const std::shared_ptr<Recorder> &recorder, const std::shared_ptr<Messenger> &messenger,
+		TradeOffice();
+
+		TradeOffice(Recorder &recorder, Messenger &messenger,
 		            const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
-		            const char *m_host, int m_port, const char *username, const char *password,
-		            const char *sender_comp_id,
-		            const char *target_comp_id, int heartbeat, double diff_open, double diff_close, double lot_size);
+		            MessengerConfig messenger_config, BrokerConfig broker_config, double diff_open, double diff_close,
+		            double lot_size);
 
 		void start();
 
@@ -87,16 +91,18 @@ namespace LMAX {
 		double m_diff_open, m_diff_close;
 		double m_lot_size;
 		int m_orders_count = 0;
-		int m_port;
-		const char *m_host;
 		SSL_CTX *m_ssl_ctx;
 		SSL *m_ssl;
 		struct lmax_fix_session_cfg m_cfg;
 		struct lmax_fix_session *m_session;
 		std::thread poller;
-		const std::shared_ptr<Messenger> m_messenger;
+		BrokerConfig m_broker_config;
+		MessengerConfig m_messenger_config;
+		Messenger *m_messenger;
+		std::shared_ptr<aeron::Publication> m_messenger_pub;
+		std::shared_ptr<aeron::Subscription> m_messenger_sub;
 		const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> m_arbitrage_data_ringbuffer;
-		const std::shared_ptr<Recorder> m_recorder;
+		Recorder *m_recorder;
 	};
 }
 

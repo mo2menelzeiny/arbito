@@ -3,23 +3,21 @@
 
 namespace SWISSQUOTE {
 
-	TradeOffice::TradeOffice(const std::shared_ptr<Recorder> &recorder, const std::shared_ptr<Messenger> &messenger,
+	TradeOffice::TradeOffice(Recorder &recorder, Messenger &messenger,
 	                         const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
-	                         const char *m_host, int m_port, const char *username, const char *password,
-	                         const char *sender_comp_id,
-	                         const char *target_comp_id, int heartbeat, double diff_open, double diff_close,
-	                         double lot_size)
-			: m_recorder(recorder), m_messenger(messenger), m_arbitrage_data_ringbuffer(arbitrage_data_ringbuffer),
-			  m_host(m_host),
-			  m_port(m_port), m_diff_open(diff_open), m_diff_close(diff_close), m_lot_size(lot_size) {
+	                         MessengerConfig messenger_config, BrokerConfig broker_config, double diff_open,
+	                         double diff_close, double lot_size)
+			: m_recorder(&recorder), m_messenger(&messenger), m_arbitrage_data_ringbuffer(arbitrage_data_ringbuffer),
+			  m_messenger_config(messenger_config), m_broker_config(broker_config), m_diff_open(diff_open),
+			  m_diff_close(diff_close), m_lot_size(lot_size) {
 		// Session configurations
 		swissquote_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &swissquote_fix_dialects[SWISSQUOTE_FIX_4_4];
-		m_cfg.heartbtint = heartbeat;
-		strncpy(m_cfg.username, username, ARRAY_SIZE(m_cfg.username));
-		strncpy(m_cfg.password, password, ARRAY_SIZE(m_cfg.password));
-		strncpy(m_cfg.sender_comp_id, sender_comp_id, ARRAY_SIZE(m_cfg.sender_comp_id));
-		strncpy(m_cfg.target_comp_id, target_comp_id, ARRAY_SIZE(m_cfg.target_comp_id));
+		m_cfg.heartbtint = broker_config.heartbeat;
+		strncpy(m_cfg.username, broker_config.username, ARRAY_SIZE(m_cfg.username));
+		strncpy(m_cfg.password, broker_config.password, ARRAY_SIZE(m_cfg.password));
+		strncpy(m_cfg.sender_comp_id, broker_config.sender, ARRAY_SIZE(m_cfg.sender_comp_id));
+		strncpy(m_cfg.target_comp_id, broker_config.receiver, ARRAY_SIZE(m_cfg.target_comp_id));
 		srand(static_cast<unsigned int>(time(nullptr)));
 	}
 
@@ -50,10 +48,10 @@ namespace SWISSQUOTE {
 		}
 
 		// Socket connection
-		struct hostent *host_ent = gethostbyname(m_host);
+		struct hostent *host_ent = gethostbyname(m_broker_config.host);
 
 		if (!host_ent)
-			error("Unable to look up %s (%s)", m_host, hstrerror(h_errno));
+			error("Unable to look up %s (%s)", m_broker_config.host, hstrerror(h_errno));
 
 		char **ap;
 		int saved_errno = 0;
@@ -67,7 +65,7 @@ namespace SWISSQUOTE {
 
 			struct sockaddr_in socket_address = (struct sockaddr_in) {
 					.sin_family        = static_cast<sa_family_t>(host_ent->h_addrtype),
-					.sin_port        = htons(static_cast<uint16_t>(m_port)),
+					.sin_port        = htons(static_cast<uint16_t>(m_broker_config.port)),
 			};
 			memcpy(&socket_address.sin_addr, *ap, static_cast<size_t>(host_ent->h_length));
 
