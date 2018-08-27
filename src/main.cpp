@@ -10,15 +10,12 @@
 #include "Disruptor/RingBuffer.h"
 #include "Disruptor/RoundRobinThreadAffinedTaskScheduler.h"
 #include "Disruptor/BusySpinWaitStrategy.h"
-#include "Disruptor/SleepingWaitStrategy.h"
 
 // MongoDB
 #include <mongoc.h>
 
 int main() {
-
 	try {
-
 		int broker = atoi(getenv("BROKER"));
 		int port = atoi(getenv("PORT"));
 		int heartbeat = atoi(getenv("HEARTBEAT"));
@@ -32,8 +29,8 @@ int main() {
 		const char *db_name = getenv("MONGO_DB");
 
 		MessengerConfig mo_messenger_config = (MessengerConfig) {
-				.pub_channel = getenv("MO_PUB_CHANNEL"),
-				.sub_channel = getenv("MO_SUB_CHANNEL"),
+				.pub_channel = getenv("PUB_CHANNEL"),
+				.sub_channel = getenv("SUB_CHANNEL"),
 				.stream_id = atoi(getenv("MO_STREAM_ID"))
 		};
 
@@ -48,8 +45,8 @@ int main() {
 		};
 
 		MessengerConfig to_messenger_config = (MessengerConfig) {
-				.pub_channel = getenv("TO_PUB_CHANNEL"),
-				.sub_channel = getenv("TO_SUB_CHANNEL"),
+				.pub_channel = getenv("PUB_CHANNEL"),
+				.sub_channel = getenv("SUB_CHANNEL"),
 				.stream_id = atoi(getenv("TO_STREAM_ID"))
 		};
 
@@ -70,16 +67,13 @@ int main() {
 		recorder.recordSystem("Main: initialize OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
 		auto task_scheduler = std::make_shared<Disruptor::RoundRobinThreadAffinedTaskScheduler>();
+
 		auto broker_market_data_disruptor = std::make_shared<Disruptor::disruptor<MarketDataEvent>>(
-				[]() { return MarketDataEvent(); },
-				8,
-				task_scheduler,
-				Disruptor::ProducerType::Single,
+				[]() { return MarketDataEvent(); }, 8, task_scheduler, Disruptor::ProducerType::Single,
 				std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
 		auto arbitrage_data_ringbuffer = Disruptor::RingBuffer<ArbitrageDataEvent>::createSingleProducer(
-				[]() { return ArbitrageDataEvent(); },
-				8,
-				std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return ArbitrageDataEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		Messenger messenger(recorder);
 		messenger.start();

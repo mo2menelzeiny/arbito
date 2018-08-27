@@ -102,6 +102,9 @@ void Recorder::recordOrder(double broker_price, double trigger_price, OrderRecor
 		case ORDER_TRIGGER_TYPE_CURRENT_DIFF_1:
 			BSON_APPEND_UTF8(insert, "order_trigger", "CURRENT DIFF 1");
 			break;
+		case ORDER_TRIGGER_TYPE_CORRECTION:
+			BSON_APPEND_UTF8(insert, "order_trigger", "CORRECTION");
+			break;
 	}
 
 	if (!mongoc_collection_insert_one(collection, insert, NULL, NULL, &error)) {

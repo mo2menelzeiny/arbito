@@ -27,6 +27,7 @@ struct BrokerMarketDataHandler : public Disruptor::IEventHandler<MarketDataEvent
 private:
 	std::shared_ptr<aeron::Publication> m_messenger_pub;
 	uint8_t m_buffer[PUB_BUFFER_SIZE];
+	aeron::concurrent::AtomicBuffer m_atomic_buffer;
 	sbe::MessageHeader m_msg_header;
 	sbe::MarketData m_market_data;
 };
