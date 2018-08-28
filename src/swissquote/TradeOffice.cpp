@@ -303,14 +303,6 @@ namespace SWISSQUOTE {
 			                                sbe::MessageHeader::encodedLength(), sbe_msg_header.blockLength(),
 			                                sbe_msg_header.version(), SWISSQUOTE_TO_MESSENGER_BUFFER);
 
-			if (m_orders_count == sbe_trade_confirm.ordersCount()) {
-				return;
-			}
-
-			if (m_orders_count < sbe_trade_confirm.ordersCount()) {
-				return;
-			}
-
 			if (m_orders_count > sbe_trade_confirm.ordersCount()) {
 				struct swissquote_fix_message *response;
 
@@ -347,17 +339,15 @@ namespace SWISSQUOTE {
 			}
 		});
 
-		struct timespec cur{}, prev{};
-		__time_t diff;
+		struct timespec cur{}, prev{}, confirm_timer{};
 		clock_gettime(CLOCK_MONOTONIC, &prev);
+		clock_gettime(CLOCK_MONOTONIC, &confirm_timer);
 
 		while (m_session->active) {
 
 			clock_gettime(CLOCK_MONOTONIC, &cur);
 
-			diff = (cur.tv_sec - prev.tv_sec);
-
-			if (diff > 0.1 * m_session->heartbtint) {
+			if ((cur.tv_sec - prev.tv_sec) > 0.1 * m_session->heartbtint) {
 				prev = cur;
 
 				if (!swissquote_fix_session_keepalive(m_session, &cur)) {
@@ -371,6 +361,10 @@ namespace SWISSQUOTE {
 				break;
 			}
 
+			if (30 < (cur.tv_sec - confirm_timer.tv_sec)) {
+				confirm_timer = cur;
+				confirmOrders();
+			}
 
 			arbitrage_data_poller->poll(arbitrage_data_handler);
 
