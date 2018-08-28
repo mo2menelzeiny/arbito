@@ -179,8 +179,6 @@ namespace SWISSQUOTE {
 					if (m_orders_count < SWISSQUOTE_MAX_DEALS && data.bid1_minus_offer2() >= m_diff_open) {
 						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
-							counter = time(nullptr);
-							confirmOrders();
 							return true;
 						};
 
@@ -192,16 +190,12 @@ namespace SWISSQUOTE {
 						++m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
-						std::this_thread::sleep_for(std::chrono::milliseconds(50));
-						confirmOrders();
 						return true;
 					}
 
 					if (data.bid2_minus_offer1() >= m_diff_close) {
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
-							counter = time(nullptr);
-							confirmOrders();
 							return true;
 						};
 
@@ -213,8 +207,6 @@ namespace SWISSQUOTE {
 						--m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
-						std::this_thread::sleep_for(std::chrono::milliseconds(50));
-						confirmOrders();
 						return true;
 					}
 				}
@@ -224,8 +216,6 @@ namespace SWISSQUOTE {
 					if (m_orders_count < SWISSQUOTE_MAX_DEALS && data.bid2_minus_offer1() >= m_diff_open) {
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
-							counter = time(nullptr);
-							confirmOrders();
 							return true;
 						};
 
@@ -237,16 +227,12 @@ namespace SWISSQUOTE {
 						++m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
-						std::this_thread::sleep_for(std::chrono::milliseconds(50));
-						confirmOrders();
 						return true;
 					}
 
 					if (data.bid1_minus_offer2() >= m_diff_close) {
 						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
-							counter = time(nullptr);
-							confirmOrders();
 							return true;
 						};
 
@@ -258,8 +244,6 @@ namespace SWISSQUOTE {
 						--m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
-						std::this_thread::sleep_for(std::chrono::milliseconds(50));
-						confirmOrders();
 						return true;
 					}
 				}
@@ -269,8 +253,6 @@ namespace SWISSQUOTE {
 					if (data.bid1_minus_offer2() >= m_diff_open) {
 						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Sell order FAILED\n");
-							counter = time(nullptr);
-							confirmOrders();
 							return true;
 						};
 
@@ -283,16 +265,12 @@ namespace SWISSQUOTE {
 						++m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
-						std::this_thread::sleep_for(std::chrono::milliseconds(50));
-						confirmOrders();
 						return true;
 					}
 
 					if (data.bid2_minus_offer1() >= m_diff_open) {
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Buy order FAILED\n");
-							counter = time(nullptr);
-							confirmOrders();
 							return true;
 						};
 
@@ -305,8 +283,6 @@ namespace SWISSQUOTE {
 						++m_orders_count;
 						counter = time(nullptr);
 						check_timeout = true;
-						std::this_thread::sleep_for(std::chrono::milliseconds(50));
-						confirmOrders();
 						return true;
 					}
 				}
@@ -332,9 +308,6 @@ namespace SWISSQUOTE {
 			}
 
 			if (m_orders_count < sbe_trade_confirm.ordersCount()) {
-				confirmOrders();
-				counter = time(nullptr);
-				check_timeout = true;
 				return;
 			}
 
@@ -345,7 +318,6 @@ namespace SWISSQUOTE {
 					case CURRENT_DIFF_1:
 						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 							fprintf(stderr, "Correction buy order FAILED\n");
-							counter = time(nullptr);
 							return;
 						};
 
@@ -354,16 +326,11 @@ namespace SWISSQUOTE {
 
 						fprintf(stdout, "Correction buy order OK\n");
 						--m_orders_count;
-						counter = time(nullptr);
-						check_timeout = true;
-						confirmOrders();
 						return;
 
 					case CURRENT_DIFF_2:
 						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Correction sell order FAILED\n");
-							counter = time(nullptr);
-							confirmOrders();
 							return;
 						};
 
@@ -372,9 +339,6 @@ namespace SWISSQUOTE {
 
 						fprintf(stdout, "Correction sell order OK\n");
 						--m_orders_count;
-						counter = time(nullptr);
-						check_timeout = true;
-						confirmOrders();
 						return;
 
 					case NO_DEALS:
@@ -382,8 +346,6 @@ namespace SWISSQUOTE {
 				}
 			}
 		});
-
-		confirmOrders();
 
 		struct timespec cur{}, prev{};
 		__time_t diff;
@@ -451,8 +413,7 @@ namespace SWISSQUOTE {
 
 		sbe_trade_confirm.wrapForEncode(reinterpret_cast<char *>(m_buffer), sbe::MessageHeader::encodedLength(),
 		                                SWISSQUOTE_TO_MESSENGER_BUFFER)
-				.ordersCount(static_cast<const uint8_t>(m_orders_count))
-				.openState(m_open_state);
+				.ordersCount(static_cast<const uint8_t>(m_orders_count));
 
 		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_trade_confirm.encodedLength();
 		std::int64_t result;
