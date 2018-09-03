@@ -180,21 +180,20 @@ namespace SWISSQUOTE {
 				m_open_state = NO_DEALS;
 			}
 
-			struct swissquote_fix_message *response;
-
-			while (!local_md.empty()) {
+			for (int i = 0; i < local_md.size(); i++) {
+				struct swissquote_fix_message *response;
 				switch (m_open_state) {
 					case CURRENT_DIFF_1:
 						if (m_orders_count <= SWISSQUOTE_MAX_DEALS &&
-						    (local_md.front().bid - remote_md.offer) >= m_diff_open) {
+						    (local_md[i].bid - remote_md.offer) >= m_diff_open) {
 							if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
 								fprintf(stderr, "Sell order FAILED\n");
 								return true;
 							};
 							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md.front().bid, ORDER_RECORD_TYPE_SELL,
-							                        local_md.front().bid - remote_md.offer,
+							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
+							                        local_md[i].bid - remote_md.offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_OPEN);
 							fprintf(stdout, "Sell order OK\n");
 							local_md.pop_front();
@@ -204,15 +203,15 @@ namespace SWISSQUOTE {
 							return true;
 						}
 
-						if ((remote_md.bid - local_md.front().offer) >= m_diff_close) {
+						if ((remote_md.bid - local_md[i].offer) >= m_diff_close) {
 							if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
 								fprintf(stderr, "Buy order FAILED\n");
 								return true;
 							};
 							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md.front().offer, ORDER_RECORD_TYPE_BUY,
-							                        remote_md.bid - local_md.front().offer,
+							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
+							                        remote_md.bid - local_md[i].offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_CLOSE);
 							fprintf(stdout, "Buy order OK\n");
 							local_md.pop_front();
@@ -224,15 +223,15 @@ namespace SWISSQUOTE {
 
 					case CURRENT_DIFF_2:
 						if (m_orders_count <= SWISSQUOTE_MAX_DEALS &&
-						    (remote_md.bid - local_md.front().offer) >= m_diff_open) {
+						    (remote_md.bid - local_md[i].offer) >= m_diff_open) {
 							if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
 								fprintf(stderr, "Buy order FAILED\n");
 								return true;
 							};
 							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md.front().offer, ORDER_RECORD_TYPE_BUY,
-							                        remote_md.bid - local_md.front().offer,
+							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
+							                        remote_md.bid - local_md[i].offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_OPEN);
 							fprintf(stdout, "Buy order OK\n");
 							local_md.pop_front();
@@ -242,15 +241,15 @@ namespace SWISSQUOTE {
 							return true;
 						}
 
-						if ((local_md.front().bid - remote_md.offer) >= m_diff_close) {
+						if ((local_md[i].bid - remote_md.offer) >= m_diff_close) {
 							if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
 								fprintf(stderr, "Sell order FAILED\n");
 								return true;
 							};
 							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md.front().bid, ORDER_RECORD_TYPE_SELL,
-							                        local_md.front().bid - remote_md.offer,
+							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
+							                        local_md[i].bid - remote_md.offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
 							fprintf(stdout, "Sell order OK\n");
 							local_md.pop_front();
@@ -261,15 +260,15 @@ namespace SWISSQUOTE {
 						break;
 
 					case NO_DEALS: {
-						if ((local_md.front().bid - remote_md.offer) >= m_diff_open) {
+						if ((local_md[i].bid - remote_md.offer) >= m_diff_open) {
 							if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
 								fprintf(stderr, "Sell order FAILED\n");
 								return true;
 							};
 							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md.front().bid, ORDER_RECORD_TYPE_SELL,
-							                        local_md.front().bid - remote_md.offer,
+							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
+							                        local_md[i].bid - remote_md.offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
 							fprintf(stdout, "Sell order OK\n");
 							local_md.pop_front();
@@ -280,15 +279,15 @@ namespace SWISSQUOTE {
 							return true;
 						}
 
-						if ((remote_md.bid - local_md.front().offer) >= m_diff_open) {
+						if ((remote_md.bid - local_md[i].offer) >= m_diff_open) {
 							if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
 								fprintf(stderr, "Buy order FAILED\n");
 								return true;
 							};
 							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md.front().offer, ORDER_RECORD_TYPE_BUY,
-							                        remote_md.bid - local_md.front().offer,
+							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
+							                        remote_md.bid - local_md[i].offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_INIT);
 							fprintf(stdout, "Buy order OK\n");
 							local_md.pop_front();
@@ -301,8 +300,6 @@ namespace SWISSQUOTE {
 					}
 						break;
 				}
-
-				local_md.pop_front();
 			}
 
 			return true;
