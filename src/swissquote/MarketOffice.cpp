@@ -182,7 +182,7 @@ namespace SWISSQUOTE {
 					.bid_qty = sbe_market_data.bidQty(),
 					.offer = sbe_market_data.offer(),
 					.offer_qty = sbe_market_data.offerQty(),
-					.timestamp_ns = curr.tv_nsec
+					.timestamp_ns = curr
 			};
 			m_remote_md_ringbuffer->publish(next_sequence);
 
@@ -248,7 +248,7 @@ namespace SWISSQUOTE {
 							.bid_qty = (swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)),
 							.offer = swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value,
 							.offer_qty = swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value,
-							.timestamp_ns = curr.tv_nsec
+							.timestamp_ns = curr
 					};
 					m_local_md_ringbuffer->publish(next_local_md_seq);
 					continue;

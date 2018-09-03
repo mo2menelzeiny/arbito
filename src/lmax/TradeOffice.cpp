@@ -304,7 +304,6 @@ namespace LMAX {
 				local_md.pop_front();
 			}
 
-			confirmOrders();
 			return true;
 		};
 
@@ -375,7 +374,10 @@ namespace LMAX {
 				break;
 			}
 
-			if (!local_md.empty() && (curr.tv_nsec - local_md.back().timestamp_ns) >= 8000000) {
+			if (!local_md.empty() &&
+			    (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
+			     ((local_md.back().timestamp_ns.tv_sec * 1000000000L) + local_md.back().timestamp_ns.tv_nsec) >=
+			     10000000)) {
 				local_md.pop_back();
 			}
 
