@@ -8,9 +8,6 @@
 // C
 #include <chrono>
 
-// Domain
-#include "ArbitrageDataEvent.h"
-
 enum SystemRecordType {
 	SYSTEM_RECORD_TYPE_ERROR = 0,
 	SYSTEM_RECORD_TYPE_SUCCESS = 1,

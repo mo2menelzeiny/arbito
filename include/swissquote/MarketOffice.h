@@ -52,7 +52,6 @@
 
 // Domain
 #include "MarketDataEvent.h"
-#include "ArbitrageDataEvent.h"
 #include "Messenger.h"
 #include "MessengerConfig.h"
 #include "BrokerConfig.h"

@@ -53,7 +53,6 @@
 // Domain
 #include "lmax/Utilities.h"
 #include "MarketDataEvent.h"
-#include "ArbitrageDataEvent.h"
 #include "Messenger.h"
 #include "MessengerConfig.h"
 #include "Recorder.h"
