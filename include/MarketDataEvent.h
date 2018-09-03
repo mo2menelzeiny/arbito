@@ -7,7 +7,7 @@ struct MarketDataEvent {
 	double bid_qty;
 	double offer;
 	double offer_qty;
-	const char *timestamp;
+	__syscall_slong_t timestamp_ns;
 };
 
 

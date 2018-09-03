@@ -56,7 +56,6 @@
 #include "Messenger.h"
 #include "MessengerConfig.h"
 #include "BrokerConfig.h"
-#include "BrokerMarketDataHandler.h"
 #include "swissquote/Utilities.h"
 #include "Recorder.h"
 
@@ -66,10 +65,9 @@ namespace SWISSQUOTE {
 
 	public:
 		MarketOffice(Recorder &recorder, Messenger &messenger,
-				             const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
-				             const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
-				             MessengerConfig messenger_config, BrokerConfig broker_config, double spread,
-				             double lot_size);
+		             const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_ringbuff,
+		             const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &remote_md_ringbuff,
+		             MessengerConfig messenger_config, BrokerConfig broker_config, double spread, double lot_size);
 
 		void start();
 
@@ -94,9 +92,10 @@ namespace SWISSQUOTE {
 		Messenger *m_messenger;
 		std::shared_ptr<aeron::Publication> m_messenger_pub;
 		std::shared_ptr<aeron::Subscription> m_messenger_sub;
-		const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> m_broker_market_data_disruptor;
-		const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> m_arbitrage_data_ringbuffer;
-		std::shared_ptr<BrokerMarketDataHandler> m_broker_market_data_handler;
+		uint8_t m_buffer[SWISSQUOTE_MO_MESSENGER_BUFFER];
+		aeron::concurrent::AtomicBuffer m_atomic_buffer;
+		const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_md_ringbuffer;
+		const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_remote_md_ringbuffer;
 		Recorder *m_recorder;
 	};
 }

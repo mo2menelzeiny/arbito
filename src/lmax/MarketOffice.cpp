@@ -8,13 +8,13 @@ namespace LMAX {
 	}
 
 	MarketOffice::MarketOffice(Recorder &recorder, Messenger &messenger,
-	                           const std::shared_ptr<Disruptor::disruptor<MarketDataEvent>> &broker_market_data_disruptor,
-	                           const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
+	                           const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_ringbuff,
+	                           const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &remote_md_ringbuff,
 	                           MessengerConfig messenger_config, BrokerConfig broker_config, double spread,
 	                           double lot_size)
-			: m_messenger(&messenger), m_broker_market_data_disruptor(broker_market_data_disruptor),
-			  m_arbitrage_data_ringbuffer(arbitrage_data_ringbuffer), m_spread(spread),
-			  m_lot_size(lot_size), m_messenger_config(messenger_config), m_broker_config(broker_config), m_recorder(&recorder) {
+			: m_messenger(&messenger), m_recorder(&recorder), m_local_md_ringbuffer(local_md_ringbuff),
+			  m_remote_md_ringbuffer(remote_md_ringbuff), m_messenger_config(messenger_config),
+			  m_broker_config(broker_config), m_spread(spread), m_lot_size(lot_size) {
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
 		m_cfg.heartbtint = broker_config.heartbeat;
@@ -22,13 +22,13 @@ namespace LMAX {
 		strncpy(m_cfg.password, broker_config.password, ARRAY_SIZE(m_cfg.password));
 		strncpy(m_cfg.sender_comp_id, broker_config.sender, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, broker_config.receiver, ARRAY_SIZE(m_cfg.target_comp_id));
+
+		m_atomic_buffer.wrap(m_buffer, LMAX_MO_MESSENGER_BUFFER);
 	}
 
 	void MarketOffice::start() {
 		initMessengerChannel();
 		initBrokerClient();
-		m_broker_market_data_handler = std::make_shared<BrokerMarketDataHandler>(m_messenger_pub);
-		m_broker_market_data_disruptor->handleEventsWith(m_broker_market_data_handler);
 	}
 
 	void MarketOffice::initMessengerChannel() {
@@ -167,47 +167,40 @@ namespace LMAX {
 	}
 
 	void MarketOffice::poll() {
-		MarketDataEvent broker_market_data{.bid = -99.0, .bid_qty = 0, .offer = 99.0, .offer_qty = 0};
-
+		struct timespec curr{}, prev{};
+		sbe::MessageHeader sbe_msg_header;
+		sbe::MarketData sbe_market_data;
 		aeron::BusySpinIdleStrategy messengerIdleStrategy;
-		sbe::MessageHeader msgHeader;
-		sbe::MarketData marketData;
 		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 		                                                aeron::index_t length, const aeron::Header &header) {
-			msgHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, LMAX_MO_MESSENGER_BUFFER);
-			marketData.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
-			                         sbe::MessageHeader::encodedLength(), msgHeader.blockLength(), msgHeader.version(),
-			                         LMAX_MO_MESSENGER_BUFFER);
+			sbe_msg_header.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, LMAX_MO_MESSENGER_BUFFER);
+			sbe_market_data.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
+			                              sbe::MessageHeader::encodedLength(), sbe_msg_header.blockLength(),
+			                              sbe_msg_header.version(),
+			                              LMAX_MO_MESSENGER_BUFFER);
 
-			// publish arbitrage data to arbitrage data disruptor
-			auto next_sequence = m_arbitrage_data_ringbuffer->next();
-			(*m_arbitrage_data_ringbuffer)[next_sequence] = (ArbitrageDataEvent) {
-					.l1 = broker_market_data,
-					.l2 = (MarketDataEvent) {
-							.bid = marketData.bid(),
-							.bid_qty = marketData.bidQty(),
-							.offer = marketData.offer(),
-							.offer_qty = marketData.offerQty()
-					}
+			auto next_sequence = m_remote_md_ringbuffer->next();
+			(*m_remote_md_ringbuffer)[next_sequence] = (MarketDataEvent) {
+					.bid = sbe_market_data.bid(),
+					.bid_qty = sbe_market_data.bidQty(),
+					.offer = sbe_market_data.offer(),
+					.offer_qty = sbe_market_data.offerQty(),
+					.timestamp_ns = curr.tv_nsec
 			};
-			m_arbitrage_data_ringbuffer->publish(next_sequence);
+			m_remote_md_ringbuffer->publish(next_sequence);
 
 		});
 
-		struct timespec cur{}, prev{};
-		__time_t diff;
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
 		while (m_session->active) {
 
-			clock_gettime(CLOCK_MONOTONIC, &cur);
+			clock_gettime(CLOCK_MONOTONIC, &curr);
 
-			diff = (cur.tv_sec - prev.tv_sec);
+			if ((curr.tv_sec - prev.tv_sec) > 0.1 * m_session->heartbtint) {
+				prev = curr;
 
-			if (diff > 0.1 * m_session->heartbtint) {
-				prev = cur;
-
-				if (!lmax_fix_session_keepalive(m_session, &cur)) {
+				if (!lmax_fix_session_keepalive(m_session, &curr)) {
 					fprintf(stderr, "MarketOffice: Session keep alive FAILED\n");
 					break;
 				}
@@ -227,7 +220,6 @@ namespace LMAX {
 
 			switch (msg->type) {
 				case LMAX_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
-					// Filter market data based on spread, bid lot size and offer lot size
 					if (m_spread < (lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value -
 					                lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
 					    || m_lot_size > lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)
@@ -235,18 +227,32 @@ namespace LMAX {
 						continue;
 					}
 
-					// allocate most recent prices
-					broker_market_data = (MarketDataEvent) {
+					sbe_msg_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, LMAX_MO_MESSENGER_BUFFER)
+							.blockLength(sbe::MarketData::sbeBlockLength())
+							.templateId(sbe::MarketData::sbeTemplateId())
+							.schemaId(sbe::MarketData::sbeSchemaId())
+							.version(sbe::MarketData::sbeSchemaVersion());
+					sbe_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer),
+					                              sbe::MessageHeader::encodedLength(), LMAX_MO_MESSENGER_BUFFER)
+							.bid(lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
+							.bidQty(lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0))
+							.offer(lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value)
+							.offerQty(lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value);
+					aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
+					std::int64_t result;
+					do {
+						result = m_messenger_pub->offer(m_atomic_buffer, 0, len);
+					} while (result < -1);
+
+					auto next_local_md_seq = m_local_md_ringbuffer->next();
+					(*m_local_md_ringbuffer)[next_local_md_seq] = (MarketDataEvent) {
 							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
 							.bid_qty = (lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value
+							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value,
+							.timestamp_ns = curr.tv_nsec
 					};
-
-					// publish market data to broker disruptor
-					auto next_sequence_1 = m_broker_market_data_disruptor->ringBuffer()->next();
-					(*m_broker_market_data_disruptor->ringBuffer())[next_sequence_1] = broker_market_data;
-					m_broker_market_data_disruptor->ringBuffer()->publish(next_sequence_1);
+					m_local_md_ringbuffer->publish(next_local_md_seq);
 					continue;
 				}
 				case LMAX_FIX_MSG_TYPE_TEST_REQUEST:

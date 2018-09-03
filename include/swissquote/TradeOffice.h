@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdexcept>
-#include <stack>
+#include <deque>
 
 // SSL includes
 #include <openssl/ssl.h>
@@ -76,9 +76,10 @@ namespace SWISSQUOTE {
 
 	public:
 		TradeOffice(Recorder &recorder, Messenger &messenger,
-				            const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
-				            MessengerConfig messenger_config, BrokerConfig broker_config, double diff_open,
-				            double diff_close, double lot_size);
+		            const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_ringbuffer,
+		            const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &remote_md_ringbuff,
+		            MessengerConfig messenger_config, BrokerConfig broker_config, double diff_open,
+		            double diff_close, double lot_size);
 
 		void start();
 
@@ -108,7 +109,8 @@ namespace SWISSQUOTE {
 		aeron::concurrent::AtomicBuffer m_atomic_buffer;
 		std::shared_ptr<aeron::Publication> m_messenger_pub;
 		std::shared_ptr<aeron::Subscription> m_messenger_sub;
-		const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> m_arbitrage_data_ringbuffer;
+		const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_md_ringbuffer;
+		const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_remote_md_ringbuffer;
 		Recorder *m_recorder;
 	};
 }

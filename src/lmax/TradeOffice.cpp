@@ -6,12 +6,13 @@ namespace LMAX {
 	TradeOffice::TradeOffice() = default;
 
 	TradeOffice::TradeOffice(Recorder &recorder, Messenger &messenger,
-	                         const std::shared_ptr<Disruptor::RingBuffer<ArbitrageDataEvent>> &arbitrage_data_ringbuffer,
+	                         const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_ringbuffer,
+	                         const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &remote_md_ringbuff,
 	                         MessengerConfig messenger_config, BrokerConfig broker_config, double diff_open,
 	                         double diff_close, double lot_size)
-			: m_recorder(&recorder), m_messenger(&messenger), m_messenger_config(messenger_config),
-			  m_broker_config(broker_config), m_arbitrage_data_ringbuffer(arbitrage_data_ringbuffer),
-			  m_diff_open(diff_open), m_diff_close(diff_close), m_lot_size(lot_size) {
+			: m_recorder(&recorder), m_messenger(&messenger), m_local_md_ringbuffer(local_md_ringbuffer),
+			  m_remote_md_ringbuffer(remote_md_ringbuff), m_messenger_config(messenger_config),
+			  m_broker_config(broker_config), m_diff_open(diff_open), m_diff_close(diff_close), m_lot_size(lot_size) {
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
 		m_cfg.heartbtint = broker_config.heartbeat;
@@ -157,10 +158,17 @@ namespace LMAX {
 		bool check_timeout = false;
 		time_t counter = time(nullptr);
 		time_t timeout = LMAX_DELAY_SECONDS;
+		std::deque<MarketDataEvent> local_md;
 
-		auto arbitrage_data_poller = m_arbitrage_data_ringbuffer->newPoller();
-		m_arbitrage_data_ringbuffer->addGatingSequences({arbitrage_data_poller->sequence()});
-		auto arbitrage_data_handler = [&](ArbitrageDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		auto local_md_poller = m_local_md_ringbuffer->newPoller();
+		m_local_md_ringbuffer->addGatingSequences({local_md_poller->sequence()});
+		auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+			local_md.push_front(data);
+		};
+
+		auto remote_md_poller = m_remote_md_ringbuffer->newPoller();
+		m_remote_md_ringbuffer->addGatingSequences({remote_md_poller->sequence()});
+		auto remote_md_handler = [&](MarketDataEvent &remote_md, std::int64_t sequence, bool endOfBatch) -> bool {
 			if (check_timeout && ((time(nullptr) - counter) < timeout)) {
 				return true;
 			}
@@ -173,121 +181,130 @@ namespace LMAX {
 
 			struct lmax_fix_message *response;
 
-			switch (m_open_state) {
-				case CURRENT_DIFF_1: {
-					if (m_orders_count < LMAX_MAX_DEALS && data.bid2_minus_offer1() >= m_diff_open) {
-						if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
-							fprintf(stderr, "Buy order FAILED\n");
+			while (!local_md.empty()) {
+				switch (m_open_state) {
+					case CURRENT_DIFF_1:
+						if (m_orders_count <= LMAX_MAX_DEALS &&
+						    (remote_md.bid - local_md.front().offer) >= m_diff_open) {
+							if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
+								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
+								fprintf(stderr, "Buy order FAILED\n");
+								return true;
+							};
+							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+							                        local_md.front().offer, ORDER_RECORD_TYPE_BUY,
+							                        remote_md.bid - local_md.front().offer,
+							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_OPEN);
+							fprintf(stdout, "Buy order OK\n");
+							local_md.pop_front();
+							++m_orders_count;
+							counter = time(nullptr);
+							check_timeout = true;
 							return true;
-						};
+						}
 
-						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
-						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.bid2_minus_offer1(),
-						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_OPEN);
-
-						fprintf(stdout, "Buy order OK\n");
-						++m_orders_count;
-						counter = time(nullptr);
-						check_timeout = true;
-						return true;
-					}
-
-					if (data.bid1_minus_offer2() >= m_diff_close) {
-						if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
-							fprintf(stderr, "Sell order FAILED\n");
+						if ((local_md.front().bid - remote_md.offer) >= m_diff_close) {
+							if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
+								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
+								fprintf(stderr, "Sell order FAILED\n");
+								return true;
+							};
+							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+							                        local_md.front().bid, ORDER_RECORD_TYPE_SELL,
+							                        local_md.front().bid - remote_md.offer,
+							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_CLOSE);
+							fprintf(stdout, "Sell order OK\n");
+							local_md.pop_front();
+							--m_orders_count;
 							return true;
-						};
+						}
 
-						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
-						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.bid1_minus_offer2(),
-						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_CLOSE);
+						break;
 
-						fprintf(stdout, "Sell order OK\n");
-						--m_orders_count;
-						counter = time(nullptr);
-						check_timeout = true;
-						return true;
-					}
+					case CURRENT_DIFF_2:
+						if (m_orders_count <= LMAX_MAX_DEALS &&
+						    (local_md.front().bid - remote_md.offer) >= m_diff_open) {
+							if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
+								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
+								fprintf(stderr, "Sell order FAILED\n");
+								return true;
+							};
+							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+							                        local_md.front().bid, ORDER_RECORD_TYPE_SELL,
+							                        local_md.front().bid - remote_md.offer,
+							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_OPEN);
+							fprintf(stdout, "Sell order OK\n");
+							local_md.pop_front();
+							++m_orders_count;
+							counter = time(nullptr);
+							check_timeout = true;
+							return true;
+						}
+
+						if (remote_md.bid - local_md.front().offer >= m_diff_close) {
+							if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
+								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
+								fprintf(stderr, "Buy order FAILED\n");
+								return true;
+							};
+							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+							                        local_md.front().offer, ORDER_RECORD_TYPE_BUY,
+							                        remote_md.bid - local_md.front().offer,
+							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
+							fprintf(stdout, "Buy order OK\n");
+							local_md.pop_front();
+							--m_orders_count;
+							return true;
+						}
+
+						break;
+
+					case NO_DEALS:
+						if ((local_md.front().bid - remote_md.offer) >= m_diff_open) {
+							if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
+								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
+								fprintf(stderr, "Sell order FAILED\n");
+								return true;
+							};
+							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+							                        local_md.front().bid, ORDER_RECORD_TYPE_SELL,
+							                        local_md.front().bid - remote_md.offer,
+							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_INIT);
+							fprintf(stdout, "Sell order OK\n");
+							local_md.pop_front();
+							m_open_state = CURRENT_DIFF_2;
+							++m_orders_count;
+							counter = time(nullptr);
+							check_timeout = true;
+							return true;
+						}
+
+						if ((remote_md.bid - local_md.front().offer) >= m_diff_open) {
+							if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
+								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
+								fprintf(stderr, "Buy order FAILED\n");
+								return true;
+							};
+							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
+							                        local_md.front().offer, ORDER_RECORD_TYPE_BUY,
+							                        remote_md.bid - local_md.front().offer,
+							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
+							fprintf(stdout, "Buy order OK\n");
+							local_md.pop_front();
+							m_open_state = CURRENT_DIFF_1;
+							++m_orders_count;
+							counter = time(nullptr);
+							check_timeout = true;
+							return true;
+						}
+
+						break;
 				}
-					break;
 
-				case CURRENT_DIFF_2: {
-					if (m_orders_count < LMAX_MAX_DEALS && data.bid1_minus_offer2() >= m_diff_open) {
-						if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
-							fprintf(stderr, "Sell order FAILED\n");
-							return true;
-						};
-
-						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
-						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.bid1_minus_offer2(),
-						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_OPEN);
-
-						fprintf(stdout, "Sell order OK\n");
-						++m_orders_count;
-						counter = time(nullptr);
-						check_timeout = true;
-						return true;
-					}
-
-					if (data.bid2_minus_offer1() >= m_diff_close) {
-						if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
-							fprintf(stderr, "Buy order FAILED\n");
-							return true;
-						};
-
-						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
-						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.bid2_minus_offer1(),
-						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
-
-						fprintf(stdout, "Buy order OK\n");
-						--m_orders_count;
-						counter = time(nullptr);
-						check_timeout = true;
-						return true;
-					}
-				}
-					break;
-
-				case NO_DEALS: {
-					if (data.bid1_minus_offer2() >= m_diff_open) {
-						if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
-							fprintf(stderr, "Sell order FAILED\n");
-							return true;
-						};
-
-						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
-						                        data.l1.bid, ORDER_RECORD_TYPE_SELL, data.bid1_minus_offer2(),
-						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_INIT);
-
-						fprintf(stdout, "Sell order OK\n");
-						m_open_state = CURRENT_DIFF_2;
-						++m_orders_count;
-						counter = time(nullptr);
-						check_timeout = true;
-						return true;
-					}
-
-					if (data.bid2_minus_offer1() >= m_diff_open) {
-						if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
-							fprintf(stderr, "Buy order FAILED\n");
-							return true;
-						};
-
-						m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
-						                        data.l1.offer, ORDER_RECORD_TYPE_BUY, data.bid2_minus_offer1(),
-						                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
-
-						fprintf(stdout, "Buy order OK\n");
-						m_open_state = CURRENT_DIFF_1;
-						++m_orders_count;
-						counter = time(nullptr);
-						check_timeout = true;
-						return true;
-					}
-				}
-					break;
+				local_md.pop_front();
 			}
 
+			confirmOrders();
 			return true;
 		};
 
@@ -337,18 +354,17 @@ namespace LMAX {
 			}
 		});
 
-		struct timespec cur{}, prev{}, confirm_timer{};
+		struct timespec curr{}, prev{};
 		clock_gettime(CLOCK_MONOTONIC, &prev);
-		clock_gettime(CLOCK_MONOTONIC, &confirm_timer);
 
 		while (m_session->active) {
 
-			clock_gettime(CLOCK_MONOTONIC, &cur);
+			clock_gettime(CLOCK_MONOTONIC, &curr);
 
-			if ((cur.tv_sec - prev.tv_sec) > (0.1 * m_session->heartbtint)) {
-				prev = cur;
+			if ((curr.tv_sec - prev.tv_sec) > (0.1 * m_session->heartbtint)) {
+				prev = curr;
 
-				if (!lmax_fix_session_keepalive(m_session, &cur)) {
+				if (!lmax_fix_session_keepalive(m_session, &curr)) {
 					fprintf(stderr, "TradeOffice: Session keep alive FAILED\n");
 					break;
 				}
@@ -359,16 +375,16 @@ namespace LMAX {
 				break;
 			}
 
-			if (30 < (cur.tv_sec - confirm_timer.tv_sec)) {
-				confirm_timer = cur;
-				confirmOrders();
+			if (!local_md.empty() && (curr.tv_nsec - local_md.back().timestamp_ns) >= 8000000) {
+				local_md.pop_back();
 			}
 
-			arbitrage_data_poller->poll(arbitrage_data_handler);
-
+			local_md_poller->poll(local_md_handler);
+			remote_md_poller->poll(remote_md_handler);
 			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			struct lmax_fix_message *msg;
+
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
 			}
