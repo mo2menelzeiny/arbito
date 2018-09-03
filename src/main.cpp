@@ -66,14 +66,11 @@ int main() {
 
 		recorder.recordSystem("Main: initialize OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
-		auto task_scheduler = std::make_shared<Disruptor::RoundRobinThreadAffinedTaskScheduler>();
+		auto local_md_ringbuff = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
+				[]() { return MarketDataEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-		auto broker_market_data_disruptor = std::make_shared<Disruptor::disruptor<MarketDataEvent>>(
-				[]() { return MarketDataEvent(); }, 8, task_scheduler, Disruptor::ProducerType::Single,
-				std::make_shared<Disruptor::BusySpinWaitStrategy>());
-
-		auto arbitrage_data_ringbuffer = Disruptor::RingBuffer<ArbitrageDataEvent>::createSingleProducer(
-				[]() { return ArbitrageDataEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		auto remote_md_ringbuff = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
+				[]() { return MarketDataEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		Messenger messenger(recorder);
 		messenger.start();
@@ -86,20 +83,18 @@ int main() {
 
 		switch (broker) {
 			case 1:
-				lmax_mo = new LMAX::MarketOffice(recorder, messenger, broker_market_data_disruptor,
-				                                 arbitrage_data_ringbuffer, mo_messenger_config, mo_broker_config,
-				                                 spread, lot_size);
-				lmax_to = new LMAX::TradeOffice(recorder, messenger, arbitrage_data_ringbuffer, to_messenger_config,
-				                                to_broker_config, diff_open, diff_close, lot_size);
+				lmax_mo = new LMAX::MarketOffice(recorder, messenger, local_md_ringbuff, remote_md_ringbuff,
+				                                 mo_messenger_config, mo_broker_config, spread, lot_size);
+				lmax_to = new LMAX::TradeOffice(recorder, messenger, local_md_ringbuff, remote_md_ringbuff,
+				                                to_messenger_config, to_broker_config, diff_open, diff_close, lot_size);
 				lmax_to->start();
 				lmax_mo->start();
 				break;
 
 			case 2:
-				swissquote_mo = new SWISSQUOTE::MarketOffice(recorder, messenger, broker_market_data_disruptor,
-				                                             arbitrage_data_ringbuffer, mo_messenger_config,
-				                                             mo_broker_config, spread, lot_size);
-				swissquote_to = new SWISSQUOTE::TradeOffice(recorder, messenger, arbitrage_data_ringbuffer,
+				swissquote_mo = new SWISSQUOTE::MarketOffice(recorder, messenger, local_md_ringbuff, remote_md_ringbuff,
+				                                             mo_messenger_config, mo_broker_config, spread, lot_size);
+				swissquote_to = new SWISSQUOTE::TradeOffice(recorder, messenger, local_md_ringbuff, remote_md_ringbuff,
 				                                            to_messenger_config, to_broker_config, diff_open,
 				                                            diff_close, lot_size);
 				swissquote_to->start();
@@ -109,9 +104,6 @@ int main() {
 				recorder.recordSystem("Main: broker case FAILED", SYSTEM_RECORD_TYPE_ERROR);
 				return EXIT_FAILURE;
 		}
-
-		task_scheduler->start(1);
-		broker_market_data_disruptor->start();
 
 		recorder.recordSystem("Main: all OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
