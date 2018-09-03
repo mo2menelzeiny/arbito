@@ -155,9 +155,9 @@ namespace LMAX {
 	}
 
 	void TradeOffice::poll() {
-		bool check_timeout = false;
-		time_t counter = time(nullptr);
-		time_t timeout = LMAX_DELAY_SECONDS;
+		bool check_delay = false;
+		time_t start_delay = time(nullptr);
+		time_t order_delay = LMAX_DELAY_SECONDS;
 		std::deque<MarketDataEvent> local_md;
 
 		auto local_md_poller = m_local_md_ringbuffer->newPoller();
@@ -169,11 +169,12 @@ namespace LMAX {
 		auto remote_md_poller = m_remote_md_ringbuffer->newPoller();
 		m_remote_md_ringbuffer->addGatingSequences({remote_md_poller->sequence()});
 		auto remote_md_handler = [&](MarketDataEvent &remote_md, std::int64_t sequence, bool endOfBatch) -> bool {
-			if (check_timeout && ((time(nullptr) - counter) < timeout)) {
+			if (check_delay && ((time(nullptr) - start_delay) < order_delay)) {
+				confirmOrders();
 				return true;
 			}
 
-			check_timeout = false;
+			check_delay = false;
 
 			if (0 == m_orders_count) {
 				m_open_state = NO_DEALS;
@@ -190,6 +191,8 @@ namespace LMAX {
 								fprintf(stderr, "Buy order FAILED\n");
 								return true;
 							};
+							start_delay = time(nullptr);
+							check_delay = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
 							                        remote_md.bid - local_md[i].offer,
@@ -197,8 +200,6 @@ namespace LMAX {
 							fprintf(stdout, "Buy order OK\n");
 							local_md.pop_front();
 							++m_orders_count;
-							counter = time(nullptr);
-							check_timeout = true;
 							return true;
 						}
 
@@ -228,6 +229,8 @@ namespace LMAX {
 								fprintf(stderr, "Sell order FAILED\n");
 								return true;
 							};
+							start_delay = time(nullptr);
+							check_delay = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
 							                        local_md[i].bid - remote_md.offer,
@@ -235,8 +238,6 @@ namespace LMAX {
 							fprintf(stdout, "Sell order OK\n");
 							local_md.pop_front();
 							++m_orders_count;
-							counter = time(nullptr);
-							check_timeout = true;
 							return true;
 						}
 
@@ -265,6 +266,8 @@ namespace LMAX {
 								fprintf(stderr, "Sell order FAILED\n");
 								return true;
 							};
+							start_delay = time(nullptr);
+							check_delay = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
 							                        local_md[i].bid - remote_md.offer,
@@ -273,8 +276,6 @@ namespace LMAX {
 							local_md.pop_front();
 							m_open_state = CURRENT_DIFF_2;
 							++m_orders_count;
-							counter = time(nullptr);
-							check_timeout = true;
 							return true;
 						}
 
@@ -284,6 +285,8 @@ namespace LMAX {
 								fprintf(stderr, "Buy order FAILED\n");
 								return true;
 							};
+							start_delay = time(nullptr);
+							check_delay = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
 							                        remote_md.bid - local_md[i].offer,
@@ -292,8 +295,6 @@ namespace LMAX {
 							local_md.pop_front();
 							m_open_state = CURRENT_DIFF_1;
 							++m_orders_count;
-							counter = time(nullptr);
-							check_timeout = true;
 							return true;
 						}
 
@@ -316,17 +317,14 @@ namespace LMAX {
 
 			if (m_orders_count > sbe_trade_confirm.ordersCount()) {
 				struct lmax_fix_message *response;
-
 				switch (m_open_state) {
 					case CURRENT_DIFF_1:
 						if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 							fprintf(stderr, "Correction sell order FAILED\n");
 							return;
 						};
-
 						m_recorder->recordOrder(0, 0, ORDER_RECORD_TYPE_SELL, 0, ORDER_TRIGGER_TYPE_CORRECTION,
 						                        ORDER_RECORD_STATE_CLOSE);
-
 						fprintf(stdout, "Correction sell order OK\n");
 						--m_orders_count;
 						return;
@@ -336,10 +334,8 @@ namespace LMAX {
 							fprintf(stderr, "Correction buy order FAILED\n");
 							return;
 						};
-
 						m_recorder->recordOrder(0, 0, ORDER_RECORD_TYPE_BUY, 0, ORDER_TRIGGER_TYPE_CORRECTION,
 						                        ORDER_RECORD_STATE_CLOSE);
-
 						fprintf(stdout, "Correction buy order OK\n");
 						--m_orders_count;
 						return;
@@ -374,7 +370,7 @@ namespace LMAX {
 			if (local_md.size() > 1 &&
 			    (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
 			     ((local_md.back().timestamp_ns.tv_sec * 1000000000L) + local_md.back().timestamp_ns.tv_nsec) >
-			     10000000)) {
+			     8000000)) {
 				local_md.pop_back();
 			}
 
