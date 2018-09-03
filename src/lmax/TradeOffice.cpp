@@ -155,10 +155,12 @@ namespace LMAX {
 	}
 
 	void TradeOffice::poll() {
-		bool check_delay = false;
-		time_t start_delay = time(nullptr);
-		time_t order_delay = LMAX_DELAY_SECONDS;
+		bool close_delay_check = false;
+		time_t close_delay_start = time(nullptr);
+		time_t close_delay = LMAX_DELAY_SECONDS;
 		std::deque<MarketDataEvent> local_md;
+		struct timespec confirm_delay_start{};
+		bool confirm_delay_check = false;
 
 		auto local_md_poller = m_local_md_ringbuffer->newPoller();
 		m_local_md_ringbuffer->addGatingSequences({local_md_poller->sequence()});
@@ -169,12 +171,6 @@ namespace LMAX {
 		auto remote_md_poller = m_remote_md_ringbuffer->newPoller();
 		m_remote_md_ringbuffer->addGatingSequences({remote_md_poller->sequence()});
 		auto remote_md_handler = [&](MarketDataEvent &remote_md, std::int64_t sequence, bool endOfBatch) -> bool {
-			if (check_delay && ((time(nullptr) - start_delay) < order_delay)) {
-				confirmOrders();
-				return true;
-			}
-
-			check_delay = false;
 
 			if (0 == m_orders_count) {
 				m_open_state = NO_DEALS;
@@ -184,15 +180,17 @@ namespace LMAX {
 				struct lmax_fix_message *response;
 				switch (m_open_state) {
 					case CURRENT_DIFF_1:
-						if (m_orders_count <= LMAX_MAX_DEALS &&
+						if (m_orders_count < LMAX_MAX_DEALS &&
 						    (remote_md.bid - local_md[i].offer) >= m_diff_open) {
 							if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
 								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
 								fprintf(stderr, "Buy order FAILED\n");
 								return true;
 							};
-							start_delay = time(nullptr);
-							check_delay = true;
+							close_delay_start = time(nullptr);
+							close_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
 							                        remote_md.bid - local_md[i].offer,
@@ -202,6 +200,12 @@ namespace LMAX {
 							++m_orders_count;
 							return true;
 						}
+
+						if (close_delay_check && ((time(nullptr) - close_delay_start) < close_delay)) {
+							return true;
+						}
+
+						close_delay_check = false;
 
 						if ((local_md[i].bid - remote_md.offer) >= m_diff_close) {
 							if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
@@ -222,15 +226,17 @@ namespace LMAX {
 						break;
 
 					case CURRENT_DIFF_2:
-						if (m_orders_count <= LMAX_MAX_DEALS &&
+						if (m_orders_count < LMAX_MAX_DEALS &&
 						    (local_md[i].bid - remote_md.offer) >= m_diff_open) {
 							if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
 								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
 								fprintf(stderr, "Sell order FAILED\n");
 								return true;
 							};
-							start_delay = time(nullptr);
-							check_delay = true;
+							close_delay_start = time(nullptr);
+							close_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
 							                        local_md[i].bid - remote_md.offer,
@@ -240,6 +246,12 @@ namespace LMAX {
 							++m_orders_count;
 							return true;
 						}
+
+						if (close_delay_check && ((time(nullptr) - close_delay_start) < close_delay)) {
+							return true;
+						}
+
+						close_delay_check = false;
 
 						if (remote_md.bid - local_md[i].offer >= m_diff_close) {
 							if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
@@ -266,8 +278,10 @@ namespace LMAX {
 								fprintf(stderr, "Sell order FAILED\n");
 								return true;
 							};
-							start_delay = time(nullptr);
-							check_delay = true;
+							close_delay_start = time(nullptr);
+							close_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
 							                        local_md[i].bid - remote_md.offer,
@@ -285,8 +299,10 @@ namespace LMAX {
 								fprintf(stderr, "Buy order FAILED\n");
 								return true;
 							};
-							start_delay = time(nullptr);
-							check_delay = true;
+							close_delay_start = time(nullptr);
+							close_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
 							                        remote_md.bid - local_md[i].offer,
@@ -315,6 +331,11 @@ namespace LMAX {
 			                                sbe::MessageHeader::encodedLength(), sbe_msg_header.blockLength(),
 			                                sbe_msg_header.version(), LMAX_TO_MESSENGER_BUFFER);
 
+			if (m_orders_count < sbe_trade_confirm.ordersCount()) {
+				confirmOrders();
+				return;
+			}
+
 			if (m_orders_count > sbe_trade_confirm.ordersCount()) {
 				struct lmax_fix_message *response;
 				switch (m_open_state) {
@@ -341,6 +362,8 @@ namespace LMAX {
 						return;
 
 					case NO_DEALS:
+						m_recorder->recordSystem("Correction failed no deals", SYSTEM_RECORD_TYPE_ERROR);
+						fprintf(stderr, "Correction no deals FAILED\n");
 						return;
 				}
 			}
@@ -367,11 +390,17 @@ namespace LMAX {
 				break;
 			}
 
-			if (local_md.size() > 1 &&
-			    (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
-			     ((local_md.back().timestamp_ns.tv_sec * 1000000000L) + local_md.back().timestamp_ns.tv_nsec) >
-			     8000000)) {
+			if (local_md.size() > 1 && (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
+			                            ((local_md.back().timestamp_ns.tv_sec * 1000000000L) +
+			                             local_md.back().timestamp_ns.tv_nsec) > 10000000)) {
 				local_md.pop_back();
+			}
+
+			if (confirm_delay_check && (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
+			                            ((confirm_delay_start.tv_sec * 1000000000L) + confirm_delay_start.tv_nsec)) >
+			                           20000000) {
+				confirmOrders();
+				confirm_delay_check = false;
 			}
 
 			local_md_poller->poll(local_md_handler);
@@ -414,11 +443,9 @@ namespace LMAX {
 				.templateId(sbe::TradeConfirm::sbeTemplateId())
 				.schemaId(sbe::TradeConfirm::sbeSchemaId())
 				.version(sbe::TradeConfirm::sbeSchemaVersion());
-
 		sbe_trade_confirm.wrapForEncode(reinterpret_cast<char *>(m_buffer), sbe::MessageHeader::encodedLength(),
 		                                LMAX_TO_MESSENGER_BUFFER)
 				.ordersCount(static_cast<const uint8_t>(m_orders_count));
-
 		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_trade_confirm.encodedLength();
 		std::int64_t result;
 		do {
