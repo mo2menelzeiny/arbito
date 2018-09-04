@@ -399,12 +399,12 @@ namespace SWISSQUOTE {
 				local_md.pop_back();
 			}
 
-			if (confirm_delay_check && (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
+			/*if (confirm_delay_check && (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
 			                            ((confirm_delay_start.tv_sec * 1000000000L) + confirm_delay_start.tv_nsec)) >
 			                           20000000) {
 				confirmOrders();
 				confirm_delay_check = false;
-			}
+			}*/
 
 			local_md_poller->poll(local_md_handler);
 			remote_md_poller->poll(remote_md_handler);
