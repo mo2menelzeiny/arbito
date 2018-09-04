@@ -155,9 +155,9 @@ namespace LMAX {
 	}
 
 	void TradeOffice::poll() {
-		bool close_delay_check = false;
-		time_t close_delay_start = time(nullptr);
-		time_t close_delay = LMAX_DELAY_SECONDS;
+		bool order_delay_check = false;
+		time_t order_delay_start = time(nullptr);
+		time_t order_delay = LMAX_DELAY_SECONDS;
 		std::deque<MarketDataEvent> local_md;
 		struct timespec confirm_delay_start{};
 		bool confirm_delay_check = false;
@@ -171,6 +171,12 @@ namespace LMAX {
 		auto remote_md_poller = m_remote_md_ringbuffer->newPoller();
 		m_remote_md_ringbuffer->addGatingSequences({remote_md_poller->sequence()});
 		auto remote_md_handler = [&](MarketDataEvent &remote_md, std::int64_t sequence, bool endOfBatch) -> bool {
+
+			if (order_delay_check && ((time(nullptr) - order_delay_start) < order_delay)) {
+				return true;
+			}
+
+			order_delay_check = false;
 
 			if (0 == m_orders_count) {
 				m_open_state = NO_DEALS;
@@ -187,25 +193,19 @@ namespace LMAX {
 								fprintf(stderr, "Buy order FAILED\n");
 								return true;
 							};
-							close_delay_start = time(nullptr);
-							close_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
 							                        remote_md.bid - local_md[i].offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_OPEN);
 							fprintf(stdout, "Buy order OK\n");
+							order_delay_start = time(nullptr);
+							order_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							local_md.erase(local_md.begin() + i);
 							++m_orders_count;
 							return true;
 						}
-
-						if (close_delay_check && ((time(nullptr) - close_delay_start) < close_delay)) {
-							return true;
-						}
-
-						close_delay_check = false;
 
 						if ((local_md[i].bid - remote_md.offer) >= m_diff_close) {
 							if (lmax_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
@@ -218,6 +218,10 @@ namespace LMAX {
 							                        local_md[i].bid - remote_md.offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_CLOSE);
 							fprintf(stdout, "Sell order OK\n");
+							order_delay_start = time(nullptr);
+							order_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							local_md.erase(local_md.begin() + i);
 							--m_orders_count;
 							return true;
@@ -233,25 +237,19 @@ namespace LMAX {
 								fprintf(stderr, "Sell order FAILED\n");
 								return true;
 							};
-							close_delay_start = time(nullptr);
-							close_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
 							                        local_md[i].bid - remote_md.offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_OPEN);
+							order_delay_start = time(nullptr);
+							order_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							fprintf(stdout, "Sell order OK\n");
 							local_md.erase(local_md.begin() + i);
 							++m_orders_count;
 							return true;
 						}
-
-						if (close_delay_check && ((time(nullptr) - close_delay_start) < close_delay)) {
-							return true;
-						}
-
-						close_delay_check = false;
 
 						if (remote_md.bid - local_md[i].offer >= m_diff_close) {
 							if (lmax_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
@@ -264,6 +262,10 @@ namespace LMAX {
 							                        remote_md.bid - local_md[i].offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
 							fprintf(stdout, "Buy order OK\n");
+							order_delay_start = time(nullptr);
+							order_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							local_md.erase(local_md.begin() + i);
 							--m_orders_count;
 							return true;
@@ -278,14 +280,14 @@ namespace LMAX {
 								fprintf(stderr, "Sell order FAILED\n");
 								return true;
 							};
-							close_delay_start = time(nullptr);
-							close_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
 							                        local_md[i].bid - remote_md.offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_INIT);
+							order_delay_start = time(nullptr);
+							order_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							fprintf(stdout, "Sell order OK\n");
 							local_md.erase(local_md.begin() + i);
 							m_open_state = CURRENT_DIFF_2;
@@ -299,14 +301,14 @@ namespace LMAX {
 								fprintf(stderr, "Buy order FAILED\n");
 								return true;
 							};
-							close_delay_start = time(nullptr);
-							close_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
 							m_recorder->recordOrder(lmax_fix_get_field(response, lmax_AvgPx)->float_value,
 							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
 							                        remote_md.bid - local_md[i].offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
+							order_delay_start = time(nullptr);
+							order_delay_check = true;
+							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
+							confirm_delay_check = true;
 							fprintf(stdout, "Buy order OK\n");
 							local_md.erase(local_md.begin() + i);
 							m_open_state = CURRENT_DIFF_1;
