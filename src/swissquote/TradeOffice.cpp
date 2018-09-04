@@ -197,7 +197,7 @@ namespace SWISSQUOTE {
 							                        local_md[i].bid - remote_md.offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_OPEN);
 							fprintf(stdout, "Sell order OK\n");
-							local_md.pop_front();
+							local_md.erase(local_md.begin() + i);
 							++m_orders_count;
 							return true;
 						}
@@ -219,7 +219,7 @@ namespace SWISSQUOTE {
 							                        remote_md.bid - local_md[i].offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_CLOSE);
 							fprintf(stdout, "Buy order OK\n");
-							local_md.pop_front();
+							local_md.erase(local_md.begin() + i);
 							--m_orders_count;
 							return true;
 						}
@@ -243,7 +243,7 @@ namespace SWISSQUOTE {
 							                        remote_md.bid - local_md[i].offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_OPEN);
 							fprintf(stdout, "Buy order OK\n");
-							local_md.pop_front();
+							local_md.erase(local_md.begin() + i);
 							++m_orders_count;
 							return true;
 						}
@@ -265,7 +265,7 @@ namespace SWISSQUOTE {
 							                        local_md[i].bid - remote_md.offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
 							fprintf(stdout, "Sell order OK\n");
-							local_md.pop_front();
+							local_md.erase(local_md.begin() + i);
 							--m_orders_count;
 							return true;
 						}
@@ -288,7 +288,7 @@ namespace SWISSQUOTE {
 							                        local_md[i].bid - remote_md.offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
 							fprintf(stdout, "Sell order OK\n");
-							local_md.pop_front();
+							local_md.erase(local_md.begin() + i);
 							m_open_state = CURRENT_DIFF_1;
 							++m_orders_count;
 							return true;
@@ -309,7 +309,7 @@ namespace SWISSQUOTE {
 							                        remote_md.bid - local_md[i].offer,
 							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_INIT);
 							fprintf(stdout, "Buy order OK\n");
-							local_md.pop_front();
+							local_md.erase(local_md.begin() + i);
 							m_open_state = CURRENT_DIFF_2;
 							++m_orders_count;
 							return true;
