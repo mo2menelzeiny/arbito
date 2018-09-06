@@ -394,7 +394,7 @@ namespace LMAX {
 
 			if (local_md.size() > 1 && (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
 			                            ((local_md.back().timestamp_ns.tv_sec * 1000000000L) +
-			                             local_md.back().timestamp_ns.tv_nsec) > 10000000)) {
+			                             local_md.back().timestamp_ns.tv_nsec) > 20000000)) {
 				local_md.pop_back();
 			}
 
