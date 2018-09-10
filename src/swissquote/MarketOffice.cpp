@@ -182,7 +182,8 @@ namespace SWISSQUOTE {
 							.bid(swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0))
 							.bidQty(swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0))
 							.offer(swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value)
-							.offerQty(swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value);
+							.offerQty(swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value)
+							.timestamp(now_us);
 					aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 					std::int64_t result;
 					do {
