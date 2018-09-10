@@ -3,14 +3,11 @@
 
 namespace SWISSQUOTE {
 
-	TradeOffice::TradeOffice(Recorder &recorder, Messenger &messenger,
-	                         const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_ringbuffer,
-	                         const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &remote_md_ringbuff,
-	                         MessengerConfig messenger_config, BrokerConfig broker_config, double diff_open,
-	                         double diff_close, double lot_size)
-			: m_recorder(&recorder), m_messenger(&messenger), m_local_md_ringbuffer(local_md_ringbuffer),
-			  m_remote_md_ringbuffer(remote_md_ringbuff), m_messenger_config(messenger_config),
-			  m_broker_config(broker_config), m_diff_open(diff_open), m_diff_close(diff_close), m_lot_size(lot_size) {
+	TradeOffice::TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
+	                         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
+	                         Recorder &recorder, Messenger &messenger, BrokerConfig broker_config, double lot_size)
+			: m_business_buffer(business_buffer), m_trade_buffer(trade_buffer), m_recorder(&recorder),
+			  m_messenger(&messenger), m_broker_config(broker_config), m_lot_size(lot_size) {
 		// Session configurations
 		swissquote_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &swissquote_fix_dialects[SWISSQUOTE_FIX_4_4];
@@ -19,43 +16,13 @@ namespace SWISSQUOTE {
 		strncpy(m_cfg.password, broker_config.password, ARRAY_SIZE(m_cfg.password));
 		strncpy(m_cfg.sender_comp_id, broker_config.sender, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, broker_config.receiver, ARRAY_SIZE(m_cfg.target_comp_id));
-
-		srand(static_cast<unsigned int>(time(nullptr)));
-
-		m_atomic_buffer.wrap(m_buffer, SWISSQUOTE_TO_MESSENGER_BUFFER);
 	}
 
 	void TradeOffice::start() {
-		initMessengerClient();
 		initBrokerClient();
 	}
 
-	void TradeOffice::initMessengerClient() {
-		std::int64_t publication_id = m_messenger->aeronClient()->addPublication(m_messenger_config.pub_channel,
-		                                                                         m_messenger_config.stream_id);
-		std::int64_t subscription_id = m_messenger->aeronClient()->addSubscription(m_messenger_config.sub_channel,
-		                                                                           m_messenger_config.stream_id);
-
-		m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
-		while (!m_messenger_pub) {
-			std::this_thread::yield();
-			m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
-		}
-		printf("TradeOffice: publication found!\n");
-
-		m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
-		while (!m_messenger_sub) {
-			std::this_thread::yield();
-			m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
-		}
-		printf("TradeOffice: subscription found!\n");
-
-		m_recorder->recordSystem("TradeOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
-	}
-
 	void TradeOffice::initBrokerClient() {
-		printf("Initializing trade office broker client..\n");
-		// SSL options
 		SSL_load_error_strings();
 		SSL_library_init();
 		OpenSSL_add_all_algorithms();
@@ -71,15 +38,18 @@ namespace SWISSQUOTE {
 		// Session object
 		m_session = swissquote_fix_session_new(&m_cfg);
 		if (!m_session) {
-			fprintf(stderr, "FIX session cannot be created\n");
+			m_recorder->recordSystem("TradeOffice: FIX Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "TradeOffice: FIX session cannot be created\n");
 			return;
 		}
 
 		// Socket connection
 		struct hostent *host_ent = gethostbyname(m_broker_config.host);
 
-		if (!host_ent)
-			error("Unable to look up %s (%s)", m_broker_config.host, hstrerror(h_errno));
+		if (!host_ent) {
+			m_recorder->recordSystem("TradeOffice: Host lookup FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			error("TradeOffice: Unable to look up %s (%s)", m_broker_config.host, hstrerror(h_errno));
+		}
 
 		char **ap;
 		int saved_errno = 0;
@@ -106,311 +76,100 @@ namespace SWISSQUOTE {
 			break;
 		}
 
-		if (m_cfg.sockfd < 0)
-			error("Unable to connect to a socket (%s)", strerror(saved_errno));
+		if (m_cfg.sockfd < 0) {
+			m_recorder->recordSystem("TradeOffice: Socket connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			error("TradeOffice: Unable to connect to a socket (%s)", strerror(saved_errno));
+		}
 
-		if (swissquote_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0)
-			die("cannot set socket option TCP_NODELAY");
+		if (swissquote_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0) {
+			m_recorder->recordSystem("TradeOffice: Socket option FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			die("TradeOffice: cannot set socket option TCP_NODELAY");
+		}
 
 		// SSL connection
 		SSL_set_fd(m_cfg.ssl, m_cfg.sockfd);
 		int ssl_errno = SSL_connect(m_cfg.ssl);
 
 		if (ssl_errno <= 0) {
-			fprintf(stderr, "SSL ERROR\n");
+			fprintf(stderr, "TradeOffice: SSL FAILED\n");
+			m_recorder->recordSystem("TradeOffice: SSL FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
 
 		// SSL certificate
 		X509 *server_cert;
 		char *str;
-		printf("SSL connection using %s\n", SSL_get_cipher (m_ssl));
-
 		server_cert = SSL_get_peer_certificate(m_ssl);
-		printf("Server certificate:\n");
-
 		str = X509_NAME_oneline(X509_get_subject_name(server_cert), nullptr, 0);
-		printf("\t subject: %s\n", str);
 		OPENSSL_free(str);
-
 		str = X509_NAME_oneline(X509_get_issuer_name(server_cert), nullptr, 0);
-		printf("\t issuer: %s\n", str);
 		OPENSSL_free(str);
 
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
 		// Session login
-		if (swissquote_fix_session_logon(m_session)) {
-			fprintf(stderr, "TradeOffice: Client Logon FAILED\n");
-			m_recorder->recordSystem("TradeOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			return;
-		}
-		fprintf(stdout, "TradeOffice: Client Logon OK\n");
-		m_recorder->recordSystem("TradeOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		int logon_result;
+		do {
 
-		// Polling thread loop
-		poller = std::thread(&TradeOffice::poll, this);
-		poller.detach();
+			logon_result = swissquote_fix_session_logon(m_session);
 
-		m_recorder->recordSystem("TradeOffice: broker client OK", SYSTEM_RECORD_TYPE_SUCCESS);
+			if (logon_result) {
+				m_recorder->recordSystem("TradeOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+				fprintf(stderr, "TradeOffice: Client Logon FAILED\n");
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+			}
+
+		} while (logon_result);
+
+		m_poller = std::thread(&TradeOffice::poll, this);
+		m_poller.detach();
 	}
 
 	void TradeOffice::poll() {
-		bool order_delay_check = false;
-		time_t order_delay_start = time(nullptr);
-		time_t order_delay = SWISSQUOTE_DELAY_SECONDS;
-		std::deque<MarketDataEvent> local_md;
-		struct timespec confirm_delay_start{};
-		bool confirm_delay_check = false;
+		auto business_poller = m_business_buffer->newPoller();
+		m_business_buffer->addGatingSequences({business_poller->sequence()});
+		auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+			char id[16];
+			sprintf(id, "%i", data.clOrdId);
+			struct swissquote_fix_field fields[] = {
+					SWISSQUOTE_FIX_STRING_FIELD(swissquote_ClOrdID, id),
+					SWISSQUOTE_FIX_STRING_FIELD(swissquote_Symbol, "EUR/USD"),
+					SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, data.side),
+					SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
+					SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_lot_size),
+					SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market best
 
-		auto local_md_poller = m_local_md_ringbuffer->newPoller();
-		m_local_md_ringbuffer->addGatingSequences({local_md_poller->sequence()});
-		auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-			local_md.push_front(data);
-		};
+			};
 
-		auto remote_md_poller = m_remote_md_ringbuffer->newPoller();
-		m_remote_md_ringbuffer->addGatingSequences({remote_md_poller->sequence()});
-		auto remote_md_handler = [&](MarketDataEvent &remote_md, std::int64_t sequence, bool endOfBatch) -> bool {
-
-			if (order_delay_check && ((time(nullptr) - order_delay_start) < order_delay)) {
-				return true;
-			}
-
-			order_delay_check = false;
-
-			if (0 == m_orders_count) {
-				m_open_state = NO_DEALS;
-			}
-
-			for (int i = 0; i < local_md.size(); i++) {
-				struct swissquote_fix_message *response;
-				switch (m_open_state) {
-					case CURRENT_DIFF_1:
-						if (m_orders_count < SWISSQUOTE_MAX_DEALS &&
-						    (local_md[i].bid - remote_md.offer) >= m_diff_open) {
-							if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
-								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
-								fprintf(stderr, "Sell order FAILED\n");
-								return true;
-							};
-							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
-							                        local_md[i].bid - remote_md.offer,
-							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_OPEN);
-							order_delay_start = time(nullptr);
-							order_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
-							fprintf(stdout, "Sell order OK\n");
-							local_md.erase(local_md.begin() + i);
-							++m_orders_count;
-							return true;
-						}
-
-						if ((remote_md.bid - local_md[i].offer) >= m_diff_close) {
-							if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
-								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
-								fprintf(stderr, "Buy order FAILED\n");
-								return true;
-							};
-							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
-							                        remote_md.bid - local_md[i].offer,
-							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_CLOSE);
-							fprintf(stdout, "Buy order OK\n");
-							order_delay_start = time(nullptr);
-							order_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
-							local_md.erase(local_md.begin() + i);
-							--m_orders_count;
-							return true;
-						}
-
-						break;
-
-					case CURRENT_DIFF_2:
-						if (m_orders_count < SWISSQUOTE_MAX_DEALS &&
-						    (remote_md.bid - local_md[i].offer) >= m_diff_open) {
-							if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
-								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
-								fprintf(stderr, "Buy order FAILED\n");
-								return true;
-							};
-							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
-							                        remote_md.bid - local_md[i].offer,
-							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_OPEN);
-							fprintf(stdout, "Buy order OK\n");
-							order_delay_start = time(nullptr);
-							order_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
-							local_md.erase(local_md.begin() + i);
-							++m_orders_count;
-							return true;
-						}
-
-						if ((local_md[i].bid - remote_md.offer) >= m_diff_close) {
-							if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
-								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
-								fprintf(stderr, "Sell order FAILED\n");
-								return true;
-							};
-							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
-							                        local_md[i].bid - remote_md.offer,
-							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_CLOSE);
-							fprintf(stdout, "Sell order OK\n");
-							order_delay_start = time(nullptr);
-							order_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
-							local_md.erase(local_md.begin() + i);
-							--m_orders_count;
-							return true;
-						}
-
-						break;
-
-					case NO_DEALS: {
-						if ((local_md[i].bid - remote_md.offer) >= m_diff_open) {
-							if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
-								m_recorder->recordSystem("Sell order failed", SYSTEM_RECORD_TYPE_ERROR);
-								fprintf(stderr, "Sell order FAILED\n");
-								return true;
-							};
-							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md[i].bid, ORDER_RECORD_TYPE_SELL,
-							                        local_md[i].bid - remote_md.offer,
-							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_1, ORDER_RECORD_STATE_INIT);
-							order_delay_start = time(nullptr);
-							order_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
-							fprintf(stdout, "Sell order OK\n");
-							local_md.erase(local_md.begin() + i);
-							m_open_state = CURRENT_DIFF_1;
-							++m_orders_count;
-							return true;
-						}
-
-						if ((remote_md.bid - local_md[i].offer) >= m_diff_open) {
-							if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
-								m_recorder->recordSystem("Buy order failed", SYSTEM_RECORD_TYPE_ERROR);
-								fprintf(stderr, "Buy order FAILED\n");
-								return true;
-							};
-							m_recorder->recordOrder(swissquote_fix_get_field(response, swissquote_AvgPx)->float_value,
-							                        local_md[i].offer, ORDER_RECORD_TYPE_BUY,
-							                        remote_md.bid - local_md[i].offer,
-							                        ORDER_TRIGGER_TYPE_CURRENT_DIFF_2, ORDER_RECORD_STATE_INIT);
-							order_delay_start = time(nullptr);
-							order_delay_check = true;
-							clock_gettime(CLOCK_MONOTONIC, &confirm_delay_start);
-							confirm_delay_check = true;
-							fprintf(stdout, "Buy order OK\n");
-							local_md.erase(local_md.begin() + i);
-							m_open_state = CURRENT_DIFF_2;
-							++m_orders_count;
-							return true;
-						}
-					}
-						break;
-				}
-			}
+			struct swissquote_fix_message order_msg{};
+			order_msg.type = SWISSQUOTE_FIX_MSG_TYPE_NEW_ORDER_SINGLE;
+			order_msg.fields = fields;
+			order_msg.nr_fields = ARRAY_SIZE(fields);
+			swissquote_fix_session_send(m_session, &order_msg, 0);
+			m_session->active = true;
 			return true;
 		};
-
-		aeron::BusySpinIdleStrategy messengerIdleStrategy;
-		sbe::MessageHeader sbe_msg_header;
-		sbe::TradeConfirm sbe_trade_confirm;
-		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
-		                                                aeron::index_t length, const aeron::Header &header) {
-			sbe_msg_header.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0,
-			                    SWISSQUOTE_TO_MESSENGER_BUFFER);
-			sbe_trade_confirm.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
-			                                sbe::MessageHeader::encodedLength(), sbe_msg_header.blockLength(),
-			                                sbe_msg_header.version(), SWISSQUOTE_TO_MESSENGER_BUFFER);
-			if (m_orders_count < sbe_trade_confirm.ordersCount()) {
-				confirmOrders();
-				return;
-			}
-
-			if (m_orders_count > sbe_trade_confirm.ordersCount()) {
-				struct swissquote_fix_message *response;
-				switch (m_open_state) {
-					case CURRENT_DIFF_1:
-						if (swissquote_fix_session_new_order_single(m_session, '1', &m_lot_size, &response)) {
-							m_recorder->recordSystem("Correction buy order failed", SYSTEM_RECORD_TYPE_ERROR);
-							fprintf(stderr, "Correction buy order FAILED\n");
-							return;
-						};
-						m_recorder->recordOrder(0, 0, ORDER_RECORD_TYPE_BUY, 0, ORDER_TRIGGER_TYPE_CORRECTION,
-						                        ORDER_RECORD_STATE_CLOSE);
-						fprintf(stdout, "Correction buy order OK\n");
-						--m_orders_count;
-						return;
-
-					case CURRENT_DIFF_2:
-						if (swissquote_fix_session_new_order_single(m_session, '2', &m_lot_size, &response)) {
-							m_recorder->recordSystem("Correction sell order failed", SYSTEM_RECORD_TYPE_ERROR);
-							fprintf(stderr, "Correction sell order FAILED\n");
-							return;
-						};
-						m_recorder->recordOrder(0, 0, ORDER_RECORD_TYPE_SELL, 0, ORDER_TRIGGER_TYPE_CORRECTION,
-						                        ORDER_RECORD_STATE_CLOSE);
-						fprintf(stdout, "Correction sell order OK\n");
-						--m_orders_count;
-						return;
-
-					case NO_DEALS:
-						m_recorder->recordSystem("Correction failed no deals", SYSTEM_RECORD_TYPE_ERROR);
-						fprintf(stderr, "Correction no deals FAILED\n");
-						return;
-				}
-			}
-		});
 
 		struct timespec curr{}, prev{};
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
 		while (m_session->active) {
-
+			std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 			clock_gettime(CLOCK_MONOTONIC, &curr);
 
 			if ((curr.tv_sec - prev.tv_sec) > 0.1 * m_session->heartbtint) {
 				prev = curr;
 
 				if (!swissquote_fix_session_keepalive(m_session, &curr)) {
-					fprintf(stderr, "TradeOffice: Session keep alive FAILED\n");
 					break;
 				}
 			}
 
 			if (swissquote_fix_session_time_update(m_session)) {
-				fprintf(stderr, "TradeOffice: Session time update FAILED\n");
 				break;
 			}
 
-			if (local_md.size() > 1 &&
-			    (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
-			     ((local_md.back().timestamp_ns.tv_sec * 1000000000L) + local_md.back().timestamp_ns.tv_nsec) >
-			     20000000)) {
-				local_md.pop_back();
-			}
-
-			if (confirm_delay_check && (((curr.tv_sec * 1000000000L) + curr.tv_nsec) -
-			                            ((confirm_delay_start.tv_sec * 1000000000L) + confirm_delay_start.tv_nsec)) >
-			                           500000000) {
-				confirmOrders();
-				confirm_delay_check = false;
-			}
-
-			local_md_poller->poll(local_md_handler);
-			remote_md_poller->poll(remote_md_handler);
-			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
+			business_poller->poll(business_handler);
 
 			struct swissquote_fix_message *msg;
 
@@ -419,6 +178,19 @@ namespace SWISSQUOTE {
 			}
 
 			switch (msg->type) {
+				case SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT:
+					if (swissquote_fix_get_field(msg, swissquote_ExecType)->string_value[0] == '2') {
+						auto next = m_trade_buffer->next();
+						swissquote_fix_get_string(swissquote_fix_get_field(msg, swissquote_OrderID),
+						                          (*m_trade_buffer)[next].orderId, 64);
+						swissquote_fix_get_string(swissquote_fix_get_field(msg, swissquote_ClOrdID),
+						                          (*m_trade_buffer)[next].clOrdId, 64);
+						(*m_trade_buffer)[next].side = swissquote_fix_get_char(msg, swissquote_Side, '0');
+						(*m_trade_buffer)[next].avgPx = swissquote_fix_get_field(msg, swissquote_AvgPx)->float_value;
+						(*m_trade_buffer)[next].timestamp_us = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L);
+						m_trade_buffer->publish(next);
+					}
+					continue;
 				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:
 					swissquote_fix_session_admin(m_session, msg);
 					continue;
@@ -428,32 +200,14 @@ namespace SWISSQUOTE {
 		}
 
 		if (m_session->active) {
-			fprintf(stdout, "Trade office reconnecting..\n");
-			m_recorder->recordSystem("TradeOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			std::this_thread::sleep_for(std::chrono::seconds(30));
+			m_recorder->recordSystem("TradeOffice: Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "TradeOffice: Session FAILED\n");
+			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();
 			swissquote_fix_session_free(m_session);
 			initBrokerClient();
 		}
-	}
-
-	void TradeOffice::confirmOrders() {
-		sbe::MessageHeader sbe_msg_header;
-		sbe::TradeConfirm sbe_trade_confirm;
-		sbe_msg_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, SWISSQUOTE_TO_MESSENGER_BUFFER)
-				.blockLength(sbe::TradeConfirm::sbeBlockLength())
-				.templateId(sbe::TradeConfirm::sbeTemplateId())
-				.schemaId(sbe::TradeConfirm::sbeSchemaId())
-				.version(sbe::TradeConfirm::sbeSchemaVersion());
-		sbe_trade_confirm.wrapForEncode(reinterpret_cast<char *>(m_buffer), sbe::MessageHeader::encodedLength(),
-		                                SWISSQUOTE_TO_MESSENGER_BUFFER)
-				.ordersCount(static_cast<const uint8_t>(m_orders_count));
-		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_trade_confirm.encodedLength();
-		std::int64_t result;
-		do {
-			result = m_messenger_pub->offer(m_atomic_buffer, 0, len);
-		} while (result < -1);
 	}
 }

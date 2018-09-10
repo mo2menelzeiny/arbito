@@ -1,11 +1,14 @@
 
 #include "Recorder.h"
 
-Recorder::Recorder(const char *uri_string, int broker_number, const char *db_name) : m_db_name(db_name) {
+Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+                   const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
+                   const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
+                   const char *uri_string, int broker_number, const char *db_name)
+		: m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer), m_trade_buffer(trade_buffer),
+		  m_db_name(db_name) {
 	bson_error_t error;
-
 	mongoc_init();
-
 	m_uri = mongoc_uri_new_with_error(uri_string, &error);
 
 	if (!m_uri) {
@@ -30,6 +33,11 @@ Recorder::Recorder(const char *uri_string, int broker_number, const char *db_nam
 		default:
 			fprintf(stderr, "Recorder: undefined broker number\n");
 	}
+}
+
+void Recorder::start() {
+	m_poller = std::thread(&Recorder::poll, this);
+	m_poller.detach();
 }
 
 void Recorder::recordSystem(const char *message, SystemRecordType type) {
@@ -61,57 +69,108 @@ void Recorder::recordSystem(const char *message, SystemRecordType type) {
 	mongoc_client_pool_push(m_pool, client);
 }
 
-void Recorder::recordOrder(double broker_price, double trigger_price, OrderRecordType order_type, double trigger_diff,
-                           OrderTriggerType trigger_type, OrderRecordState order_state) {
-	auto milliseconds_since_epoch = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
-	bson_error_t error;
-	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_orders");
-	bson_t *insert = BCON_NEW (
-			"broker_name", BCON_UTF8(m_broker_name),
-			"created_at", BCON_DATE_TIME(milliseconds_since_epoch),
-			"trigger_diff", BCON_DOUBLE(trigger_diff)
-	);
+void Recorder::poll() {
+	auto business_poller = m_business_buffer->newPoller();
+	m_business_buffer->addGatingSequences({business_poller->sequence()});
+	auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		bson_error_t error;
+		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
+		char clOrdId[64];
+		sprintf(clOrdId, "%i", data.clOrdId);
+		bson_t *insert = BCON_NEW (
+				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
+				"broker_name", BCON_UTF8(m_broker_name),
+				"clOrdId", BCON_UTF8(clOrdId),
+				"trigger_px", BCON_DOUBLE(data.trigger_px)
+		);
 
-	switch (order_type) {
-		case ORDER_RECORD_TYPE_BUY:
-			BSON_APPEND_DOUBLE(insert, "slippage", trigger_price - broker_price);
-			BSON_APPEND_UTF8(insert, "order_type", "BUY");
-			break;
-		case ORDER_RECORD_TYPE_SELL:
-			BSON_APPEND_DOUBLE(insert, "slippage", broker_price - trigger_price);
-			BSON_APPEND_UTF8(insert, "order_type", "SELL");
-			break;
+		switch (data.side) {
+			case '1':
+				BSON_APPEND_UTF8(insert, "side", "BUY");
+				break;
+			case '2':
+				BSON_APPEND_UTF8(insert, "side", "SELL");
+				break;
+			default:
+				break;
+		}
+
+		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
+			fprintf(stderr, "Recorder: %s\n", error.message);
+		}
+
+		bson_destroy(insert);
+		mongoc_collection_destroy(collection);
+		mongoc_client_pool_push(m_pool, client);
+		return true;
+	};
+
+	auto trade_poller = m_trade_buffer->newPoller();
+	m_trade_buffer->addGatingSequences({trade_poller->sequence()});
+	auto trade_handler = [&](TradeEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		bson_error_t error;
+		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_trade_events");
+		bson_t *insert = BCON_NEW (
+				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
+				"broker_name", BCON_UTF8(m_broker_name),
+				"clOrdId", BCON_UTF8(data.clOrdId),
+				"orderId", BCON_UTF8(data.orderId),
+				"avgPx", BCON_DOUBLE(data.avgPx)
+		);
+
+		switch (data.side) {
+			case '1':
+				BSON_APPEND_UTF8(insert, "side", "BUY");
+				break;
+			case '2':
+				BSON_APPEND_UTF8(insert, "side", "SELL");
+				break;
+			default:
+				break;
+		}
+
+		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
+			fprintf(stderr, "Recorder: %s\n", error.message);
+		}
+
+		bson_destroy(insert);
+		mongoc_collection_destroy(collection);
+		mongoc_client_pool_push(m_pool, client);
+		return true;
+	};
+
+	auto remote_md_poller = m_remote_md_buffer->newPoller();
+	m_remote_md_buffer->addGatingSequences({remote_md_poller->sequence()});
+	auto remote_md_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		bson_error_t error;
+		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_remote_md_events");
+		bson_t *insert = BCON_NEW (
+				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
+				"rec_timestamp_us", BCON_DATE_TIME(data.rec_timestamp_us / 1000),
+				"broker_name", BCON_UTF8(m_broker_name),
+				"offer", BCON_DOUBLE(data.offer),
+				"offer_qty", BCON_DOUBLE(data.offer_qty),
+				"bid", BCON_DOUBLE(data.bid),
+				"bid_qty", BCON_DOUBLE(data.bid_qty)
+		);
+
+		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
+			fprintf(stderr, "Recorder: %s\n", error.message);
+		}
+
+		bson_destroy(insert);
+		mongoc_collection_destroy(collection);
+		mongoc_client_pool_push(m_pool, client);
+		return true;
+	};
+
+	while (true) {
+		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		business_poller->poll(business_handler);
+		trade_poller->poll(trade_handler);
+		remote_md_poller->poll(remote_md_handler);
 	}
-
-	switch (order_state) {
-		case ORDER_RECORD_STATE_OPEN:
-			BSON_APPEND_UTF8(insert, "order_state", "OPEN");
-			break;
-		case ORDER_RECORD_STATE_CLOSE:
-			BSON_APPEND_UTF8(insert, "order_state", "CLOSE");
-			break;
-		case ORDER_RECORD_STATE_INIT:
-			BSON_APPEND_UTF8(insert, "order_state", "INITIAL OPEN");
-	}
-
-	switch (trigger_type) {
-		case ORDER_TRIGGER_TYPE_CURRENT_DIFF_2:
-			BSON_APPEND_UTF8(insert, "order_trigger", "CURRENT DIFF 2");
-			break;
-		case ORDER_TRIGGER_TYPE_CURRENT_DIFF_1:
-			BSON_APPEND_UTF8(insert, "order_trigger", "CURRENT DIFF 1");
-			break;
-		case ORDER_TRIGGER_TYPE_CORRECTION:
-			BSON_APPEND_UTF8(insert, "order_trigger", "CORRECTION");
-			break;
-	}
-
-	if (!mongoc_collection_insert_one(collection, insert, NULL, NULL, &error)) {
-		fprintf(stderr, "Recorder: %s\n", error.message);
-	}
-
-	bson_destroy(insert);
-	mongoc_collection_destroy(collection);
-	mongoc_client_pool_push(m_pool, client);
 }

@@ -3,17 +3,10 @@
 
 namespace LMAX {
 
-	MarketOffice::MarketOffice() {
-
-	}
-
-	MarketOffice::MarketOffice(Recorder &recorder, Messenger &messenger,
-	                           const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_ringbuff,
-	                           const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &remote_md_ringbuff,
-	                           MessengerConfig messenger_config, BrokerConfig broker_config, double spread,
-	                           double lot_size)
-			: m_messenger(&messenger), m_recorder(&recorder), m_local_md_ringbuffer(local_md_ringbuff),
-			  m_remote_md_ringbuffer(remote_md_ringbuff), m_messenger_config(messenger_config),
+	MarketOffice::MarketOffice(
+			const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
+			Recorder &recorder, Messenger &messenger, BrokerConfig broker_config, double spread, double lot_size)
+			: m_local_md_buffer(local_md_buffer), m_recorder(&recorder), m_messenger(&messenger),
 			  m_broker_config(broker_config), m_spread(spread), m_lot_size(lot_size) {
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
@@ -22,42 +15,14 @@ namespace LMAX {
 		strncpy(m_cfg.password, broker_config.password, ARRAY_SIZE(m_cfg.password));
 		strncpy(m_cfg.sender_comp_id, broker_config.sender, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, broker_config.receiver, ARRAY_SIZE(m_cfg.target_comp_id));
-
-		m_atomic_buffer.wrap(m_buffer, LMAX_MO_MESSENGER_BUFFER);
+		m_atomic_buffer.wrap(m_buffer, MESSENGER_BUFFER_SIZE);
 	}
 
 	void MarketOffice::start() {
-		initMessengerChannel();
 		initBrokerClient();
 	}
 
-	void MarketOffice::initMessengerChannel() {
-
-		std::int64_t publication_id = m_messenger->aeronClient()->addPublication(m_messenger_config.pub_channel,
-		                                                                         m_messenger_config.stream_id);
-		std::int64_t subscription_id = m_messenger->aeronClient()->addSubscription(m_messenger_config.sub_channel,
-		                                                                           m_messenger_config.stream_id);
-
-		m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
-		while (!m_messenger_pub) {
-			std::this_thread::yield();
-			m_messenger_pub = m_messenger->aeronClient()->findPublication(publication_id);
-		}
-		printf("MarketOffice: publication found!\n");
-
-		m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
-		while (!m_messenger_sub) {
-			std::this_thread::yield();
-			m_messenger_sub = m_messenger->aeronClient()->findSubscription(subscription_id);
-		}
-		printf("MarketOffice: subscription found!\n");
-
-		m_recorder->recordSystem("MarketOffice: messenger channel OK", SYSTEM_RECORD_TYPE_SUCCESS);
-	}
-
 	void MarketOffice::initBrokerClient() {
-		printf("MarketOffice: Initializing broker client..\n");
-		// SSL options
 		SSL_load_error_strings();
 		SSL_library_init();
 		OpenSSL_add_all_algorithms();
@@ -73,15 +38,18 @@ namespace LMAX {
 		// Session object
 		m_session = lmax_fix_session_new(&m_cfg);
 		if (!m_session) {
-			fprintf(stderr, "FIX session cannot be created\n");
+			m_recorder->recordSystem("MarketOffice: FIX Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "MarketOffice: FIX session cannot be created\n");
 			return;
 		}
 
 		// Socket connection
 		struct hostent *host_ent = gethostbyname(m_broker_config.host);
 
-		if (!host_ent)
-			error("Unable to look up %s (%s)", m_broker_config.host, hstrerror(h_errno));
+		if (!host_ent) {
+			m_recorder->recordSystem("MarketOffice: Host lookup FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			error("MarketOffice: Unable to look up %s (%s)", m_broker_config.host, hstrerror(h_errno));
+		}
 
 		char **ap;
 		int saved_errno = 0;
@@ -108,92 +76,71 @@ namespace LMAX {
 			break;
 		}
 
-		if (m_cfg.sockfd < 0)
-			error("Unable to connect to a socket (%s)", strerror(saved_errno));
+		if (m_cfg.sockfd < 0) {
+			m_recorder->recordSystem("MarketOffice: Socket connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			error("MarketOffice: Unable to connect to a socket (%s)", strerror(saved_errno));
+		}
 
-		if (lmax_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0)
-			die("cannot set socket option TCP_NODELAY");
+		if (lmax_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0) {
+			m_recorder->recordSystem("MarketOffice: Socket option FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			die("MarketOffice: cannot set socket option TCP_NODELAY");
+		}
 
 		// SSL connection
 		SSL_set_fd(m_cfg.ssl, m_cfg.sockfd);
 		int ssl_errno = SSL_connect(m_cfg.ssl);
 
 		if (ssl_errno <= 0) {
-			fprintf(stderr, "SSL ERROR\n");
+			fprintf(stderr, "MarketOffice: SSL FAILED\n");
+			m_recorder->recordSystem("MarketOffice: SSL FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			return;
 		}
 
 		// SSL certificate
 		X509 *server_cert;
 		char *str;
-		printf("SSL connection using %s\n", SSL_get_cipher (m_ssl));
-
 		server_cert = SSL_get_peer_certificate(m_ssl);
-		printf("Server certificate:\n");
-
 		str = X509_NAME_oneline(X509_get_subject_name(server_cert), nullptr, 0);
-		printf("\t subject: %s\n", str);
 		OPENSSL_free(str);
-
 		str = X509_NAME_oneline(X509_get_issuer_name(server_cert), nullptr, 0);
-		printf("\t issuer: %s\n", str);
 		OPENSSL_free(str);
 
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
 		// Session login
-		if (lmax_fix_session_logon(m_session)) {
-			fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
-			m_recorder->recordSystem("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			return;
-		}
-		fprintf(stdout, "MarketOffice: Client Logon OK\n");
-		m_recorder->recordSystem("MarketOffice: broker client logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		int logon_result;
+		do {
+
+			logon_result = lmax_fix_session_logon(m_session);
+
+			if (logon_result) {
+				m_recorder->recordSystem("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+				fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+			}
+
+		} while (logon_result);
 
 		// Market data request
 		if (lmax_fix_session_marketdata_request(m_session)) {
-			fprintf(stderr, "MarketOffice: Client market data request FAILED\n");
 			m_recorder->recordSystem("MarketOffice: market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "MarketOffice: Client market data request FAILED\n");
 			return;
 		}
-		fprintf(stdout, "MarketOffice: Client market data request OK\n");
-		m_recorder->recordSystem("MarketOffice: market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
 
-		// Polling thread loop
 		poller = std::thread(&MarketOffice::poll, this);
 		poller.detach();
-
-		m_recorder->recordSystem("MarketOffice: broker client OK", SYSTEM_RECORD_TYPE_SUCCESS);
 	}
 
 	void MarketOffice::poll() {
 		struct timespec curr{}, prev{};
-		sbe::MessageHeader sbe_msg_header;
+		sbe::MessageHeader sbe_header;
 		sbe::MarketData sbe_market_data;
-		aeron::BusySpinIdleStrategy messengerIdleStrategy;
-		aeron::FragmentAssembler messengerAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
-		                                                aeron::index_t length, const aeron::Header &header) {
-			sbe_msg_header.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, LMAX_MO_MESSENGER_BUFFER);
-			sbe_market_data.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
-			                              sbe::MessageHeader::encodedLength(), sbe_msg_header.blockLength(),
-			                              sbe_msg_header.version(),
-			                              LMAX_MO_MESSENGER_BUFFER);
-
-			auto next_sequence = m_remote_md_ringbuffer->next();
-			(*m_remote_md_ringbuffer)[next_sequence] = (MarketDataEvent) {
-					.bid = sbe_market_data.bid(),
-					.bid_qty = sbe_market_data.bidQty(),
-					.offer = sbe_market_data.offer(),
-					.offer_qty = sbe_market_data.offerQty(),
-					.timestamp_ns = curr
-			};
-			m_remote_md_ringbuffer->publish(next_sequence);
-
-		});
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
 		while (m_session->active) {
+			std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 
 			clock_gettime(CLOCK_MONOTONIC, &curr);
 
@@ -201,17 +148,13 @@ namespace LMAX {
 				prev = curr;
 
 				if (!lmax_fix_session_keepalive(m_session, &curr)) {
-					fprintf(stderr, "MarketOffice: Session keep alive FAILED\n");
 					break;
 				}
 			}
 
 			if (lmax_fix_session_time_update(m_session)) {
-				fprintf(stderr, "MarketOffice: Session time update FAILED\n");
 				break;
 			}
-
-			messengerIdleStrategy.idle(m_messenger_sub->poll(messengerAssembler.handler(), 10));
 
 			struct lmax_fix_message *msg;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
@@ -226,33 +169,35 @@ namespace LMAX {
 					    || m_lot_size > lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value) {
 						continue;
 					}
-
-					sbe_msg_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, LMAX_MO_MESSENGER_BUFFER)
+					auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+							std::chrono::steady_clock::now().time_since_epoch()).count();
+					sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
 							.blockLength(sbe::MarketData::sbeBlockLength())
 							.templateId(sbe::MarketData::sbeTemplateId())
 							.schemaId(sbe::MarketData::sbeSchemaId())
 							.version(sbe::MarketData::sbeSchemaVersion());
 					sbe_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer),
-					                              sbe::MessageHeader::encodedLength(), LMAX_MO_MESSENGER_BUFFER)
+					                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
 							.bid(lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
 							.bidQty(lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0))
 							.offer(lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value)
-							.offerQty(lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value);
+							.offerQty(lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value)
+							.timestamp(now_us);
 					aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 					std::int64_t result;
 					do {
-						result = m_messenger_pub->offer(m_atomic_buffer, 0, len);
+						result = m_messenger->marketDataPub()->offer(m_atomic_buffer, 0, len);
 					} while (result < -1);
 
-					auto next_local_md_seq = m_local_md_ringbuffer->next();
-					(*m_local_md_ringbuffer)[next_local_md_seq] = (MarketDataEvent) {
+					auto next = m_local_md_buffer->next();
+					(*m_local_md_buffer)[next] = (MarketDataEvent) {
 							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
 							.bid_qty = (lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
 							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value,
-							.timestamp_ns = curr
+							.timestamp_us  = now_us
 					};
-					m_local_md_ringbuffer->publish(next_local_md_seq);
+					m_local_md_buffer->publish(next);
 					continue;
 				}
 				case LMAX_FIX_MSG_TYPE_TEST_REQUEST:
@@ -265,9 +210,9 @@ namespace LMAX {
 
 		// Reconnection condition
 		if (m_session->active) {
-			fprintf(stdout, "Market office reconnecting..\n");
-			m_recorder->recordSystem("MarketOffice: broker client FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			std::this_thread::sleep_for(std::chrono::seconds(30));
+			m_recorder->recordSystem("MarketOffice: Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "MarketOffice: Session FAILED\n");
+			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();
