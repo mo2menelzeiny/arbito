@@ -1,11 +1,7 @@
 
 #include "Messenger.h"
 
-Messenger::Messenger(Recorder &recorder) : m_recorder(&recorder) {}
-
-const std::shared_ptr<aeron::Aeron> &Messenger::aeronClient() const {
-	return m_aeron_client;
-}
+Messenger::Messenger(Recorder &recorder, MessengerConfig config) : m_recorder(&recorder), m_config(config) {}
 
 void Messenger::mediaDriver() {
 	aeron_driver_context_t *context = nullptr;
@@ -43,35 +39,47 @@ void Messenger::start() {
 	// Aeron configurations
 	m_aeron_context.newSubscriptionHandler([](const std::string &channel, std::int32_t streamId,
 	                                          std::int64_t correlationId) {
-		std::cout << "Subscription: " << channel << " " << correlationId << ":" << streamId << std::endl;
 	});
 
 	m_aeron_context.newPublicationHandler([](const std::string &channel, std::int32_t streamId,
 	                                         std::int32_t sessionId, std::int64_t correlationId) {
-		std::cout << "Publication: " << channel << " " << correlationId << ":" << streamId << ":"
-		          << sessionId << std::endl;
 	});
 
 	m_aeron_context.availableImageHandler([&](aeron::Image &image) {
-		std::cout << "Available image correlationId=" << image.correlationId() << " sessionId="
-		          << image.sessionId();
-		std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
-		m_recorder->recordSystem("Messenger: Image OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystem("Messenger: Image available", SYSTEM_RECORD_TYPE_SUCCESS);
 	});
 
 	m_aeron_context.unavailableImageHandler([&](aeron::Image &image) {
-		std::cout << "Unavailable image on correlationId=" << image.correlationId() << " sessionId="
-		          << image.sessionId();
-		std::cout << " at position=" << image.position() << " from " << image.sourceIdentity() << std::endl;
-		m_recorder->recordSystem("Messenger: Image FAILED", SYSTEM_RECORD_TYPE_ERROR);
+		m_recorder->recordSystem("Messenger: Image unavailable", SYSTEM_RECORD_TYPE_ERROR);
 	});
 
 	m_aeron_context.errorHandler([&](const std::exception &exception) {
-		fprintf(stderr, "Messenger: %s\n", exception.what());
 		std::string buffer("Messenger: ");
 		buffer.append(exception.what());
 		m_recorder->recordSystem(buffer.c_str(), SYSTEM_RECORD_TYPE_ERROR);
+		fprintf(stderr, "Messenger: %s\n", exception.what());
 	});
 
 	m_aeron_client = std::make_shared<aeron::Aeron>(m_aeron_context);
+
+	std::int64_t md_pub_id = m_aeron_client->addPublication(m_config.pub_channel, m_config.market_data_stream_id);
+	std::int64_t md_sub_id = m_aeron_client->addSubscription(m_config.sub_channel, m_config.market_data_stream_id);
+
+	do {
+		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		m_market_data_pub = m_aeron_client->findPublication(md_pub_id);
+	} while (!m_market_data_pub);
+
+	do {
+		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		m_market_data_sub = m_aeron_client->findSubscription(md_sub_id);
+	} while (!m_market_data_sub);
+}
+
+const std::shared_ptr<aeron::Subscription> &Messenger::marketDataSub() const {
+	return m_market_data_sub;
+}
+
+const std::shared_ptr<aeron::Publication> &Messenger::marketDataPub() const {
+	return m_market_data_pub;
 }

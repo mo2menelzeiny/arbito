@@ -4,15 +4,14 @@
 #include "lmax/TradeOffice.h"
 #include "swissquote/MarketOffice.h"
 #include "swissquote/TradeOffice.h"
+#include "BusinessOffice.h"
+#include "RemoteMarketOffice.h"
+#include "Messenger.h"
+#include "Recorder.h"
 
 // Disruptor
 #include "Disruptor/Disruptor.h"
-#include "Disruptor/RingBuffer.h"
-#include "Disruptor/RoundRobinThreadAffinedTaskScheduler.h"
 #include "Disruptor/BusySpinWaitStrategy.h"
-
-// MongoDB
-#include <mongoc.h>
 
 int main() {
 	try {
@@ -28,13 +27,13 @@ int main() {
 		const char *uri_string = getenv("MONGO_URI");
 		const char *db_name = getenv("MONGO_DB");
 
-		MessengerConfig mo_messenger_config = (MessengerConfig) {
+		MessengerConfig messenger_config = (MessengerConfig) {
 				.pub_channel = getenv("PUB_CHANNEL"),
 				.sub_channel = getenv("SUB_CHANNEL"),
-				.stream_id = atoi(getenv("MO_STREAM_ID"))
+				.market_data_stream_id = atoi(getenv("MD_STREAM_ID"))
 		};
 
-		BrokerConfig mo_broker_config = (BrokerConfig) {
+		BrokerConfig mo_config = (BrokerConfig) {
 				.host =  getenv("MO_HOST"),
 				.username = getenv("MO_USERNAME"),
 				.password = getenv("MO_PASSWORD"),
@@ -44,13 +43,7 @@ int main() {
 				.heartbeat = heartbeat
 		};
 
-		MessengerConfig to_messenger_config = (MessengerConfig) {
-				.pub_channel = getenv("PUB_CHANNEL"),
-				.sub_channel = getenv("SUB_CHANNEL"),
-				.stream_id = atoi(getenv("TO_STREAM_ID"))
-		};
-
-		BrokerConfig to_broker_config = (BrokerConfig) {
+		BrokerConfig to_config = (BrokerConfig) {
 				.host =  getenv("TO_HOST"),
 				.username = getenv("TO_USERNAME"),
 				.password = getenv("TO_PASSWORD"),
@@ -60,59 +53,67 @@ int main() {
 				.heartbeat = heartbeat
 		};
 
-		fprintf(stdout, "Main: System starting..\n");
+		auto remote_market_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
+				[]() { return RemoteMarketDataEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-		Recorder recorder(uri_string, broker, db_name);
+		auto local_market_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
+				[]() { return MarketDataEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-		recorder.recordSystem("Main: initialize OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		auto business_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
+				[]() { return BusinessEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-		auto local_md_ringbuff = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-				[]() { return MarketDataEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		auto trade_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
+				[]() { return TradeEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-		auto remote_md_ringbuff = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-				[]() { return MarketDataEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		srand(static_cast<unsigned int>(time(nullptr)));
 
-		Messenger messenger(recorder);
+		Recorder recorder(remote_market_buffer, business_buffer, trade_buffer, uri_string, broker, db_name);
+
+		Messenger messenger(recorder, messenger_config);
 		messenger.start();
 
-		LMAX::MarketOffice *lmax_mo;
-		LMAX::TradeOffice *lmax_to;
+		RemoteMarketOffice rmo(remote_market_buffer, messenger);
+		rmo.start();
 
-		SWISSQUOTE::MarketOffice *swissquote_mo;
+		BusinessOffice bo(local_market_buffer, remote_market_buffer, business_buffer, recorder, diff_open, diff_close,
+		                  lot_size);
+		bo.start();
+
+		LMAX::TradeOffice *lmax_to;
+		LMAX::MarketOffice *lmax_mo;
+
 		SWISSQUOTE::TradeOffice *swissquote_to;
+		SWISSQUOTE::MarketOffice *swissquote_mo;
 
 		switch (broker) {
 			case 1:
-				lmax_mo = new LMAX::MarketOffice(recorder, messenger, local_md_ringbuff, remote_md_ringbuff,
-				                                 mo_messenger_config, mo_broker_config, spread, lot_size);
-				lmax_to = new LMAX::TradeOffice(recorder, messenger, local_md_ringbuff, remote_md_ringbuff,
-				                                to_messenger_config, to_broker_config, diff_open, diff_close, lot_size);
+				lmax_mo = new LMAX::MarketOffice(local_market_buffer, recorder, messenger, mo_config, spread, lot_size);
+				lmax_to = new LMAX::TradeOffice(business_buffer, trade_buffer, recorder, messenger, to_config,
+				                                lot_size);
 				lmax_to->start();
 				lmax_mo->start();
 				break;
 
 			case 2:
-				swissquote_mo = new SWISSQUOTE::MarketOffice(recorder, messenger, local_md_ringbuff, remote_md_ringbuff,
-				                                             mo_messenger_config, mo_broker_config, spread, lot_size);
-				swissquote_to = new SWISSQUOTE::TradeOffice(recorder, messenger, local_md_ringbuff, remote_md_ringbuff,
-				                                            to_messenger_config, to_broker_config, diff_open,
-				                                            diff_close, lot_size);
+				swissquote_mo = new SWISSQUOTE::MarketOffice(local_market_buffer, recorder, messenger, mo_config,
+				                                             spread, lot_size);
+				swissquote_to = new SWISSQUOTE::TradeOffice(business_buffer, trade_buffer, recorder, messenger,
+				                                            to_config, lot_size);
 				swissquote_to->start();
 				swissquote_mo->start();
 				break;
 			default:
-				recorder.recordSystem("Main: broker case FAILED", SYSTEM_RECORD_TYPE_ERROR);
 				return EXIT_FAILURE;
 		}
 
-		recorder.recordSystem("Main: all OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		recorder.start();
 
 		while (true) {
-			std::this_thread::sleep_for(std::chrono::microseconds(100));
+			std::this_thread::sleep_for(std::chrono::hours(1));
 		}
 
 	} catch (const std::exception &e) {
-		std::cerr << "EXCEPTION: " << e.what() << std::endl;
+		std::cerr << "EXCEPTION: " << e.what() << "\n";
 	}
 
 	return EXIT_FAILURE;

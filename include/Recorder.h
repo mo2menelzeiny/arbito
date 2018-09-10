@@ -8,43 +8,43 @@
 // C
 #include <chrono>
 
+// Disruptor
+#include <Disruptor/Disruptor.h>
+
+// Domain
+#include "BusinessEvent.h"
+#include "TradeEvent.h"
+#include "RemoteMarketDataEvent.h"
+
 enum SystemRecordType {
 	SYSTEM_RECORD_TYPE_ERROR = 0,
 	SYSTEM_RECORD_TYPE_SUCCESS = 1,
 };
 
-enum OrderRecordType {
-	ORDER_RECORD_TYPE_BUY = 0,
-	ORDER_RECORD_TYPE_SELL = 1
-};
-
-enum OrderRecordState {
-	ORDER_RECORD_STATE_OPEN = 0,
-	ORDER_RECORD_STATE_CLOSE = 1,
-	ORDER_RECORD_STATE_INIT = 2
-
-};
-
-enum OrderTriggerType {
-	ORDER_TRIGGER_TYPE_CURRENT_DIFF_2 = 0,
-	ORDER_TRIGGER_TYPE_CURRENT_DIFF_1 = 1,
-	ORDER_TRIGGER_TYPE_CORRECTION = 2
-};
-
 class Recorder {
 public:
-	Recorder(const char *uri_string, int broker_num, const char *db_name);
+	Recorder(const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+	         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
+	         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
+	         const char *uri_string, int broker_num, const char *db_name);
 
 	void recordSystem(const char *message, SystemRecordType type);
 
-	void recordOrder(double broker_price, double trigger_price, OrderRecordType order_type, double trigger_diff,
-		                 OrderTriggerType trigger_type, OrderRecordState order_state);
+	void start();
 
 private:
+
+	void poll();
+
+private:
+	const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &m_remote_md_buffer;
+	const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_buffer;
+	const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_buffer;
 	mongoc_uri_t *m_uri;
 	mongoc_client_pool_t *m_pool;
 	const char *m_broker_name;
 	const char *m_db_name;
+	std::thread m_poller;
 };
 
 

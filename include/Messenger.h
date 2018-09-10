@@ -14,21 +14,30 @@
 
 // Domain
 #include "Recorder.h"
+#include "MessengerConfig.h"
 
 class Messenger {
 
 public:
-	explicit Messenger(Recorder &recorder);
-	const std::shared_ptr<aeron::Aeron> &aeronClient() const;
+	explicit Messenger(Recorder &recorder, MessengerConfig config);
+
+	const std::shared_ptr<aeron::Subscription> &marketDataSub() const;
+
+	const std::shared_ptr<aeron::Publication> &marketDataPub() const;
+
 	void start();
+
 private:
 	void mediaDriver();
 
 private:
+	Recorder *m_recorder;
+	MessengerConfig m_config;
+	std::thread m_media_driver;
 	aeron::Context m_aeron_context;
 	std::shared_ptr<aeron::Aeron> m_aeron_client;
-	std::thread m_media_driver;
-	const std::shared_ptr<Recorder> m_recorder;
+	std::shared_ptr<aeron::Publication> m_market_data_pub;
+	std::shared_ptr<aeron::Subscription> m_market_data_sub;
 };
 
 
