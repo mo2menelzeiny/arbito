@@ -140,7 +140,7 @@ namespace SWISSQUOTE {
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
 		while (m_session->active) {
-
+			std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 			clock_gettime(CLOCK_MONOTONIC, &curr);
 
 			if ((curr.tv_sec - prev.tv_sec) > 0.1 * m_session->heartbtint) {
