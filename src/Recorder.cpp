@@ -82,7 +82,8 @@ void Recorder::poll() {
 				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"clOrdId", BCON_UTF8(clOrdId),
-				"trigger_px", BCON_DOUBLE(data.trigger_px)
+				"trigger_px", BCON_DOUBLE(data.trigger_px),
+				"remote_px", BCON_DOUBLE(data.remote_px)
 		);
 
 		switch (data.side) {

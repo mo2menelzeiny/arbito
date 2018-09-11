@@ -50,6 +50,7 @@ void BusinessOffice::poll() {
 								.side = '1',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].offer,
+								.remote_px = remote_md.bid,
 								.timestamp_us = now_us
 						};
 						m_business_buffer->publish(next);
@@ -66,6 +67,7 @@ void BusinessOffice::poll() {
 								.side = '2',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].bid,
+								.remote_px = remote_md.offer,
 								.timestamp_us = now_us
 						};
 						m_business_buffer->publish(next);
@@ -86,6 +88,7 @@ void BusinessOffice::poll() {
 								.side = '2',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].bid,
+								.remote_px = remote_md.offer,
 								.timestamp_us = now_us
 						};
 						m_business_buffer->publish(next);
@@ -102,6 +105,7 @@ void BusinessOffice::poll() {
 								.side = '1',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].offer,
+								.remote_px = remote_md.bid,
 								.timestamp_us = now_us
 						};
 						m_business_buffer->publish(next);
@@ -121,6 +125,7 @@ void BusinessOffice::poll() {
 								.side = '2',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].bid,
+								.remote_px = remote_md.offer,
 								.timestamp_us = now_us
 						};
 						m_business_buffer->publish(next);
@@ -138,6 +143,7 @@ void BusinessOffice::poll() {
 								.side = '1',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].offer,
+								.remote_px = remote_md.bid,
 								.timestamp_us = now_us
 						};
 						m_business_buffer->publish(next);
@@ -161,7 +167,7 @@ void BusinessOffice::poll() {
 		now_us = std::chrono::duration_cast<std::chrono::microseconds>(
 				std::chrono::steady_clock::now().time_since_epoch()).count();
 
-		if (local_md.size() > 1 && (now_us - local_md.front().timestamp_us > PRICE_DELAY_US)) {
+		if (local_md.size() > 1 && (now_us - local_md.front().timestamp_us > MD_DELAY_US)) {
 			local_md.pop_back();
 		}
 

@@ -6,6 +6,7 @@ struct BusinessEvent {
 	char side;
 	int clOrdId;
 	double trigger_px;
+	double remote_px;
 	long timestamp_us;
 };
 
