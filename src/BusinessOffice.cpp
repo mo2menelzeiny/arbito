@@ -167,7 +167,7 @@ void BusinessOffice::poll() {
 		now_us = std::chrono::duration_cast<std::chrono::microseconds>(
 				std::chrono::steady_clock::now().time_since_epoch()).count();
 
-		if (local_md.size() > 1 && (now_us - local_md.front().timestamp_us > MD_DELAY_US)) {
+		if (local_md.size() > 1 && (now_us - local_md.back().timestamp_us > MD_DELAY_US)) {
 			local_md.pop_back();
 		}
 
