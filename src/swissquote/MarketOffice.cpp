@@ -134,7 +134,7 @@ namespace SWISSQUOTE {
 
 	void MarketOffice::poll() {
 		struct timespec curr{}, prev{};
-		sbe::MessageHeader sbe_msg_header;
+		sbe::MessageHeader sbe_header;
 		sbe::MarketData sbe_market_data;
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
@@ -172,7 +172,7 @@ namespace SWISSQUOTE {
 					}
 					auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
 							std::chrono::steady_clock::now().time_since_epoch()).count();
-					sbe_msg_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
+					sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
 							.blockLength(sbe::MarketData::sbeBlockLength())
 							.templateId(sbe::MarketData::sbeTemplateId())
 							.schemaId(sbe::MarketData::sbeSchemaId())

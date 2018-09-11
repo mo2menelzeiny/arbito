@@ -185,7 +185,7 @@ namespace SWISSQUOTE {
 						                          (*m_trade_buffer)[next].orderId, 64);
 						swissquote_fix_get_string(swissquote_fix_get_field(msg, swissquote_ClOrdID),
 						                          (*m_trade_buffer)[next].clOrdId, 64);
-						(*m_trade_buffer)[next].side = swissquote_fix_get_char(msg, swissquote_Side, '0');
+						(*m_trade_buffer)[next].side = swissquote_fix_get_field(msg, swissquote_Side)->string_value[0];
 						(*m_trade_buffer)[next].avgPx = swissquote_fix_get_field(msg, swissquote_AvgPx)->float_value;
 						(*m_trade_buffer)[next].timestamp_us = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L);
 						m_trade_buffer->publish(next);

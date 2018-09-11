@@ -183,7 +183,7 @@ namespace LMAX {
 						auto next = m_trade_buffer->next();
 						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_OrderID), (*m_trade_buffer)[next].orderId, 64);
 						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_ClOrdID), (*m_trade_buffer)[next].clOrdId, 64);
-						(*m_trade_buffer)[next].side = lmax_fix_get_char(msg, lmax_Side, '0');
+						(*m_trade_buffer)[next].side = lmax_fix_get_field(msg, lmax_Side)->string_value[0];
 						(*m_trade_buffer)[next].avgPx = lmax_fix_get_field(msg, lmax_AvgPx)->float_value;
 						(*m_trade_buffer)[next].timestamp_us = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L);
 						m_trade_buffer->publish(next);
