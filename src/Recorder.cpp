@@ -1,11 +1,13 @@
 
 #include "Recorder.h"
 
-Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
+                   const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
                    const char *uri_string, int broker_number, const char *db_name)
-		: m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer), m_trade_buffer(trade_buffer),
+		: m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer),
+		  m_trade_buffer(trade_buffer),
 		  m_db_name(db_name) {
 	bson_error_t error;
 	mongoc_init();
@@ -168,10 +170,36 @@ void Recorder::poll() {
 		return true;
 	};
 
+	auto local_md_poller = m_local_md_buffer->newPoller();
+	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
+	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		bson_error_t error;
+		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_local_md_events");
+		bson_t *insert = BCON_NEW (
+				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
+				"broker_name", BCON_UTF8(m_broker_name),
+				"offer", BCON_DOUBLE(data.offer),
+				"offer_qty", BCON_DOUBLE(data.offer_qty),
+				"bid", BCON_DOUBLE(data.bid),
+				"bid_qty", BCON_DOUBLE(data.bid_qty)
+		);
+
+		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
+			fprintf(stderr, "Recorder: %s\n", error.message);
+		}
+
+		bson_destroy(insert);
+		mongoc_collection_destroy(collection);
+		mongoc_client_pool_push(m_pool, client);
+		return true;
+	};
+
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		local_md_poller->poll(local_md_handler);
+		remote_md_poller->poll(remote_md_handler);
 		business_poller->poll(business_handler);
 		trade_poller->poll(trade_handler);
-		remote_md_poller->poll(remote_md_handler);
 	}
 }

@@ -15,6 +15,7 @@
 #include "BusinessEvent.h"
 #include "TradeEvent.h"
 #include "RemoteMarketDataEvent.h"
+#include "MarketDataEvent.h"
 
 enum SystemRecordType {
 	SYSTEM_RECORD_TYPE_ERROR = 0,
@@ -23,7 +24,8 @@ enum SystemRecordType {
 
 class Recorder {
 public:
-	Recorder(const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+	Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
+	         const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
 	         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
 	         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
 	         const char *uri_string, int broker_num, const char *db_name);
@@ -37,6 +39,7 @@ private:
 	void poll();
 
 private:
+	const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &m_local_md_buffer;
 	const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &m_remote_md_buffer;
 	const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_buffer;
 	const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_buffer;
