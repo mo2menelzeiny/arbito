@@ -67,7 +67,8 @@ int main() {
 
 		srand(static_cast<unsigned int>(time(nullptr)));
 
-		Recorder recorder(remote_market_buffer, business_buffer, trade_buffer, uri_string, broker, db_name);
+		Recorder recorder(local_market_buffer, remote_market_buffer, business_buffer, trade_buffer, uri_string, broker,
+		                  db_name);
 
 		Messenger messenger(recorder, messenger_config);
 		messenger.start();
