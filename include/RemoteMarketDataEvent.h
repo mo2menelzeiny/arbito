@@ -4,9 +4,7 @@
 
 struct RemoteMarketDataEvent {
 	double bid;
-	double bid_qty;
 	double offer;
-	double offer_qty;
 	long timestamp_us;
 	long rec_timestamp_us;
 };

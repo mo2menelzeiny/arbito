@@ -70,7 +70,7 @@ int main() {
 		Recorder recorder(local_market_buffer, remote_market_buffer, business_buffer, trade_buffer, uri_string, broker,
 		                  db_name);
 
-		Messenger messenger(recorder, messenger_config);
+		Messenger messenger(remote_market_buffer, recorder, messenger_config);
 		messenger.start();
 
 		RemoteMarketOffice rmo(remote_market_buffer, messenger);

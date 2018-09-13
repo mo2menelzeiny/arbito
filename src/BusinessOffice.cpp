@@ -15,7 +15,7 @@ void BusinessOffice::start() {
 }
 
 void BusinessOffice::poll() {
-	RemoteMarketDataEvent remote_md{.bid = -99.0, .bid_qty = 0, .offer = 99.0, .offer_qty = 0};
+	RemoteMarketDataEvent remote_md{.bid = -99.0, .offer = 99.0};
 	std::deque<MarketDataEvent> local_md;
 	bool order_delay_check = false;
 	time_t order_delay = ORDER_DELAY_SEC;

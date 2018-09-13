@@ -23,16 +23,14 @@ void RemoteMarketOffice::poll() {
 		sbe_market_data.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 		                              sbe::MessageHeader::encodedLength(), sbe_header.blockLength(),
 		                              sbe_header.version(), MESSENGER_BUFFER_SIZE);
-		auto next_sequence = m_remote_md_buffer->next();
-		(*m_remote_md_buffer)[next_sequence] = (RemoteMarketDataEvent) {
+		auto next = m_remote_md_buffer->next();
+		(*m_remote_md_buffer)[next] = (RemoteMarketDataEvent) {
 				.bid = sbe_market_data.bid(),
-				.bid_qty = sbe_market_data.bidQty(),
 				.offer = sbe_market_data.offer(),
-				.offer_qty = sbe_market_data.offerQty(),
 				.timestamp_us  = sbe_market_data.timestamp(),
 				.rec_timestamp_us = now_us
 		};
-		m_remote_md_buffer->publish(next_sequence);
+		m_remote_md_buffer->publish(next);
 	});
 
 	while (true) {

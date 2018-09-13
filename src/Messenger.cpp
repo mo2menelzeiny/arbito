@@ -1,7 +1,9 @@
 
 #include "Messenger.h"
 
-Messenger::Messenger(Recorder &recorder, MessengerConfig config) : m_recorder(&recorder), m_config(config) {}
+Messenger::Messenger(const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+                     Recorder &recorder, MessengerConfig config)
+		: m_remote_md_buffer(remote_md_buffer), m_recorder(&recorder), m_config(config) {}
 
 void Messenger::mediaDriver() {
 	aeron_driver_context_t *context = nullptr;
@@ -50,6 +52,17 @@ void Messenger::start() {
 	});
 
 	m_aeron_context.unavailableImageHandler([&](aeron::Image &image) {
+		// safety to set remote_md to default value
+		auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+				std::chrono::steady_clock::now().time_since_epoch()).count();
+		auto next = m_remote_md_buffer->next();
+		(*m_remote_md_buffer)[next] = (RemoteMarketDataEvent) {
+				.bid = -99.0,
+				.offer = 99.0,
+				.timestamp_us  = now_us,
+				.rec_timestamp_us = now_us
+		};
+		m_remote_md_buffer->publish(next);
 		m_recorder->recordSystem("Messenger: Image unavailable", SYSTEM_RECORD_TYPE_ERROR);
 	});
 

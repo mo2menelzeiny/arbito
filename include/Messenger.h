@@ -19,7 +19,8 @@
 class Messenger {
 
 public:
-	explicit Messenger(Recorder &recorder, MessengerConfig config);
+	explicit Messenger(const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+	                   Recorder &recorder, MessengerConfig config);
 
 	const std::shared_ptr<aeron::Subscription> &marketDataSub() const;
 
@@ -31,6 +32,7 @@ private:
 	void mediaDriver();
 
 private:
+	const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
 	Recorder *m_recorder;
 	MessengerConfig m_config;
 	std::thread m_media_driver;

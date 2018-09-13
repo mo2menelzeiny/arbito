@@ -62,7 +62,7 @@ void Recorder::recordSystem(const char *message, SystemRecordType type) {
 			break;
 	}
 
-	if (!mongoc_collection_insert_one(collection, insert, NULL, NULL, &error)) {
+	if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
 		fprintf(stderr, "Recorder: %s\n", error.message);
 	}
 
@@ -155,9 +155,7 @@ void Recorder::poll() {
 				"rec_timestamp_us", BCON_DATE_TIME(data.rec_timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"offer", BCON_DOUBLE(data.offer),
-				"offer_qty", BCON_DOUBLE(data.offer_qty),
-				"bid", BCON_DOUBLE(data.bid),
-				"bid_qty", BCON_DOUBLE(data.bid_qty)
+				"bid", BCON_DOUBLE(data.bid)
 		);
 
 		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
@@ -180,9 +178,7 @@ void Recorder::poll() {
 				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"offer", BCON_DOUBLE(data.offer),
-				"offer_qty", BCON_DOUBLE(data.offer_qty),
-				"bid", BCON_DOUBLE(data.bid),
-				"bid_qty", BCON_DOUBLE(data.bid_qty)
+				"bid", BCON_DOUBLE(data.bid)
 		);
 
 		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
