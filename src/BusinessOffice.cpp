@@ -15,23 +15,16 @@ void BusinessOffice::start() {
 }
 
 void BusinessOffice::poll() {
+	RemoteMarketDataEvent remote_md{.bid = -99.0, .bid_qty = 0, .offer = 99.0, .offer_qty = 0};
 	std::deque<MarketDataEvent> local_md;
 	bool order_delay_check = false;
 	time_t order_delay = ORDER_DELAY_SEC;
 	time_t order_delay_start = time(nullptr);
 	long now_us = 0;
 
-	auto local_md_poller = m_local_md_buffer->newPoller();
-	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
-	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		local_md.push_front(data);
-	};
-
-	auto remote_md_poller = m_remote_md_buffer->newPoller();
-	m_remote_md_buffer->addGatingSequences({remote_md_poller->sequence()});
-	auto remote_md_handler = [&](RemoteMarketDataEvent &remote_md, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto trigger_handler = [&]() {
 		if (order_delay_check && ((time(nullptr) - order_delay_start) < order_delay)) {
-			return true;
+			return;
 		}
 
 		order_delay_check = false;
@@ -58,7 +51,7 @@ void BusinessOffice::poll() {
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
-						return true;
+						return;
 					}
 
 					if ((local_md[i].bid - remote_md.offer) >= m_diff_close) {
@@ -75,7 +68,7 @@ void BusinessOffice::poll() {
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
-						return true;
+						return;
 					}
 
 					break;
@@ -96,7 +89,7 @@ void BusinessOffice::poll() {
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
-						return true;
+						return;
 					}
 
 					if (remote_md.bid - local_md[i].offer >= m_diff_close) {
@@ -113,7 +106,7 @@ void BusinessOffice::poll() {
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
-						return true;
+						return;
 					}
 
 					break;
@@ -134,7 +127,7 @@ void BusinessOffice::poll() {
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
-						return true;
+						return;
 					}
 
 					if ((remote_md.bid - local_md[i].offer) >= m_diff_open) {
@@ -152,13 +145,27 @@ void BusinessOffice::poll() {
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
-						return true;
+						return;
 					}
 
 					break;
 			}
 		}
+	};
 
+	auto local_md_poller = m_local_md_buffer->newPoller();
+	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
+	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		local_md.push_front(data);
+		trigger_handler();
+		return true;
+	};
+
+	auto remote_md_poller = m_remote_md_buffer->newPoller();
+	m_remote_md_buffer->addGatingSequences({remote_md_poller->sequence()});
+	auto remote_md_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		remote_md = data;
+		trigger_handler();
 		return true;
 	};
 
