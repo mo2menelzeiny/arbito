@@ -110,7 +110,7 @@ public:
 
     static SBE_CONSTEXPR std::uint16_t sbeBlockLength() SBE_NOEXCEPT
     {
-	    return (std::uint16_t) 24;
+        return (std::uint16_t)24;
     }
 
     static SBE_CONSTEXPR std::uint16_t sbeTemplateId() SBE_NOEXCEPT
@@ -266,7 +266,7 @@ public:
 
     static SBE_CONSTEXPR std::uint16_t offerId() SBE_NOEXCEPT
     {
-        return 3;
+        return 2;
     }
 
     static SBE_CONSTEXPR std::uint64_t offerSinceVersion() SBE_NOEXCEPT
@@ -288,7 +288,7 @@ public:
 
     static SBE_CONSTEXPR std::size_t offerEncodingOffset() SBE_NOEXCEPT
     {
-	    return 8;
+         return 8;
     }
 
 
@@ -328,7 +328,7 @@ public:
     double offer() const
     {
         ::sbe::sbe_double_as_uint_t val;
-	    std::memcpy(&val, m_buffer + m_offset + 8, sizeof(double));
+        std::memcpy(&val, m_buffer + m_offset + 8, sizeof(double));
         val.uint_value = SBE_LITTLE_ENDIAN_ENCODE_64(val.uint_value);
         return val.fp_value;
     }
@@ -338,39 +338,39 @@ public:
         ::sbe::sbe_double_as_uint_t val;
         val.fp_value = value;
         val.uint_value = SBE_LITTLE_ENDIAN_ENCODE_64(val.uint_value);
-	    std::memcpy(m_buffer + m_offset + 8, &val, sizeof(double));
+        std::memcpy(m_buffer + m_offset + 8, &val, sizeof(double));
         return *this;
     }
 
-		static SBE_CONSTEXPR std::uint16_t timestampId() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint16_t timestampId() SBE_NOEXCEPT
     {
-	    return 5;
+        return 3;
     }
 
-		static SBE_CONSTEXPR std::uint64_t timestampSinceVersion() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t timestampSinceVersion() SBE_NOEXCEPT
     {
          return 0;
     }
 
-		bool timestampInActingVersion() SBE_NOEXCEPT
+    bool timestampInActingVersion() SBE_NOEXCEPT
     {
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wtautological-compare"
 #endif
-			return m_actingVersion >= timestampSinceVersion();
+        return m_actingVersion >= timestampSinceVersion();
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
     }
 
-		static SBE_CONSTEXPR std::size_t timestampEncodingOffset() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::size_t timestampEncodingOffset() SBE_NOEXCEPT
     {
-	    return 16;
+         return 16;
     }
 
 
-		static const char *timestampMetaAttribute(const ::sbe::MetaAttribute::Attribute metaAttribute) SBE_NOEXCEPT
+    static const char *timestampMetaAttribute(const ::sbe::MetaAttribute::Attribute metaAttribute) SBE_NOEXCEPT
     {
         switch (metaAttribute)
         {
@@ -383,36 +383,37 @@ public:
         return "";
     }
 
-		static SBE_CONSTEXPR std::int64_t timestampNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::int64_t timestampNullValue() SBE_NOEXCEPT
     {
-	    return SBE_NULLVALUE_INT64;
+        return SBE_NULLVALUE_INT64;
     }
 
-		static SBE_CONSTEXPR std::int64_t timestampMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::int64_t timestampMinValue() SBE_NOEXCEPT
     {
-	    return -9223372036854775807L;
+        return -9223372036854775807L;
     }
 
-		static SBE_CONSTEXPR std::int64_t timestampMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::int64_t timestampMaxValue() SBE_NOEXCEPT
     {
-	    return 9223372036854775807L;
+        return 9223372036854775807L;
     }
 
-		static SBE_CONSTEXPR std::size_t timestampEncodingLength() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::size_t timestampEncodingLength() SBE_NOEXCEPT
     {
-	    return 8;
+        return 8;
     }
 
-		std::int64_t timestamp() const
+    std::int64_t timestamp() const
     {
-	    std::int64_t val;
-	    std::memcpy(&val, m_buffer + m_offset + 16, sizeof(std::int64_t));
-	    return SBE_LITTLE_ENDIAN_ENCODE_64(val);
+        std::int64_t val;
+        std::memcpy(&val, m_buffer + m_offset + 16, sizeof(std::int64_t));
+        return SBE_LITTLE_ENDIAN_ENCODE_64(val);
     }
 
-		MarketData &timestamp(const std::int64_t value) {
-			std::int64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
-			std::memcpy(m_buffer + m_offset + 16, &val, sizeof(std::int64_t));
+    MarketData &timestamp(const std::int64_t value)
+    {
+        std::int64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+        std::memcpy(m_buffer + m_offset + 16, &val, sizeof(std::int64_t));
         return *this;
     }
 };

@@ -156,6 +156,10 @@ void BusinessOffice::poll() {
 	auto local_md_poller = m_local_md_buffer->newPoller();
 	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
 	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		if (local_md.size() == 1 && (now_us - local_md.front().timestamp_us > MD_DELAY_US)) {
+			local_md.front().timestamp_us = now_us;
+		}
+
 		local_md.push_front(data);
 		trigger_handler();
 		return true;
