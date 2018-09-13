@@ -110,7 +110,7 @@ public:
 
     static SBE_CONSTEXPR std::uint16_t sbeBlockLength() SBE_NOEXCEPT
     {
-	    return (std::uint16_t) 40;
+	    return (std::uint16_t) 24;
     }
 
     static SBE_CONSTEXPR std::uint16_t sbeTemplateId() SBE_NOEXCEPT
@@ -264,84 +264,6 @@ public:
         return *this;
     }
 
-    static SBE_CONSTEXPR std::uint16_t bidQtyId() SBE_NOEXCEPT
-    {
-        return 2;
-    }
-
-    static SBE_CONSTEXPR std::uint64_t bidQtySinceVersion() SBE_NOEXCEPT
-    {
-         return 0;
-    }
-
-    bool bidQtyInActingVersion() SBE_NOEXCEPT
-    {
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare"
-#endif
-        return m_actingVersion >= bidQtySinceVersion();
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
-    }
-
-    static SBE_CONSTEXPR std::size_t bidQtyEncodingOffset() SBE_NOEXCEPT
-    {
-         return 8;
-    }
-
-
-    static const char *bidQtyMetaAttribute(const ::sbe::MetaAttribute::Attribute metaAttribute) SBE_NOEXCEPT
-    {
-        switch (metaAttribute)
-        {
-            case ::sbe::MetaAttribute::EPOCH: return "";
-            case ::sbe::MetaAttribute::TIME_UNIT: return "";
-            case ::sbe::MetaAttribute::SEMANTIC_TYPE: return "";
-            case ::sbe::MetaAttribute::PRESENCE: return "required";
-        }
-
-        return "";
-    }
-
-    static SBE_CONSTEXPR double bidQtyNullValue() SBE_NOEXCEPT
-    {
-        return SBE_DOUBLE_NAN;
-    }
-
-    static SBE_CONSTEXPR double bidQtyMinValue() SBE_NOEXCEPT
-    {
-        return 4.9E-324;
-    }
-
-    static SBE_CONSTEXPR double bidQtyMaxValue() SBE_NOEXCEPT
-    {
-        return 1.7976931348623157E308;
-    }
-
-    static SBE_CONSTEXPR std::size_t bidQtyEncodingLength() SBE_NOEXCEPT
-    {
-        return 8;
-    }
-
-    double bidQty() const
-    {
-        ::sbe::sbe_double_as_uint_t val;
-        std::memcpy(&val, m_buffer + m_offset + 8, sizeof(double));
-        val.uint_value = SBE_LITTLE_ENDIAN_ENCODE_64(val.uint_value);
-        return val.fp_value;
-    }
-
-    MarketData &bidQty(const double value)
-    {
-        ::sbe::sbe_double_as_uint_t val;
-        val.fp_value = value;
-        val.uint_value = SBE_LITTLE_ENDIAN_ENCODE_64(val.uint_value);
-        std::memcpy(m_buffer + m_offset + 8, &val, sizeof(double));
-        return *this;
-    }
-
     static SBE_CONSTEXPR std::uint16_t offerId() SBE_NOEXCEPT
     {
         return 3;
@@ -366,7 +288,7 @@ public:
 
     static SBE_CONSTEXPR std::size_t offerEncodingOffset() SBE_NOEXCEPT
     {
-         return 16;
+	    return 8;
     }
 
 
@@ -406,7 +328,7 @@ public:
     double offer() const
     {
         ::sbe::sbe_double_as_uint_t val;
-        std::memcpy(&val, m_buffer + m_offset + 16, sizeof(double));
+	    std::memcpy(&val, m_buffer + m_offset + 8, sizeof(double));
         val.uint_value = SBE_LITTLE_ENDIAN_ENCODE_64(val.uint_value);
         return val.fp_value;
     }
@@ -416,39 +338,39 @@ public:
         ::sbe::sbe_double_as_uint_t val;
         val.fp_value = value;
         val.uint_value = SBE_LITTLE_ENDIAN_ENCODE_64(val.uint_value);
-        std::memcpy(m_buffer + m_offset + 16, &val, sizeof(double));
+	    std::memcpy(m_buffer + m_offset + 8, &val, sizeof(double));
         return *this;
     }
 
-    static SBE_CONSTEXPR std::uint16_t offerQtyId() SBE_NOEXCEPT
+		static SBE_CONSTEXPR std::uint16_t timestampId() SBE_NOEXCEPT
     {
-        return 4;
+	    return 5;
     }
 
-    static SBE_CONSTEXPR std::uint64_t offerQtySinceVersion() SBE_NOEXCEPT
+		static SBE_CONSTEXPR std::uint64_t timestampSinceVersion() SBE_NOEXCEPT
     {
          return 0;
     }
 
-    bool offerQtyInActingVersion() SBE_NOEXCEPT
+		bool timestampInActingVersion() SBE_NOEXCEPT
     {
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wtautological-compare"
 #endif
-        return m_actingVersion >= offerQtySinceVersion();
+			return m_actingVersion >= timestampSinceVersion();
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
     }
 
-    static SBE_CONSTEXPR std::size_t offerQtyEncodingOffset() SBE_NOEXCEPT
+		static SBE_CONSTEXPR std::size_t timestampEncodingOffset() SBE_NOEXCEPT
     {
-         return 24;
+	    return 16;
     }
 
 
-    static const char *offerQtyMetaAttribute(const ::sbe::MetaAttribute::Attribute metaAttribute) SBE_NOEXCEPT
+		static const char *timestampMetaAttribute(const ::sbe::MetaAttribute::Attribute metaAttribute) SBE_NOEXCEPT
     {
         switch (metaAttribute)
         {
@@ -459,85 +381,6 @@ public:
         }
 
         return "";
-    }
-
-    static SBE_CONSTEXPR double offerQtyNullValue() SBE_NOEXCEPT
-    {
-        return SBE_DOUBLE_NAN;
-    }
-
-    static SBE_CONSTEXPR double offerQtyMinValue() SBE_NOEXCEPT
-    {
-        return 4.9E-324;
-    }
-
-    static SBE_CONSTEXPR double offerQtyMaxValue() SBE_NOEXCEPT
-    {
-        return 1.7976931348623157E308;
-    }
-
-    static SBE_CONSTEXPR std::size_t offerQtyEncodingLength() SBE_NOEXCEPT
-    {
-        return 8;
-    }
-
-    double offerQty() const
-    {
-        ::sbe::sbe_double_as_uint_t val;
-        std::memcpy(&val, m_buffer + m_offset + 24, sizeof(double));
-        val.uint_value = SBE_LITTLE_ENDIAN_ENCODE_64(val.uint_value);
-        return val.fp_value;
-    }
-
-    MarketData &offerQty(const double value)
-    {
-        ::sbe::sbe_double_as_uint_t val;
-        val.fp_value = value;
-        val.uint_value = SBE_LITTLE_ENDIAN_ENCODE_64(val.uint_value);
-        std::memcpy(m_buffer + m_offset + 24, &val, sizeof(double));
-        return *this;
-    }
-
-		static SBE_CONSTEXPR std::uint16_t timestampId() SBE_NOEXCEPT {
-			return 5;
-    }
-
-    static SBE_CONSTEXPR std::uint64_t timestampSinceVersion() SBE_NOEXCEPT
-    {
-         return 0;
-    }
-
-    bool timestampInActingVersion() SBE_NOEXCEPT
-    {
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare"
-#endif
-        return m_actingVersion >= timestampSinceVersion();
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
-    }
-
-		static SBE_CONSTEXPR std::size_t timestampEncodingOffset() SBE_NOEXCEPT
-    {
-	    return 32;
-    }
-
-
-		static const char *timestampMetaAttribute(const ::sbe::MetaAttribute::Attribute metaAttribute) SBE_NOEXCEPT {
-			switch (metaAttribute) {
-				case ::sbe::MetaAttribute::EPOCH:
-					return "";
-				case ::sbe::MetaAttribute::TIME_UNIT:
-					return "";
-				case ::sbe::MetaAttribute::SEMANTIC_TYPE:
-					return "";
-				case ::sbe::MetaAttribute::PRESENCE:
-					return "required";
-			}
-
-			return "";
     }
 
 		static SBE_CONSTEXPR std::int64_t timestampNullValue() SBE_NOEXCEPT
@@ -563,13 +406,13 @@ public:
 		std::int64_t timestamp() const
     {
 	    std::int64_t val;
-	    std::memcpy(&val, m_buffer + m_offset + 32, sizeof(std::int64_t));
+	    std::memcpy(&val, m_buffer + m_offset + 16, sizeof(std::int64_t));
 	    return SBE_LITTLE_ENDIAN_ENCODE_64(val);
     }
 
 		MarketData &timestamp(const std::int64_t value) {
 			std::int64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
-			std::memcpy(m_buffer + m_offset + 32, &val, sizeof(std::int64_t));
+			std::memcpy(m_buffer + m_offset + 16, &val, sizeof(std::int64_t));
         return *this;
     }
 };

@@ -178,9 +178,7 @@ namespace LMAX {
 					sbe_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer),
 					                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
 							.bid(lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
-							.bidQty(lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0))
 							.offer(lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value)
-							.offerQty(lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value)
 							.timestamp(now_us);
 					aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 					std::int64_t result;
@@ -191,9 +189,7 @@ namespace LMAX {
 					auto next = m_local_md_buffer->next();
 					(*m_local_md_buffer)[next] = (MarketDataEvent) {
 							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
-							.bid_qty = (lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-							.offer_qty = lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value,
 							.timestamp_us  = now_us
 					};
 					m_local_md_buffer->publish(next);

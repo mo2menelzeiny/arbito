@@ -180,9 +180,7 @@ namespace SWISSQUOTE {
 					sbe_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer),
 					                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
 							.bid(swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0))
-							.bidQty(swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0))
 							.offer(swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value)
-							.offerQty(swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value)
 							.timestamp(now_us);
 					aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 					std::int64_t result;
@@ -193,9 +191,7 @@ namespace SWISSQUOTE {
 					auto next = m_local_md_buffer->next();
 					(*m_local_md_buffer)[next] = (MarketDataEvent) {
 							.bid = swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0),
-							.bid_qty = (swissquote_fix_get_float(msg, swissquote_MDEntrySize, 0.0)),
 							.offer = swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value,
-							.offer_qty = swissquote_fix_get_field_at(msg, msg->nr_fields - 3)->float_value,
 							.timestamp_us = now_us
 					};
 					m_local_md_buffer->publish(next);

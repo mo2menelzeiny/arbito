@@ -19,9 +19,7 @@
 
     <sbe:message name="MarketData" id="1" description="Market data prices">
         <field name="bid" id="1" type="double"/>
-        <field name="bidQty" id="2" type="double"/>
         <field name="offer" id="3" type="double"/>
-        <field name="offerQty" id="4" type="double"/>
         <field name="timestamp" id="5" type="int64"/>
     </sbe:message>
     <sbe:message name="TradeConfirm" id="2" description="Confirmation message that helps keeping nodes in sync">
