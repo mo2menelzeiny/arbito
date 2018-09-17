@@ -18,11 +18,13 @@
 #include "Config.h"
 #include "Messenger.h"
 #include "RemoteMarketDataEvent.h"
+#include "ControlEvent.h"
 
 class RemoteMarketOffice {
 
 public:
-	RemoteMarketOffice(const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+	RemoteMarketOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
+	                   const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
 	                   Messenger &messenger);
 
 	void start();
@@ -32,6 +34,7 @@ private:
 
 private:
 	const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
+	const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
 	Messenger *m_messenger;
 	std::thread m_poller;
 	uint8_t m_buffer[MESSENGER_BUFFER_SIZE];

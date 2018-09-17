@@ -4,10 +4,11 @@
 namespace LMAX {
 
 	MarketOffice::MarketOffice(
+			const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 			const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
 			Recorder &recorder, Messenger &messenger, BrokerConfig broker_config, double spread, double lot_size)
-			: m_local_md_buffer(local_md_buffer), m_recorder(&recorder), m_messenger(&messenger),
-			  m_broker_config(broker_config), m_spread(spread), m_lot_size(lot_size) {
+			: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_recorder(&recorder),
+			  m_messenger(&messenger), m_broker_config(broker_config), m_spread(spread), m_lot_size(lot_size) {
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
 		m_cfg.heartbtint = broker_config.heartbeat;
@@ -107,25 +108,14 @@ namespace LMAX {
 
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
-		// Session login
-		int logon_result;
-		do {
+		if (lmax_fix_session_logon(m_session)) {
+			m_recorder->recordSystem("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
+		}
 
-			logon_result = lmax_fix_session_logon(m_session);
-
-			if (logon_result) {
-				m_recorder->recordSystem("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
-				fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-			}
-
-		} while (logon_result);
-
-		// Market data request
 		if (lmax_fix_session_marketdata_request(m_session)) {
 			m_recorder->recordSystem("MarketOffice: market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "MarketOffice: Client market data request FAILED\n");
-			return;
 		}
 
 		poller = std::thread(&MarketOffice::poll, this);
@@ -136,6 +126,47 @@ namespace LMAX {
 		struct timespec curr{}, prev{};
 		sbe::MessageHeader sbe_header;
 		sbe::MarketData sbe_market_data;
+		bool pause = false;
+		auto control_poller = m_control_buffer->newPoller();
+		m_control_buffer->addGatingSequences({control_poller->sequence()});
+		auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+			if (data.source == CES_MARKET_OFFICE) {
+				return true;
+			}
+
+			switch (data.type) {
+				case CET_PAUSE: {
+					pause = true;
+					sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
+							.blockLength(sbe::MarketData::sbeBlockLength())
+							.templateId(sbe::MarketData::sbeTemplateId())
+							.schemaId(sbe::MarketData::sbeSchemaId())
+							.version(sbe::MarketData::sbeSchemaVersion());
+					sbe_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer),
+					                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
+							.bid(-99)
+							.offer(99)
+							.timestamp((curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L));
+					aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
+					std::int64_t result;
+
+					do {
+						result = m_messenger->marketDataPub()->offer(m_atomic_buffer, 0, len);
+					} while (result < -1);
+
+					break;
+				}
+
+				case CET_RESUME:
+					pause = false;
+					break;
+
+				default:
+					break;
+			}
+
+			return true;
+		};
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
@@ -155,6 +186,8 @@ namespace LMAX {
 				break;
 			}
 
+			control_poller->poll(control_handler);
+
 			struct lmax_fix_message *msg;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
 				continue;
@@ -162,14 +195,17 @@ namespace LMAX {
 
 			switch (msg->type) {
 				case LMAX_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
+					if (pause) {
+						continue;
+					}
+
 					if (m_spread < (lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value -
 					                lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
 					    || m_lot_size > lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)
 					    || m_lot_size > lmax_fix_get_field_at(msg, msg->nr_fields - 1)->float_value) {
 						continue;
 					}
-					auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
-							std::chrono::steady_clock::now().time_since_epoch()).count();
+
 					sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
 							.blockLength(sbe::MarketData::sbeBlockLength())
 							.templateId(sbe::MarketData::sbeTemplateId())
@@ -179,7 +215,7 @@ namespace LMAX {
 					                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
 							.bid(lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
 							.offer(lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value)
-							.timestamp(now_us);
+							.timestamp((curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L));
 					aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 					std::int64_t result;
 					do {
@@ -190,7 +226,7 @@ namespace LMAX {
 					(*m_local_md_buffer)[next] = (MarketDataEvent) {
 							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-							.timestamp_us  = now_us
+							.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
 					};
 					m_local_md_buffer->publish(next);
 					continue;
@@ -203,8 +239,15 @@ namespace LMAX {
 			}
 		}
 
-		// Reconnection condition
 		if (m_session->active) {
+			auto next_pause = m_control_buffer->next();
+			(*m_control_buffer)[next_pause] = (ControlEvent) {
+					.source = CES_MARKET_OFFICE,
+					.type = CET_PAUSE,
+					.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+			};
+			m_control_buffer->publish(next_pause);
+
 			m_recorder->recordSystem("MarketOffice: Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "MarketOffice: Session FAILED\n");
 			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
@@ -213,6 +256,14 @@ namespace LMAX {
 			EVP_cleanup();
 			lmax_fix_session_free(m_session);
 			initBrokerClient();
+
+			auto next_resume = m_control_buffer->next();
+			(*m_control_buffer)[next_resume] = (ControlEvent) {
+					.source = CES_MARKET_OFFICE,
+					.type = CET_RESUME,
+					.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+			};
+			m_control_buffer->publish(next_resume);
 		}
 
 	}
