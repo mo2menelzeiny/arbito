@@ -232,11 +232,14 @@ namespace LMAX {
 
 			m_recorder->recordSystem("TradeOffice: Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "TradeOffice: Session FAILED\n");
-			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
+
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();
 			lmax_fix_session_free(m_session);
+
+			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
+
 			initBrokerClient();
 
 			auto next_resume = m_control_buffer->next();
