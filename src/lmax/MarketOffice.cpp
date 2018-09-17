@@ -240,6 +240,23 @@ namespace LMAX {
 		}
 
 		if (m_session->active) {
+			sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
+					.blockLength(sbe::MarketData::sbeBlockLength())
+					.templateId(sbe::MarketData::sbeTemplateId())
+					.schemaId(sbe::MarketData::sbeSchemaId())
+					.version(sbe::MarketData::sbeSchemaVersion());
+			sbe_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer),
+			                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
+					.bid(-99)
+					.offer(99)
+					.timestamp((curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L));
+			aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
+			std::int64_t result;
+
+			do {
+				result = m_messenger->marketDataPub()->offer(m_atomic_buffer, 0, len);
+			} while (result < -1);
+
 			auto next_pause = m_control_buffer->next();
 			(*m_control_buffer)[next_pause] = (ControlEvent) {
 					.source = CES_MARKET_OFFICE,
