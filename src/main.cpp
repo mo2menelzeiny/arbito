@@ -95,8 +95,8 @@ int main() {
 				                                 lot_size);
 				lmax_to = new LMAX::TradeOffice(control_buffer, business_buffer, trade_buffer, recorder, messenger,
 				                                to_config, lot_size);
-				lmax_to->start();
 				lmax_mo->start();
+				lmax_to->start();
 				break;
 
 			case 2:
@@ -104,8 +104,8 @@ int main() {
 				                                             mo_config, spread, lot_size);
 				swissquote_to = new SWISSQUOTE::TradeOffice(control_buffer, business_buffer, trade_buffer, recorder,
 				                                            messenger, to_config, lot_size);
-				swissquote_to->start();
 				swissquote_mo->start();
+				swissquote_to->start();
 				break;
 			default:
 				return EXIT_FAILURE;
