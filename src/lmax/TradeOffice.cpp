@@ -3,11 +3,12 @@
 
 namespace LMAX {
 
-	TradeOffice::TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
+	TradeOffice::TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
+	                         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
 	                         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
 	                         Recorder &recorder, Messenger &messenger, BrokerConfig broker_config, double lot_size)
-			: m_business_buffer(business_buffer), m_trade_buffer(trade_buffer), m_recorder(&recorder),
-			  m_messenger(&messenger), m_broker_config(broker_config), m_lot_size(lot_size) {
+			: m_control_buffer(control_buffer), m_business_buffer(business_buffer), m_trade_buffer(trade_buffer),
+			  m_recorder(&recorder), m_messenger(&messenger), m_broker_config(broker_config), m_lot_size(lot_size) {
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
 		m_cfg.heartbtint = broker_config.heartbeat;
@@ -106,19 +107,10 @@ namespace LMAX {
 
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
-		// Session login
-		int logon_result;
-		do {
-
-			logon_result = lmax_fix_session_logon(m_session);
-
-			if (logon_result) {
-				m_recorder->recordSystem("TradeOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
-				fprintf(stderr, "TradeOffice: Client Logon FAILED\n");
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-			}
-
-		} while (logon_result);
+		if (lmax_fix_session_logon(m_session)) {
+			m_recorder->recordSystem("TradeOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "TradeOffice: Client Logon FAILED\n");
+		}
 
 		m_poller = std::thread(&TradeOffice::poll, this);
 		m_poller.detach();
@@ -126,6 +118,30 @@ namespace LMAX {
 	}
 
 	void TradeOffice::poll() {
+		bool pause = false;
+		auto control_poller = m_control_buffer->newPoller();
+		m_control_buffer->addGatingSequences({control_poller->sequence()});
+		auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+			if (data.source == CES_TRADE_OFFICE) {
+				return true;
+			}
+
+			switch (data.type) {
+				case CET_PAUSE:
+					pause = true;
+					break;
+
+				case CET_RESUME:
+					pause = false;
+					break;
+
+				default:
+					break;
+			}
+
+			return true;
+		};
+
 		auto business_poller = m_business_buffer->newPoller();
 		m_business_buffer->addGatingSequences({business_poller->sequence()});
 		auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
@@ -169,6 +185,7 @@ namespace LMAX {
 				break;
 			}
 
+			control_poller->poll(control_handler);
 			business_poller->poll(business_handler);
 
 			struct lmax_fix_message *msg;
@@ -179,6 +196,10 @@ namespace LMAX {
 
 			switch (msg->type) {
 				case LMAX_FIX_MSG_TYPE_EXECUTION_REPORT:
+					if (pause) {
+						continue;
+					}
+
 					if (lmax_fix_get_field(msg, lmax_ExecType)->string_value[0] == 'F') {
 						auto next = m_trade_buffer->next();
 						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_OrderID), (*m_trade_buffer)[next].orderId, 64);
@@ -201,6 +222,14 @@ namespace LMAX {
 		}
 
 		if (m_session->active) {
+			auto next_pause = m_control_buffer->next();
+			(*m_control_buffer)[next_pause] = (ControlEvent) {
+					.source = CES_TRADE_OFFICE,
+					.type = CET_PAUSE,
+					.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+			};
+			m_control_buffer->publish(next_pause);
+
 			m_recorder->recordSystem("TradeOffice: Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "TradeOffice: Session FAILED\n");
 			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
@@ -209,6 +238,14 @@ namespace LMAX {
 			EVP_cleanup();
 			lmax_fix_session_free(m_session);
 			initBrokerClient();
+
+			auto next_resume = m_control_buffer->next();
+			(*m_control_buffer)[next_resume] = (ControlEvent) {
+					.source = CES_TRADE_OFFICE,
+					.type = CET_RESUME,
+					.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+			};
+			m_control_buffer->publish(next_resume);
 		}
 	}
 }

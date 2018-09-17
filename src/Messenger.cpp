@@ -34,11 +34,6 @@ void Messenger::mediaDriver() {
 }
 
 void Messenger::start() {
-	// Aeron media driver thread
-	m_media_driver = std::thread(&Messenger::mediaDriver, this);
-	m_media_driver.detach();
-
-	// Aeron configurations
 	m_aeron_context.newSubscriptionHandler([](const std::string &channel, std::int32_t streamId,
 	                                          std::int64_t correlationId) {
 	});
@@ -49,10 +44,10 @@ void Messenger::start() {
 
 	m_aeron_context.availableImageHandler([&](aeron::Image &image) {
 		m_recorder->recordSystem("Messenger: Image available", SYSTEM_RECORD_TYPE_SUCCESS);
+		fprintf(stdout, "Messenger: Image available\n");
 	});
 
 	m_aeron_context.unavailableImageHandler([&](aeron::Image &image) {
-		// safety to set remote_md to default value
 		auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
 				std::chrono::steady_clock::now().time_since_epoch()).count();
 		auto next = m_remote_md_buffer->next();
@@ -64,6 +59,7 @@ void Messenger::start() {
 		};
 		m_remote_md_buffer->publish(next);
 		m_recorder->recordSystem("Messenger: Image unavailable", SYSTEM_RECORD_TYPE_ERROR);
+		fprintf(stderr, "Messenger: Image unavailable\n");
 	});
 
 	m_aeron_context.errorHandler([&](const std::exception &exception) {
@@ -73,16 +69,18 @@ void Messenger::start() {
 		fprintf(stderr, "Messenger: %s\n", exception.what());
 	});
 
+	m_media_driver = std::thread(&Messenger::mediaDriver, this);
+	m_media_driver.detach();
+
 	m_aeron_client = std::make_shared<aeron::Aeron>(m_aeron_context);
 
 	std::int64_t md_pub_id = m_aeron_client->addPublication(m_config.pub_channel, m_config.market_data_stream_id);
-	std::int64_t md_sub_id = m_aeron_client->addSubscription(m_config.sub_channel, m_config.market_data_stream_id);
-
 	do {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 		m_market_data_pub = m_aeron_client->findPublication(md_pub_id);
 	} while (!m_market_data_pub);
 
+	std::int64_t md_sub_id = m_aeron_client->addSubscription(m_config.sub_channel, m_config.market_data_stream_id);
 	do {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 		m_market_data_sub = m_aeron_client->findSubscription(md_sub_id);

@@ -43,14 +43,16 @@
 #include "BrokerConfig.h"
 #include "TradeEvent.h"
 #include "BusinessEvent.h"
-#include "Utilities.h"
+#include "ControlEvent.h"
+#include "swissquote/Utilities.h"
 
 namespace SWISSQUOTE {
 
 	class TradeOffice {
 
 	public:
-		TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
+		TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
+		            const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
 		            const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
 		            Recorder &recorder, Messenger &messenger, BrokerConfig broker_config, double lot_size);
 
@@ -62,6 +64,7 @@ namespace SWISSQUOTE {
 		void poll();
 
 	private:
+		const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
 		const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_buffer;
 		const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_buffer;
 		Recorder *m_recorder;

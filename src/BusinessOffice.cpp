@@ -1,11 +1,12 @@
 
 #include "BusinessOffice.h"
 
-BusinessOffice::BusinessOffice(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
+BusinessOffice::BusinessOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
+                               const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
                                const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
                                const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
                                Recorder &recorder, double diff_open, double diff_close, double lot_size)
-		: m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer),
+		: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer),
 		  m_business_buffer(business_buffer), m_recorder(&recorder), m_diff_open(diff_open),
 		  m_diff_close(diff_close), m_lot_size(lot_size) {}
 
@@ -15,6 +16,28 @@ void BusinessOffice::start() {
 }
 
 void BusinessOffice::poll() {
+	bool pause = false;
+	auto control_poller = m_control_buffer->newPoller();
+	m_control_buffer->addGatingSequences({control_poller->sequence()});
+	auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		if (data.source == CES_BUSINESS_OFFICE) {
+			return true;
+		}
+
+		switch (data.type) {
+			case CET_PAUSE:
+				pause = true;
+				break;
+			case CET_RESUME:
+				pause = false;
+				break;
+			default:
+				break;
+		}
+
+		return true;
+	};
+
 	RemoteMarketDataEvent remote_md{.bid = -99.0, .offer = 99.0};
 	std::deque<MarketDataEvent> local_md;
 	bool order_delay_check = false;
@@ -23,6 +46,10 @@ void BusinessOffice::poll() {
 	long now_us = 0;
 
 	auto trigger_handler = [&]() {
+		if (pause) {
+			return;
+		}
+
 		if (order_delay_check && ((time(nullptr) - order_delay_start) < order_delay)) {
 			return;
 		}
@@ -33,7 +60,7 @@ void BusinessOffice::poll() {
 			m_open_side = NONE;
 		}
 
-		for (int i = 0; i < local_md.size(); i++) {
+		for (std::size_t i = 0; i < local_md.size(); i++) {
 			switch (m_open_side) {
 				case OPEN_SELL:
 					if (m_orders_count < MAX_OPEN_ORDERS &&
@@ -182,6 +209,7 @@ void BusinessOffice::poll() {
 			local_md.pop_back();
 		}
 
+		control_poller->poll(control_handler);
 		local_md_poller->poll(local_md_handler);
 		remote_md_poller->poll(remote_md_handler);
 	}

@@ -53,30 +53,33 @@ int main() {
 				.heartbeat = heartbeat
 		};
 
-		auto remote_market_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-				[]() { return RemoteMarketDataEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		auto remote_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
+				[]() { return RemoteMarketDataEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-		auto local_market_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-				[]() { return MarketDataEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		auto local_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
+				[]() { return MarketDataEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto business_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-				[]() { return BusinessEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return BusinessEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto trade_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-				[]() { return TradeEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return TradeEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
+		auto control_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
+				[]() { return ControlEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		srand(static_cast<unsigned int>(time(nullptr)));
 
-		Recorder recorder(local_market_buffer, remote_market_buffer, business_buffer, trade_buffer, uri_string, broker,
+		Recorder recorder(local_buffer, remote_buffer, business_buffer, trade_buffer, uri_string, broker,
 		                  db_name);
 
-		Messenger messenger(remote_market_buffer, recorder, messenger_config);
+		Messenger messenger(remote_buffer, recorder, messenger_config);
 		messenger.start();
 
-		RemoteMarketOffice rmo(remote_market_buffer, messenger);
+		RemoteMarketOffice rmo(control_buffer, remote_buffer, messenger);
 		rmo.start();
 
-		BusinessOffice bo(local_market_buffer, remote_market_buffer, business_buffer, recorder, diff_open, diff_close,
+		BusinessOffice bo(control_buffer, local_buffer, remote_buffer, business_buffer, recorder, diff_open, diff_close,
 		                  lot_size);
 		bo.start();
 
@@ -88,18 +91,19 @@ int main() {
 
 		switch (broker) {
 			case 1:
-				lmax_mo = new LMAX::MarketOffice(local_market_buffer, recorder, messenger, mo_config, spread, lot_size);
-				lmax_to = new LMAX::TradeOffice(business_buffer, trade_buffer, recorder, messenger, to_config,
-				                                lot_size);
+				lmax_mo = new LMAX::MarketOffice(control_buffer, local_buffer, recorder, messenger, mo_config, spread,
+				                                 lot_size);
+				lmax_to = new LMAX::TradeOffice(control_buffer, business_buffer, trade_buffer, recorder, messenger,
+				                                to_config, lot_size);
 				lmax_to->start();
 				lmax_mo->start();
 				break;
 
 			case 2:
-				swissquote_mo = new SWISSQUOTE::MarketOffice(local_market_buffer, recorder, messenger, mo_config,
-				                                             spread, lot_size);
-				swissquote_to = new SWISSQUOTE::TradeOffice(business_buffer, trade_buffer, recorder, messenger,
-				                                            to_config, lot_size);
+				swissquote_mo = new SWISSQUOTE::MarketOffice(control_buffer, local_buffer, recorder, messenger,
+				                                             mo_config, spread, lot_size);
+				swissquote_to = new SWISSQUOTE::TradeOffice(control_buffer, business_buffer, trade_buffer, recorder,
+				                                            messenger, to_config, lot_size);
 				swissquote_to->start();
 				swissquote_mo->start();
 				break;
@@ -110,7 +114,7 @@ int main() {
 		recorder.start();
 
 		while (true) {
-			std::this_thread::sleep_for(std::chrono::hours(1));
+			std::this_thread::sleep_for(std::chrono::minutes(1));
 		}
 
 	} catch (const std::exception &e) {
