@@ -213,9 +213,11 @@ namespace SWISSQUOTE {
 						m_trade_buffer->publish(next);
 					}
 					continue;
+
 				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:
 					swissquote_fix_session_admin(m_session, msg);
 					continue;
+
 				default:
 					continue;
 			}
@@ -232,11 +234,14 @@ namespace SWISSQUOTE {
 
 			m_recorder->recordSystem("TradeOffice: Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "TradeOffice: Session FAILED\n");
-			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
+
 			SSL_free(m_cfg.ssl);
 			ERR_free_strings();
 			EVP_cleanup();
 			swissquote_fix_session_free(m_session);
+
+			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
+
 			initBrokerClient();
 
 			auto next_resume = m_control_buffer->next();
