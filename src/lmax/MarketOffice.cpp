@@ -92,8 +92,8 @@ namespace LMAX {
 		int ssl_errno = SSL_connect(m_cfg.ssl);
 
 		if (ssl_errno <= 0) {
-			fprintf(stderr, "MarketOffice: SSL FAILED\n");
 			m_recorder->recordSystem("MarketOffice: SSL FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "MarketOffice: SSL FAILED\n");
 			return;
 		}
 
