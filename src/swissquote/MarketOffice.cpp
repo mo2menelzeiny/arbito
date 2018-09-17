@@ -116,7 +116,6 @@ namespace SWISSQUOTE {
 		if (swissquote_fix_session_marketdata_request(m_session)) {
 			m_recorder->recordSystem("MarketOffice: market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "MarketOffice: Client market data request FAILED\n");
-			return;
 		}
 
 		m_poller = std::thread(&MarketOffice::poll, this);
