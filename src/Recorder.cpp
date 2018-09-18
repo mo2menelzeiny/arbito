@@ -77,10 +77,10 @@ void Recorder::poll() {
 	auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
 		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
+		mongoc_collection_t *collection_be = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
 		char clOrdId[64];
 		sprintf(clOrdId, "%i", data.clOrdId);
-		bson_t *insert = BCON_NEW (
+		bson_t *insert_business_event = BCON_NEW (
 				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"clOrdId", BCON_UTF8(clOrdId),
@@ -90,21 +90,46 @@ void Recorder::poll() {
 
 		switch (data.side) {
 			case '1':
-				BSON_APPEND_UTF8(insert, "side", "BUY");
+				BSON_APPEND_UTF8(insert_business_event, "side", "BUY");
 				break;
+
 			case '2':
-				BSON_APPEND_UTF8(insert, "side", "SELL");
+				BSON_APPEND_UTF8(insert_business_event, "side", "SELL");
 				break;
+
 			default:
 				break;
 		}
 
-		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
+		if (!mongoc_collection_insert_one(collection_be, insert_business_event, nullptr, nullptr, &error)) {
 			fprintf(stderr, "Recorder: %s\n", error.message);
 		}
 
-		bson_destroy(insert);
-		mongoc_collection_destroy(collection);
+		OpenSide open_side = data.open_side;
+		if (!data.orders_count) {
+			open_side = NONE;
+		}
+
+		mongoc_collection_t *collection_recovery = mongoc_client_get_collection(client, m_db_name, "coll_recovery");
+		bson_t *insert_recovery = BCON_NEW (
+				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
+				"broker_name", BCON_UTF8(m_broker_name),
+				"open_side", BCON_INT32(open_side),
+				"orders_count", BCON_INT32(data.orders_count)
+		);
+
+		bson_t *query = BCON_NEW ("broker_name", m_broker_name);
+
+		if (!mongoc_collection_update(collection_recovery, MONGOC_UPDATE_UPSERT, query, insert_recovery, nullptr,
+		                              &error)) {
+			fprintf(stderr, "Recorder: %s\n", error.message);
+		}
+
+		bson_destroy(insert_business_event);
+		bson_destroy(insert_recovery);
+		bson_destroy(query);
+		mongoc_collection_destroy(collection_be);
+		mongoc_collection_destroy(collection_recovery);
 		mongoc_client_pool_push(m_pool, client);
 		return true;
 	};
@@ -198,4 +223,29 @@ void Recorder::poll() {
 		business_poller->poll(business_handler);
 		trade_poller->poll(trade_handler);
 	}
+}
+
+RecoveredBusinessData Recorder::recoverBusinessData() {
+	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_recovery");
+	mongoc_cursor_t *cursor;
+	const bson_t *doc;
+	bson_iter_t iter;
+	RecoveredBusinessData recovery_data{};
+
+	bson_t *query = BCON_NEW ("broker_name", m_broker_name);
+	cursor = mongoc_collection_find_with_opts(collection, query, nullptr, nullptr);
+
+	if (mongoc_cursor_next(cursor, &doc)) {
+		bson_iter_init_find(&iter, doc, "open_side");
+		recovery_data.open_side = static_cast<OpenSide>(bson_iter_int32(&iter));
+		bson_iter_init_find(&iter, doc, "orders_count");
+		recovery_data.orders_count = bson_iter_int32(&iter);
+	};
+
+	bson_destroy(query);
+	mongoc_cursor_destroy (cursor);
+	mongoc_collection_destroy(collection);
+	mongoc_client_pool_push(m_pool, client);
+	return recovery_data;
 }

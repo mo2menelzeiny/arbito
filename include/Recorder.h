@@ -16,11 +16,8 @@
 #include "TradeEvent.h"
 #include "RemoteMarketDataEvent.h"
 #include "MarketDataEvent.h"
-
-enum SystemRecordType {
-	SYSTEM_RECORD_TYPE_ERROR = 0,
-	SYSTEM_RECORD_TYPE_SUCCESS = 1,
-};
+#include "RecoveredBusinessData.h"
+#include "SystemRecordType.h"
 
 class Recorder {
 public:
@@ -33,6 +30,8 @@ public:
 	void recordSystem(const char *message, SystemRecordType type);
 
 	void start();
+
+	RecoveredBusinessData recoverBusinessData();
 
 private:
 

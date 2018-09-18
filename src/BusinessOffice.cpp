@@ -11,6 +11,9 @@ BusinessOffice::BusinessOffice(const std::shared_ptr<Disruptor::RingBuffer<Contr
 		  m_diff_close(diff_close), m_lot_size(lot_size) {}
 
 void BusinessOffice::start() {
+	RecoveredBusinessData data = m_recorder->recoverBusinessData();
+	m_open_side = data.open_side;
+	m_orders_count = data.orders_count;
 	m_poller = std::thread(&BusinessOffice::poll, this);
 	m_poller.detach();
 }
@@ -62,19 +65,21 @@ void BusinessOffice::poll() {
 
 		for (std::size_t i = 0; i < local_md.size(); i++) {
 			switch (m_open_side) {
-				case OPEN_SELL:
+				case OPEN_BUY:
 					if (m_orders_count < MAX_OPEN_ORDERS &&
 					    (remote_md.bid - local_md[i].offer) >= m_diff_open) {
+						++m_orders_count;
 						auto next = m_business_buffer->next();
 						(*m_business_buffer)[next] = (BusinessEvent) {
 								.side = '1',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].offer,
 								.remote_px = remote_md.bid,
-								.timestamp_us = now_us
+								.timestamp_us = now_us,
+								.open_side = m_open_side,
+								.orders_count = m_orders_count
 						};
 						m_business_buffer->publish(next);
-						++m_orders_count;
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
@@ -82,16 +87,18 @@ void BusinessOffice::poll() {
 					}
 
 					if ((local_md[i].bid - remote_md.offer) >= m_diff_close) {
+						--m_orders_count;
 						auto next = m_business_buffer->next();
 						(*m_business_buffer)[next] = (BusinessEvent) {
 								.side = '2',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].bid,
 								.remote_px = remote_md.offer,
-								.timestamp_us = now_us
+								.timestamp_us = now_us,
+								.open_side = m_open_side,
+								.orders_count = m_orders_count
 						};
 						m_business_buffer->publish(next);
-						--m_orders_count;
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
@@ -100,19 +107,21 @@ void BusinessOffice::poll() {
 
 					break;
 
-				case OPEN_BUY:
+				case OPEN_SELL:
 					if (m_orders_count < MAX_OPEN_ORDERS &&
 					    (local_md[i].bid - remote_md.offer) >= m_diff_open) {
+						++m_orders_count;
 						auto next = m_business_buffer->next();
 						(*m_business_buffer)[next] = (BusinessEvent) {
 								.side = '2',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].bid,
 								.remote_px = remote_md.offer,
-								.timestamp_us = now_us
+								.timestamp_us = now_us,
+								.open_side = m_open_side,
+								.orders_count = m_orders_count
 						};
 						m_business_buffer->publish(next);
-						++m_orders_count;
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
@@ -120,16 +129,18 @@ void BusinessOffice::poll() {
 					}
 
 					if (remote_md.bid - local_md[i].offer >= m_diff_close) {
+						--m_orders_count;
 						auto next = m_business_buffer->next();
 						(*m_business_buffer)[next] = (BusinessEvent) {
 								.side = '1',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].offer,
 								.remote_px = remote_md.bid,
-								.timestamp_us = now_us
+								.timestamp_us = now_us,
+								.open_side = m_open_side,
+								.orders_count = m_orders_count
 						};
 						m_business_buffer->publish(next);
-						--m_orders_count;
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
@@ -140,17 +151,19 @@ void BusinessOffice::poll() {
 
 				case NONE:
 					if ((local_md[i].bid - remote_md.offer) >= m_diff_open) {
+						m_open_side = OPEN_SELL;
+						++m_orders_count;
 						auto next = m_business_buffer->next();
 						(*m_business_buffer)[next] = (BusinessEvent) {
 								.side = '2',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].bid,
 								.remote_px = remote_md.offer,
-								.timestamp_us = now_us
+								.timestamp_us = now_us,
+								.open_side = m_open_side,
+								.orders_count = m_orders_count
 						};
 						m_business_buffer->publish(next);
-						m_open_side = OPEN_BUY;
-						++m_orders_count;
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
@@ -158,17 +171,19 @@ void BusinessOffice::poll() {
 					}
 
 					if ((remote_md.bid - local_md[i].offer) >= m_diff_open) {
+						m_open_side = OPEN_BUY;
+						++m_orders_count;
 						auto next = m_business_buffer->next();
 						(*m_business_buffer)[next] = (BusinessEvent) {
 								.side = '1',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].offer,
 								.remote_px = remote_md.bid,
-								.timestamp_us = now_us
+								.timestamp_us = now_us,
+								.open_side = m_open_side,
+								.orders_count = m_orders_count
 						};
 						m_business_buffer->publish(next);
-						m_open_side = OPEN_SELL;
-						++m_orders_count;
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						order_delay_check = true;
