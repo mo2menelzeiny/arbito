@@ -215,6 +215,17 @@ namespace LMAX {
 					lmax_fix_session_admin(m_session, msg);
 					continue;
 
+				case LMAX_FIX_MSG_TYPE_REJECT: {
+					auto next = m_trade_buffer->next();
+					strcpy((*m_trade_buffer)[next].orderId, "FAILED");
+					strcpy((*m_trade_buffer)[next].clOrdId, "FAILED");
+					(*m_trade_buffer)[next].side = '0';
+					(*m_trade_buffer)[next].avgPx = 0;
+					(*m_trade_buffer)[next].timestamp_us = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L);
+					m_trade_buffer->publish(next);
+				}
+					continue;
+
 				default:
 					continue;
 			}

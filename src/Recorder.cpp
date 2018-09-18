@@ -156,6 +156,7 @@ void Recorder::poll() {
 				BSON_APPEND_UTF8(insert, "side", "SELL");
 				break;
 			default:
+				BSON_APPEND_UTF8(insert, "side", "FAILED");
 				break;
 		}
 
@@ -169,7 +170,7 @@ void Recorder::poll() {
 		return true;
 	};
 
-	auto remote_md_poller = m_remote_md_buffer->newPoller();
+	/*auto remote_md_poller = m_remote_md_buffer->newPoller();
 	m_remote_md_buffer->addGatingSequences({remote_md_poller->sequence()});
 	auto remote_md_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
@@ -191,9 +192,9 @@ void Recorder::poll() {
 		mongoc_collection_destroy(collection);
 		mongoc_client_pool_push(m_pool, client);
 		return true;
-	};
+	};*/
 
-	auto local_md_poller = m_local_md_buffer->newPoller();
+	/*auto local_md_poller = m_local_md_buffer->newPoller();
 	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
 	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
@@ -214,12 +215,12 @@ void Recorder::poll() {
 		mongoc_collection_destroy(collection);
 		mongoc_client_pool_push(m_pool, client);
 		return true;
-	};
+	};*/
 
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
-		local_md_poller->poll(local_md_handler);
-		remote_md_poller->poll(remote_md_handler);
+		// local_md_poller->poll(local_md_handler);
+		// remote_md_poller->poll(remote_md_handler);
 		business_poller->poll(business_handler);
 		trade_poller->poll(trade_handler);
 	}
