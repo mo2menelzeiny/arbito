@@ -131,7 +131,7 @@ namespace SWISSQUOTE {
 		m_control_buffer->addGatingSequences({control_poller->sequence()});
 		auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 			if (data.source == CES_MARKET_OFFICE) {
-				return true;
+				return false;
 			}
 
 			switch (data.type) {
@@ -164,7 +164,7 @@ namespace SWISSQUOTE {
 					break;
 			}
 
-			return true;
+			return false;
 		};
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);

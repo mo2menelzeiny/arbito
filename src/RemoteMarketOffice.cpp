@@ -19,7 +19,7 @@ void RemoteMarketOffice::poll() {
 	m_control_buffer->addGatingSequences({control_poller->sequence()});
 	auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		if (data.source == CES_REMOTE_M_OFFICE) {
-			return true;
+			return false;
 		}
 
 		switch (data.type) {
@@ -35,7 +35,7 @@ void RemoteMarketOffice::poll() {
 				break;
 		}
 
-		return true;
+		return false;
 	};
 
 	auto now_us = 0L;
@@ -55,6 +55,7 @@ void RemoteMarketOffice::poll() {
 		sbe_market_data.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
 		                              sbe::MessageHeader::encodedLength(), sbe_header.blockLength(),
 		                              sbe_header.version(), MESSENGER_BUFFER_SIZE);
+
 		auto next = m_remote_md_buffer->next();
 		(*m_remote_md_buffer)[next] = (RemoteMarketDataEvent) {
 				.bid = sbe_market_data.bid(),

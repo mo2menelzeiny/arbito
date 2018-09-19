@@ -24,7 +24,7 @@ void BusinessOffice::poll() {
 	m_control_buffer->addGatingSequences({control_poller->sequence()});
 	auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		if (data.source == CES_BUSINESS_OFFICE) {
-			return true;
+			return false;
 		}
 
 		switch (data.type) {
@@ -38,7 +38,7 @@ void BusinessOffice::poll() {
 				break;
 		}
 
-		return true;
+		return false;
 	};
 
 	RemoteMarketDataEvent remote_md{.bid = -99.0, .offer = 99.0};
@@ -204,7 +204,7 @@ void BusinessOffice::poll() {
 
 		local_md.push_front(data);
 		trigger_handler();
-		return true;
+		return false;
 	};
 
 	auto remote_md_poller = m_remote_md_buffer->newPoller();
@@ -212,7 +212,7 @@ void BusinessOffice::poll() {
 	auto remote_md_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		remote_md = data;
 		trigger_handler();
-		return true;
+		return false;
 	};
 
 	while (true) {

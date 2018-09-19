@@ -123,7 +123,7 @@ namespace LMAX {
 		m_control_buffer->addGatingSequences({control_poller->sequence()});
 		auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 			if (data.source == CES_TRADE_OFFICE) {
-				return true;
+				return false;
 			}
 
 			switch (data.type) {
@@ -139,7 +139,7 @@ namespace LMAX {
 					break;
 			}
 
-			return true;
+			return false;
 		};
 
 		auto business_poller = m_business_buffer->newPoller();
@@ -163,7 +163,7 @@ namespace LMAX {
 			order_msg.nr_fields = ARRAY_SIZE(fields);
 			lmax_fix_session_send(m_session, &order_msg, 0);
 			m_session->active = true;
-			return true;
+			return false;
 		};
 
 		struct timespec curr{}, prev{};
