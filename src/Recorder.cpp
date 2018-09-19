@@ -55,6 +55,31 @@ void Recorder::start() {
 	m_buffers_poller.detach();
 }
 
+RecoveredBusinessData Recorder::recoverBusinessData() {
+	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_recovery");
+	mongoc_cursor_t *cursor;
+	const bson_t *doc;
+	bson_iter_t iter;
+	RecoveredBusinessData recovery_data{};
+
+	bson_t *query = BCON_NEW ("broker_name", m_broker_name);
+	cursor = mongoc_collection_find_with_opts(collection, query, nullptr, nullptr);
+
+	if (mongoc_cursor_next(cursor, &doc)) {
+		bson_iter_init_find(&iter, doc, "open_side");
+		recovery_data.open_side = static_cast<OpenSide>(bson_iter_int32(&iter));
+		bson_iter_init_find(&iter, doc, "orders_count");
+		recovery_data.orders_count = bson_iter_int32(&iter);
+	};
+
+	bson_destroy(query);
+	mongoc_cursor_destroy(cursor);
+	mongoc_collection_destroy(collection);
+	mongoc_client_pool_push(m_pool, client);
+	return recovery_data;
+}
+
 void Recorder::recordSystem(const char *message, SystemRecordType type) {
 	auto milliseconds_since_epoch = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
 	bson_error_t error;
@@ -143,31 +168,6 @@ void Recorder::pollBuffers() {
 		business_poller->poll(business_handler);
 		trade_poller->poll(trade_handler);
 	}
-}
-
-RecoveredBusinessData Recorder::recoverBusinessData() {
-	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_recovery");
-	mongoc_cursor_t *cursor;
-	const bson_t *doc;
-	bson_iter_t iter;
-	RecoveredBusinessData recovery_data{};
-
-	bson_t *query = BCON_NEW ("broker_name", m_broker_name);
-	cursor = mongoc_collection_find_with_opts(collection, query, nullptr, nullptr);
-
-	if (mongoc_cursor_next(cursor, &doc)) {
-		bson_iter_init_find(&iter, doc, "open_side");
-		recovery_data.open_side = static_cast<OpenSide>(bson_iter_int32(&iter));
-		bson_iter_init_find(&iter, doc, "orders_count");
-		recovery_data.orders_count = bson_iter_int32(&iter);
-	};
-
-	bson_destroy(query);
-	mongoc_cursor_destroy(cursor);
-	mongoc_collection_destroy(collection);
-	mongoc_client_pool_push(m_pool, client);
-	return recovery_data;
 }
 
 void Recorder::pollRecords() {
