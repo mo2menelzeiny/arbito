@@ -140,7 +140,7 @@ namespace SWISSQUOTE {
 					break;
 			}
 
-			return true;
+			return false;
 		};
 
 		auto business_poller = m_business_buffer->newPoller();
@@ -164,7 +164,7 @@ namespace SWISSQUOTE {
 			order_msg.nr_fields = ARRAY_SIZE(fields);
 			swissquote_fix_session_send(m_session, &order_msg, 0);
 			m_session->active = true;
-			return true;
+			return false;
 		};
 
 		struct timespec curr{}, prev{};

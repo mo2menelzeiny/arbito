@@ -8,6 +8,6 @@ struct RemoteMarketDataEvent {
 	long timestamp_us;
 	long rec_timestamp_us;
 };
-
+// 16 bytes for doubles + 8 bytes for longs = 24 bytes
 
 #endif //ARBITO_REMOTEMARKETDATAEVENT_H

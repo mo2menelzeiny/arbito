@@ -7,8 +7,19 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
                    const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
                    const char *uri_string, int broker_number, const char *db_name)
 		: m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer),
-		  m_trade_buffer(trade_buffer),
-		  m_db_name(db_name) {
+		  m_trade_buffer(trade_buffer), m_db_name(db_name) {
+	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
+			[]() { return RemoteMarketDataEvent(); }, 2048, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
+	m_local_records_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
+			[]() { return MarketDataEvent(); }, 2048, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
+	m_business_records_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
+			[]() { return BusinessEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
+	m_trade_records_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
+			[]() { return TradeEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
 	bson_error_t error;
 	mongoc_init();
 	m_uri = mongoc_uri_new_with_error(uri_string, &error);
@@ -38,8 +49,10 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 }
 
 void Recorder::start() {
-	m_poller = std::thread(&Recorder::poll, this);
-	m_poller.detach();
+	m_records_poller = std::thread(&Recorder::pollRecords, this);
+	m_records_poller.detach();
+	m_buffers_poller = std::thread(&Recorder::pollBuffers, this);
+	m_buffers_poller.detach();
 }
 
 void Recorder::recordSystem(const char *message, SystemRecordType type) {
@@ -71,10 +84,96 @@ void Recorder::recordSystem(const char *message, SystemRecordType type) {
 	mongoc_client_pool_push(m_pool, client);
 }
 
-void Recorder::poll() {
+void Recorder::pollBuffers() {
 	auto business_poller = m_business_buffer->newPoller();
 	m_business_buffer->addGatingSequences({business_poller->sequence()});
 	auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		try {
+			auto next = m_business_records_buffer->tryNext();
+			(*m_business_records_buffer)[next] = data;
+			m_business_records_buffer->publish(next);
+		} catch (Disruptor::InsufficientCapacityException &exception) {}
+		return false;
+	};
+
+	auto trade_poller = m_trade_buffer->newPoller();
+	m_trade_buffer->addGatingSequences({trade_poller->sequence()});
+	auto trade_handler = [&](TradeEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		try {
+			auto next = m_trade_records_buffer->tryNext();
+			(*m_trade_records_buffer)[next] = data;
+			m_trade_records_buffer->publish(next);
+		} catch (Disruptor::InsufficientCapacityException &exception) {}
+
+		return false;
+	};
+
+	auto remote_md_poller = m_remote_md_buffer->newPoller();
+	m_remote_md_buffer->addGatingSequences({remote_md_poller->sequence()});
+	auto remote_md_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		try {
+			auto next = m_remote_records_buffer->tryNext();
+			(*m_remote_records_buffer)[next] = data;
+			m_remote_records_buffer->publish(next);
+		} catch (Disruptor::InsufficientCapacityException &exception) {
+
+		}
+
+		return false;
+	};
+
+	auto local_md_poller = m_local_md_buffer->newPoller();
+	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
+	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		try {
+			auto next = m_local_records_buffer->tryNext();
+			(*m_local_records_buffer)[next] = data;
+			m_local_records_buffer->publish(next);
+		} catch (Disruptor::InsufficientCapacityException &exception) {
+
+		}
+
+		return false;
+	};
+
+	while (true) {
+		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		local_md_poller->poll(local_md_handler);
+		remote_md_poller->poll(remote_md_handler);
+		business_poller->poll(business_handler);
+		trade_poller->poll(trade_handler);
+	}
+}
+
+RecoveredBusinessData Recorder::recoverBusinessData() {
+	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_recovery");
+	mongoc_cursor_t *cursor;
+	const bson_t *doc;
+	bson_iter_t iter;
+	RecoveredBusinessData recovery_data{};
+
+	bson_t *query = BCON_NEW ("broker_name", m_broker_name);
+	cursor = mongoc_collection_find_with_opts(collection, query, nullptr, nullptr);
+
+	if (mongoc_cursor_next(cursor, &doc)) {
+		bson_iter_init_find(&iter, doc, "open_side");
+		recovery_data.open_side = static_cast<OpenSide>(bson_iter_int32(&iter));
+		bson_iter_init_find(&iter, doc, "orders_count");
+		recovery_data.orders_count = bson_iter_int32(&iter);
+	};
+
+	bson_destroy(query);
+	mongoc_cursor_destroy(cursor);
+	mongoc_collection_destroy(collection);
+	mongoc_client_pool_push(m_pool, client);
+	return recovery_data;
+}
+
+void Recorder::pollRecords() {
+	auto business_records_poller = m_business_records_buffer->newPoller();
+	m_business_records_buffer->addGatingSequences({business_records_poller->sequence()});
+	auto business_records_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
 		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
 		mongoc_collection_t *collection_be = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
@@ -131,12 +230,12 @@ void Recorder::poll() {
 		mongoc_collection_destroy(collection_be);
 		mongoc_collection_destroy(collection_recovery);
 		mongoc_client_pool_push(m_pool, client);
-		return true;
+		return false;
 	};
 
-	auto trade_poller = m_trade_buffer->newPoller();
-	m_trade_buffer->addGatingSequences({trade_poller->sequence()});
-	auto trade_handler = [&](TradeEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto trade_records_poller = m_trade_records_buffer->newPoller();
+	m_trade_records_buffer->addGatingSequences({trade_records_poller->sequence()});
+	auto trade_records_handler = [&](TradeEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
 		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
 		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_trade_events");
@@ -167,12 +266,12 @@ void Recorder::poll() {
 		bson_destroy(insert);
 		mongoc_collection_destroy(collection);
 		mongoc_client_pool_push(m_pool, client);
-		return true;
+		return false;
 	};
 
-	/*auto remote_md_poller = m_remote_md_buffer->newPoller();
-	m_remote_md_buffer->addGatingSequences({remote_md_poller->sequence()});
-	auto remote_md_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto remote_records_poller = m_remote_records_buffer->newPoller();
+	m_remote_records_buffer->addGatingSequences({remote_records_poller->sequence()});
+	auto remote_records_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
 		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
 		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_remote_md_events");
@@ -191,12 +290,12 @@ void Recorder::poll() {
 		bson_destroy(insert);
 		mongoc_collection_destroy(collection);
 		mongoc_client_pool_push(m_pool, client);
-		return true;
-	};*/
+		return false;
+	};
 
-	/*auto local_md_poller = m_local_md_buffer->newPoller();
-	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
-	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto local_records_poller = m_local_records_buffer->newPoller();
+	m_local_records_buffer->addGatingSequences({local_records_poller->sequence()});
+	auto local_records_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
 		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
 		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_local_md_events");
@@ -214,39 +313,14 @@ void Recorder::poll() {
 		bson_destroy(insert);
 		mongoc_collection_destroy(collection);
 		mongoc_client_pool_push(m_pool, client);
-		return true;
-	};*/
+		return false;
+	};
 
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
-		// local_md_poller->poll(local_md_handler);
-		// remote_md_poller->poll(remote_md_handler);
-		business_poller->poll(business_handler);
-		trade_poller->poll(trade_handler);
+		local_records_poller->poll(local_records_handler);
+		remote_records_poller->poll(remote_records_handler);
+		business_records_poller->poll(business_records_handler);
+		trade_records_poller->poll(trade_records_handler);
 	}
-}
-
-RecoveredBusinessData Recorder::recoverBusinessData() {
-	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_recovery");
-	mongoc_cursor_t *cursor;
-	const bson_t *doc;
-	bson_iter_t iter;
-	RecoveredBusinessData recovery_data{};
-
-	bson_t *query = BCON_NEW ("broker_name", m_broker_name);
-	cursor = mongoc_collection_find_with_opts(collection, query, nullptr, nullptr);
-
-	if (mongoc_cursor_next(cursor, &doc)) {
-		bson_iter_init_find(&iter, doc, "open_side");
-		recovery_data.open_side = static_cast<OpenSide>(bson_iter_int32(&iter));
-		bson_iter_init_find(&iter, doc, "orders_count");
-		recovery_data.orders_count = bson_iter_int32(&iter);
-	};
-
-	bson_destroy(query);
-	mongoc_cursor_destroy (cursor);
-	mongoc_collection_destroy(collection);
-	mongoc_client_pool_push(m_pool, client);
-	return recovery_data;
 }
