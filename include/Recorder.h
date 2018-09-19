@@ -28,11 +28,11 @@ public:
 	         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
 	         const char *uri_string, int broker_num, const char *db_name);
 
-	void recordSystem(const char *message, SystemRecordType type);
-
 	void start();
 
 	RecoveredBusinessData recoverBusinessData();
+
+	void recordSystem(const char *message, SystemRecordType type);
 
 private:
 
