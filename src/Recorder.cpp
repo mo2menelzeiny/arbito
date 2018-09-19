@@ -118,6 +118,7 @@ void Recorder::pollBuffers() {
 			(*m_business_records_buffer)[next] = data;
 			m_business_records_buffer->publish(next);
 		} catch (Disruptor::InsufficientCapacityException &exception) {}
+
 		return false;
 	};
 
@@ -140,9 +141,7 @@ void Recorder::pollBuffers() {
 			auto next = m_remote_records_buffer->tryNext();
 			(*m_remote_records_buffer)[next] = data;
 			m_remote_records_buffer->publish(next);
-		} catch (Disruptor::InsufficientCapacityException &exception) {
-
-		}
+		} catch (Disruptor::InsufficientCapacityException &exception) {}
 
 		return false;
 	};
@@ -154,9 +153,7 @@ void Recorder::pollBuffers() {
 			auto next = m_local_records_buffer->tryNext();
 			(*m_local_records_buffer)[next] = data;
 			m_local_records_buffer->publish(next);
-		} catch (Disruptor::InsufficientCapacityException &exception) {
-
-		}
+		} catch (Disruptor::InsufficientCapacityException &exception) {}
 
 		return false;
 	};
