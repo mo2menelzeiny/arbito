@@ -113,8 +113,22 @@ int main() {
 
 		recorder.start();
 
+		auto lower_bound = std::chrono::hours(20) + std::chrono::minutes(55);
+		auto upper_bound = std::chrono::hours(21) + std::chrono::minutes(15);
+
 		while (true) {
 			std::this_thread::sleep_for(std::chrono::minutes(1));
+			auto time_point = std::chrono::system_clock::now();
+			std::time_t t = std::chrono::system_clock::to_time_t(time_point);
+			auto gmt_time = std::gmtime(&t);
+			auto now = std::chrono::hours(gmt_time->tm_hour) + std::chrono::minutes(gmt_time->tm_min);
+			if (now >= lower_bound && now <= upper_bound) {
+				recorder.recordSystem("END OF DAY PAUSE", SYSTEM_RECORD_TYPE_SUCCESS);
+			}
+
+			if (now >= lower_bound && now >= upper_bound ) {
+				recorder.recordSystem("END OF DAY RESUME", SYSTEM_RECORD_TYPE_SUCCESS);
+			}
 		}
 
 	} catch (const std::exception &e) {
