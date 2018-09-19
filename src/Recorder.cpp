@@ -300,7 +300,13 @@ void Recorder::pollRecords() {
 				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"offer", BCON_DOUBLE(data.offer),
-				"bid", BCON_DOUBLE(data.bid)
+				"bid", BCON_DOUBLE(data.bid),
+				"local_records", BCON_INT64(m_local_records_buffer->getRemainingCapacity()),
+				"remote_records", BCON_INT64(m_remote_records_buffer->getRemainingCapacity()),
+				"local_md", BCON_INT64(m_local_md_buffer->getRemainingCapacity()),
+				"remote_md", BCON_INT64(m_remote_md_buffer->getRemainingCapacity()),
+				"business", BCON_INT64(m_business_buffer->getRemainingCapacity()),
+				"trade", BCON_INT64(m_trade_buffer->getRemainingCapacity())
 		);
 
 		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
