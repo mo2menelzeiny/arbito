@@ -74,10 +74,11 @@ void Messenger::start() {
 
 	m_aeron_client = std::make_shared<aeron::Aeron>(m_aeron_context);
 
-	std::int64_t md_pub_id = m_aeron_client->addPublication(m_config.pub_channel, m_config.market_data_stream_id);
+	std::int64_t md_pub_id = m_aeron_client->addExclusivePublication(m_config.pub_channel,
+	                                                                 m_config.market_data_stream_id);
 	do {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
-		m_market_data_pub = m_aeron_client->findPublication(md_pub_id);
+		m_market_data_pub = m_aeron_client->findExclusivePublication(md_pub_id);
 	} while (!m_market_data_pub);
 
 	std::int64_t md_sub_id = m_aeron_client->addSubscription(m_config.sub_channel, m_config.market_data_stream_id);
