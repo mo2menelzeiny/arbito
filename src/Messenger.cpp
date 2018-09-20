@@ -92,6 +92,6 @@ const std::shared_ptr<aeron::Subscription> &Messenger::marketDataSub() const {
 	return m_market_data_sub;
 }
 
-const std::shared_ptr<aeron::Publication> &Messenger::marketDataPub() const {
+const std::shared_ptr<aeron::ExclusivePublication> &Messenger::marketDataPub() const {
 	return m_market_data_pub;
 }
