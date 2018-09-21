@@ -24,7 +24,7 @@ public:
 
 	const std::shared_ptr<aeron::Subscription> &marketDataSub() const;
 
-	const std::shared_ptr<aeron::ExclusivePublication> &marketDataPub() const;
+	const std::shared_ptr<aeron::ExclusivePublication> &marketDataExPub() const;
 
 	void start();
 
@@ -38,7 +38,7 @@ private:
 	std::thread m_media_driver;
 	aeron::Context m_aeron_context;
 	std::shared_ptr<aeron::Aeron> m_aeron_client;
-	std::shared_ptr<aeron::ExclusivePublication> m_market_data_pub;
+	std::shared_ptr<aeron::ExclusivePublication> m_market_data_ex_pub;
 	std::shared_ptr<aeron::Subscription> m_market_data_sub;
 };
 

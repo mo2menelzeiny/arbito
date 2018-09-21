@@ -78,8 +78,8 @@ void Messenger::start() {
 	                                                                 m_config.market_data_stream_id);
 	do {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
-		m_market_data_pub = m_aeron_client->findExclusivePublication(md_pub_id);
-	} while (!m_market_data_pub);
+		m_market_data_ex_pub = m_aeron_client->findExclusivePublication(md_pub_id);
+	} while (!m_market_data_ex_pub);
 
 	std::int64_t md_sub_id = m_aeron_client->addSubscription(m_config.sub_channel, m_config.market_data_stream_id);
 	do {
@@ -92,6 +92,6 @@ const std::shared_ptr<aeron::Subscription> &Messenger::marketDataSub() const {
 	return m_market_data_sub;
 }
 
-const std::shared_ptr<aeron::ExclusivePublication> &Messenger::marketDataPub() const {
-	return m_market_data_pub;
+const std::shared_ptr<aeron::ExclusivePublication> &Messenger::marketDataExPub() const {
+	return m_market_data_ex_pub;
 }

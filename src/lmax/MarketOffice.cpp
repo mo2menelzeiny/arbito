@@ -6,9 +6,9 @@ namespace LMAX {
 	MarketOffice::MarketOffice(
 			const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 			const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-			Recorder &recorder, Messenger &messenger, BrokerConfig broker_config, double spread, double lot_size)
+			Recorder &recorder, BrokerConfig broker_config, double spread, double lot_size)
 			: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_recorder(&recorder),
-			  m_messenger(&messenger), m_broker_config(broker_config), m_spread(spread), m_lot_size(lot_size) {
+			  m_broker_config(broker_config), m_spread(spread), m_lot_size(lot_size) {
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
 		m_cfg.heartbtint = broker_config.heartbeat;
@@ -16,7 +16,6 @@ namespace LMAX {
 		strncpy(m_cfg.password, broker_config.password, ARRAY_SIZE(m_cfg.password));
 		strncpy(m_cfg.sender_comp_id, broker_config.sender, ARRAY_SIZE(m_cfg.sender_comp_id));
 		strncpy(m_cfg.target_comp_id, broker_config.receiver, ARRAY_SIZE(m_cfg.target_comp_id));
-		m_atomic_buffer.wrap(m_buffer, MESSENGER_BUFFER_SIZE);
 	}
 
 	void MarketOffice::start() {
@@ -124,8 +123,6 @@ namespace LMAX {
 
 	void MarketOffice::poll() {
 		struct timespec curr{}, prev{};
-		sbe::MessageHeader sbe_header;
-		sbe::MarketData sbe_market_data;
 		bool pause = false;
 		auto control_poller = m_control_buffer->newPoller();
 		m_control_buffer->addGatingSequences({control_poller->sequence()});
@@ -135,27 +132,9 @@ namespace LMAX {
 			}
 
 			switch (data.type) {
-				case CET_PAUSE: {
+				case CET_PAUSE:
 					pause = true;
-					sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
-							.blockLength(sbe::MarketData::sbeBlockLength())
-							.templateId(sbe::MarketData::sbeTemplateId())
-							.schemaId(sbe::MarketData::sbeSchemaId())
-							.version(sbe::MarketData::sbeSchemaVersion());
-					sbe_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer),
-					                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
-							.bid(-99)
-							.offer(99)
-							.timestamp((curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L));
-					aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
-					std::int64_t result;
-
-					do {
-						result = m_messenger->marketDataPub()->offer(m_atomic_buffer, 0, len);
-					} while (result < -1);
-
 					break;
-				}
 
 				case CET_RESUME:
 					pause = false;
@@ -206,22 +185,6 @@ namespace LMAX {
 						continue;
 					}
 
-					sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
-							.blockLength(sbe::MarketData::sbeBlockLength())
-							.templateId(sbe::MarketData::sbeTemplateId())
-							.schemaId(sbe::MarketData::sbeSchemaId())
-							.version(sbe::MarketData::sbeSchemaVersion());
-					sbe_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer),
-					                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
-							.bid(lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
-							.offer(lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value)
-							.timestamp((curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L));
-					aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
-					std::int64_t result;
-					do {
-						result = m_messenger->marketDataPub()->offer(m_atomic_buffer, 0, len);
-					} while (result < -1);
-
 					auto next = m_local_md_buffer->next();
 					(*m_local_md_buffer)[next] = (MarketDataEvent) {
 							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
@@ -240,23 +203,6 @@ namespace LMAX {
 		}
 
 		if (m_session->active) {
-			sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
-					.blockLength(sbe::MarketData::sbeBlockLength())
-					.templateId(sbe::MarketData::sbeTemplateId())
-					.schemaId(sbe::MarketData::sbeSchemaId())
-					.version(sbe::MarketData::sbeSchemaVersion());
-			sbe_market_data.wrapForEncode(reinterpret_cast<char *>(m_buffer),
-			                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
-					.bid(-99)
-					.offer(99)
-					.timestamp((curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L));
-			aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
-			std::int64_t result;
-
-			do {
-				result = m_messenger->marketDataPub()->offer(m_atomic_buffer, 0, len);
-			} while (result < -1);
-
 			auto next_pause = m_control_buffer->next();
 			(*m_control_buffer)[next_pause] = (ControlEvent) {
 					.source = CES_MARKET_OFFICE,
