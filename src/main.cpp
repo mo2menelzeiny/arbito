@@ -56,19 +56,19 @@ int main() {
 		};
 
 		auto remote_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-				[]() { return RemoteMarketDataEvent(); }, 4, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return RemoteMarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto local_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-				[]() { return MarketDataEvent(); }, 4, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return MarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto business_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-				[]() { return BusinessEvent(); }, 4, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return BusinessEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto trade_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-				[]() { return TradeEvent(); }, 4, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return TradeEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto control_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
-				[]() { return ControlEvent(); }, 4, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return ControlEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		srand(static_cast<unsigned int>(time(nullptr)));
 
