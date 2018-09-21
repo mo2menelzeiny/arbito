@@ -7,8 +7,8 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &c
                    const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
                    const char *uri_string, int broker_number, const char *db_name)
-		: m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer),
-		  m_trade_buffer(trade_buffer), m_db_name(db_name) {
+		: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer),
+		  m_business_buffer(business_buffer), m_trade_buffer(trade_buffer), m_db_name(db_name) {
 	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createSingleProducer(
 			[]() { return ControlEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
@@ -206,6 +206,7 @@ void Recorder::pollRecords() {
 				"broker_name", BCON_UTF8(m_broker_name),
 				"source", BCON_INT32(data.source),
 				"type", BCON_INT32(data.type),
+				"back_pressure", BCON_INT32(data.back_pressure),
 				"records", BCON_INT32(m_control_records_buffer->getRemainingCapacity()),
 				"control", BCON_INT32(m_control_buffer->getRemainingCapacity())
 		);
