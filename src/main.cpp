@@ -16,7 +16,8 @@
 int main() {
 	try {
 		int broker = atoi(getenv("BROKER"));
-		int port = atoi(getenv("PORT"));
+		int mo_port = atoi(getenv("MO_PORT"));
+		int to_port = atoi(getenv("TO_PORT"));
 		int heartbeat = atoi(getenv("HEARTBEAT"));
 
 		double spread = atof(getenv("SPREAD"));
@@ -39,7 +40,7 @@ int main() {
 				.password = getenv("MO_PASSWORD"),
 				.sender = getenv("MO_SENDER"),
 				.receiver = getenv("MO_RECEIVER"),
-				.port = port,
+				.port = mo_port,
 				.heartbeat = heartbeat
 		};
 
@@ -49,7 +50,7 @@ int main() {
 				.password = getenv("TO_PASSWORD"),
 				.sender = getenv("TO_SENDER"),
 				.receiver = getenv("TO_RECEIVER"),
-				.port = port,
+				.port = to_port,
 				.heartbeat = heartbeat
 		};
 
