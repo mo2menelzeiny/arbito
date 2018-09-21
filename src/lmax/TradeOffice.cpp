@@ -122,10 +122,6 @@ namespace LMAX {
 		auto control_poller = m_control_buffer->newPoller();
 		m_control_buffer->addGatingSequences({control_poller->sequence()});
 		auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-			if (data.source == CES_TRADE_OFFICE) {
-				return false;
-			}
-
 			switch (data.type) {
 				case CET_PAUSE:
 					pause = true;
