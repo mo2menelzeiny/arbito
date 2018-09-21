@@ -108,6 +108,8 @@ int main() {
 				swissquote_to->start();
 				break;
 			default:
+				recorder.recordSystem("Main: Broker undefined", SYSTEM_RECORD_TYPE_ERROR);
+				fprintf(stderr, "Main: Broker undefined\n");
 				return EXIT_FAILURE;
 		}
 
