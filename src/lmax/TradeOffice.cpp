@@ -38,7 +38,7 @@ namespace LMAX {
 		// Session object
 		m_session = lmax_fix_session_new(&m_cfg);
 		if (!m_session) {
-			m_recorder->recordSystem("TradeOffice: FIX session FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("TradeOffice: FIX session FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "TradeOffice: FIX session cannot be created\n");
 			return;
 		}
@@ -47,7 +47,7 @@ namespace LMAX {
 		struct hostent *host_ent = gethostbyname(m_broker_config.host);
 
 		if (!host_ent) {
-			m_recorder->recordSystem("TradeOffice: Host lookup FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("TradeOffice: Host lookup FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			error("TradeOffice: Unable to look up %s (%s)", m_broker_config.host, hstrerror(h_errno));
 		}
 
@@ -79,12 +79,12 @@ namespace LMAX {
 		}
 
 		if (m_cfg.sockfd < 0) {
-			m_recorder->recordSystem("TradeOffice: Socket connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("TradeOffice: Socket connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			error("TradeOffice: Unable to connect to a socket (%s)", strerror(saved_errno));
 		}
 
 		if (lmax_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0) {
-			m_recorder->recordSystem("TradeOffice: Socket option FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("TradeOffice: Socket option FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			die("TradeOffice: cannot set socket option TCP_NODELAY");
 		}
 
@@ -93,7 +93,7 @@ namespace LMAX {
 		int ssl_errno = SSL_connect(m_cfg.ssl);
 
 		if (ssl_errno <= 0) {
-			m_recorder->recordSystem("TradeOffice: SSL FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("TradeOffice: SSL FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "TradeOffice: SSL FAILED\n");
 			return;
 		}
@@ -110,10 +110,10 @@ namespace LMAX {
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
 		if (lmax_fix_session_logon(m_session)) {
-			m_recorder->recordSystem("TradeOffice: Logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("TradeOffice: Logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "TradeOffice: Logon FAILED\n");
 		}
-		m_recorder->recordSystem("TradeOffice: Logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystemMessage("TradeOffice: Logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
 		fprintf(stdout, "TradeOffice: Logon OK\n");
 
 		m_poller = std::thread(&TradeOffice::poll, this);
@@ -226,7 +226,7 @@ namespace LMAX {
 		};
 		m_control_buffer->publish(next_pause);
 
-		m_recorder->recordSystem("TradeOffice: Connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
+		m_recorder->recordSystemMessage("TradeOffice: Connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
 		fprintf(stderr, "TradeOffice: Connection FAILED\n");
 
 		std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));

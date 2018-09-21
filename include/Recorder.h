@@ -17,7 +17,6 @@
 #include "TradeEvent.h"
 #include "RemoteMarketDataEvent.h"
 #include "MarketDataEvent.h"
-#include "RecoveredBusinessData.h"
 #include "SystemRecordType.h"
 
 class Recorder {
@@ -30,9 +29,9 @@ public:
 
 	void start();
 
-	RecoveredBusinessData recoverBusinessData();
+	BusinessState fetchBusinessState();
 
-	void recordSystem(const char *message, SystemRecordType type);
+	void recordSystemMessage(const char *message, SystemRecordType type);
 
 private:
 

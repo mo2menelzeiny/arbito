@@ -38,7 +38,7 @@ namespace LMAX {
 		// Session object
 		m_session = lmax_fix_session_new(&m_cfg);
 		if (!m_session) {
-			m_recorder->recordSystem("MarketOffice: FIX Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("MarketOffice: FIX Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "MarketOffice: FIX session cannot be created\n");
 			return;
 		}
@@ -47,7 +47,7 @@ namespace LMAX {
 		struct hostent *host_ent = gethostbyname(m_broker_config.host);
 
 		if (!host_ent) {
-			m_recorder->recordSystem("MarketOffice: Host lookup FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("MarketOffice: Host lookup FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			error("MarketOffice: Unable to look up %s (%s)", m_broker_config.host, hstrerror(h_errno));
 		}
 
@@ -79,12 +79,12 @@ namespace LMAX {
 		}
 
 		if (m_cfg.sockfd < 0) {
-			m_recorder->recordSystem("MarketOffice: Socket connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("MarketOffice: Socket connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			error("MarketOffice: Unable to connect to a socket (%s)", strerror(saved_errno));
 		}
 
 		if (lmax_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0) {
-			m_recorder->recordSystem("MarketOffice: Socket option FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("MarketOffice: Socket option FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			die("MarketOffice: cannot set socket option TCP_NODELAY");
 		}
 
@@ -93,7 +93,7 @@ namespace LMAX {
 		int ssl_errno = SSL_connect(m_cfg.ssl);
 
 		if (ssl_errno <= 0) {
-			m_recorder->recordSystem("MarketOffice: SSL FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("MarketOffice: SSL FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "MarketOffice: SSL FAILED\n");
 			return;
 		}
@@ -101,17 +101,17 @@ namespace LMAX {
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
 		if (lmax_fix_session_logon(m_session)) {
-			m_recorder->recordSystem("MarketOffice: Logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("MarketOffice: Logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "MarketOffice: Logon FAILED\n");
 		}
-		m_recorder->recordSystem("MarketOffice: Logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystemMessage("MarketOffice: Logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
 		fprintf(stdout, "MarketOffice: Logon OK\n");
 
 		if (lmax_fix_session_marketdata_request(m_session)) {
-			m_recorder->recordSystem("MarketOffice: Market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystemMessage("MarketOffice: Market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "MarketOffice: Market data request FAILED\n");
 		}
-		m_recorder->recordSystem("MarketOffice: Market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystemMessage("MarketOffice: Market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
 		fprintf(stdout, "MarketOffice: Market data request OK\n");
 
 		poller = std::thread(&MarketOffice::poll, this);
@@ -190,7 +190,7 @@ namespace LMAX {
 		};
 		m_control_buffer->publish(next_pause);
 
-		m_recorder->recordSystem("MarketOffice: Connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
+		m_recorder->recordSystemMessage("MarketOffice: Connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
 		fprintf(stderr, "MarketOffice: Connection FAILED\n");
 
 		std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
