@@ -10,19 +10,19 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &c
 		: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer),
 		  m_business_buffer(business_buffer), m_trade_buffer(trade_buffer), m_db_name(db_name) {
 	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createSingleProducer(
-			[]() { return ControlEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return ControlEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-			[]() { return RemoteMarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return RemoteMarketDataEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_local_records_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-			[]() { return MarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return MarketDataEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_business_records_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-			[]() { return BusinessEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return BusinessEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_trade_records_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-			[]() { return TradeEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return TradeEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	bson_error_t error;
 	mongoc_init();
@@ -205,9 +205,7 @@ void Recorder::pollRecords() {
 				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"source", BCON_INT32(data.source),
-				"type", BCON_INT32(data.type),
-				"records", BCON_INT32(m_control_records_buffer->getRemainingCapacity()),
-				"control", BCON_INT32(m_control_buffer->getRemainingCapacity())
+				"type", BCON_INT32(data.type)
 		);
 
 		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
@@ -242,9 +240,7 @@ void Recorder::pollRecords() {
 				"trigger_px", BCON_DOUBLE(data.trigger_px),
 				"remote_px", BCON_DOUBLE(data.remote_px),
 				"open_side", BCON_INT32(open_side),
-				"orders_count", BCON_INT32(data.orders_count),
-				"records", BCON_INT64(m_business_records_buffer->getRemainingCapacity()),
-				"business", BCON_INT64(m_business_buffer->getRemainingCapacity())
+				"orders_count", BCON_INT32(data.orders_count)
 		);
 
 		switch (data.side) {
@@ -281,9 +277,7 @@ void Recorder::pollRecords() {
 				"broker_name", BCON_UTF8(m_broker_name),
 				"clOrdId", BCON_UTF8(data.clOrdId),
 				"orderId", BCON_UTF8(data.orderId),
-				"avgPx", BCON_DOUBLE(data.avgPx),
-				"records", BCON_INT64(m_trade_records_buffer->getRemainingCapacity()),
-				"trade", BCON_INT64(m_trade_buffer->getRemainingCapacity())
+				"avgPx", BCON_DOUBLE(data.avgPx)
 		);
 
 		switch (data.side) {
@@ -319,9 +313,7 @@ void Recorder::pollRecords() {
 				"rec_timestamp_us", BCON_DATE_TIME(data.rec_timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"offer", BCON_DOUBLE(data.offer),
-				"bid", BCON_DOUBLE(data.bid),
-				"records", BCON_INT64(m_remote_records_buffer->getRemainingCapacity()),
-				"remote_md", BCON_INT64(m_remote_md_buffer->getRemainingCapacity())
+				"bid", BCON_DOUBLE(data.bid)
 		);
 
 		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
@@ -344,9 +336,7 @@ void Recorder::pollRecords() {
 				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"offer", BCON_DOUBLE(data.offer),
-				"bid", BCON_DOUBLE(data.bid),
-				"records", BCON_INT64(m_local_records_buffer->getRemainingCapacity()),
-				"local_md", BCON_INT64(m_local_md_buffer->getRemainingCapacity())
+				"bid", BCON_DOUBLE(data.bid)
 		);
 
 		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {

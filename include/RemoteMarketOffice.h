@@ -7,7 +7,8 @@
 
 // Aeron client
 #include <Aeron.h>
-#include <concurrent/BusySpinIdleStrategy.h>
+#include <concurrent/NoOpIdleStrategy.h>
+
 #include <FragmentAssembler.h>
 
 // SBE
