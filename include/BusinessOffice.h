@@ -12,7 +12,7 @@
 #include "RemoteMarketDataEvent.h"
 #include "BusinessEvent.h"
 #include "ControlEvent.h"
-#include "OpenSide.h"
+#include "BusinessState.h"
 
 
 class BusinessOffice {
@@ -39,9 +39,8 @@ private:
 	double m_diff_open;
 	double m_diff_close;
 	double m_lot_size;
-	OpenSide m_open_side = NONE;
-	int m_orders_count = 0;
 	std::thread m_poller;
+	BusinessState m_business_state;
 };
 
 

@@ -43,7 +43,7 @@ void Messenger::start() {
 	});
 
 	m_aeron_context.availableImageHandler([&](aeron::Image &image) {
-		m_recorder->recordSystem("Messenger: Image available", SYSTEM_RECORD_TYPE_SUCCESS);
+		m_recorder->recordSystemMessage("Messenger: Image available", SYSTEM_RECORD_TYPE_SUCCESS);
 		fprintf(stdout, "Messenger: Image available\n");
 	});
 
@@ -58,14 +58,14 @@ void Messenger::start() {
 				.rec_timestamp_us = now_us
 		};
 		m_remote_md_buffer->publish(next);
-		m_recorder->recordSystem("Messenger: Image unavailable", SYSTEM_RECORD_TYPE_ERROR);
+		m_recorder->recordSystemMessage("Messenger: Image unavailable", SYSTEM_RECORD_TYPE_ERROR);
 		fprintf(stderr, "Messenger: Image unavailable\n");
 	});
 
 	m_aeron_context.errorHandler([&](const std::exception &exception) {
 		std::string buffer("Messenger: ");
 		buffer.append(exception.what());
-		m_recorder->recordSystem(buffer.c_str(), SYSTEM_RECORD_TYPE_ERROR);
+		m_recorder->recordSystemMessage(buffer.c_str(), SYSTEM_RECORD_TYPE_ERROR);
 		fprintf(stderr, "Messenger: %s\n", exception.what());
 	});
 

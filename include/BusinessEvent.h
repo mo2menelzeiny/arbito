@@ -2,7 +2,7 @@
 #ifndef ARBITO_BUSINESSEVENT_H
 #define ARBITO_BUSINESSEVENT_H
 
-#include "OpenSide.h"
+#include "BusinessState.h"
 
 struct BusinessEvent {
 	char side;

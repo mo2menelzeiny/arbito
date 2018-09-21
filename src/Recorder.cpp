@@ -9,16 +9,16 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 		: m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer),
 		  m_trade_buffer(trade_buffer), m_db_name(db_name) {
 	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-			[]() { return RemoteMarketDataEvent(); }, 16384, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return RemoteMarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_local_records_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-			[]() { return MarketDataEvent(); }, 16384, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return MarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_business_records_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-			[]() { return BusinessEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return BusinessEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_trade_records_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-			[]() { return TradeEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return TradeEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	bson_error_t error;
 	mongoc_init();
@@ -55,32 +55,41 @@ void Recorder::start() {
 	m_buffers_poller.detach();
 }
 
-RecoveredBusinessData Recorder::recoverBusinessData() {
+BusinessState Recorder::fetchBusinessState() {
 	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_recovery");
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
 	mongoc_cursor_t *cursor;
 	const bson_t *doc;
 	bson_iter_t iter;
-	RecoveredBusinessData recovery_data{};
-
-	bson_t *query = BCON_NEW ("broker_name", m_broker_name);
-	cursor = mongoc_collection_find_with_opts(collection, query, nullptr, nullptr);
-
-	if (mongoc_cursor_next(cursor, &doc)) {
-		bson_iter_init_find(&iter, doc, "open_side");
-		recovery_data.open_side = static_cast<OpenSide>(bson_iter_int32(&iter));
-		bson_iter_init_find(&iter, doc, "orders_count");
-		recovery_data.orders_count = bson_iter_int32(&iter);
+	BusinessState business_state = (BusinessState) {
+			.open_side = NONE,
+			.orders_count = 0
 	};
 
-	bson_destroy(query);
+	bson_t *filter = BCON_NEW ("broker_name", m_broker_name);
+	bson_t *opts = BCON_NEW("limit", BCON_INT32(1), "sort", "{", "$natural", BCON_INT32(-1), "}");
+
+	cursor = mongoc_collection_find_with_opts(collection, filter, opts, nullptr);
+
+	if (mongoc_cursor_next(cursor, &doc)) {
+
+		if (bson_iter_init_find(&iter, doc, "open_side")) {
+			business_state.open_side = static_cast<OpenSide>(bson_iter_int32(&iter));
+		}
+
+		if (bson_iter_init_find(&iter, doc, "orders_count")) {
+			business_state.orders_count = bson_iter_int32(&iter);
+		}
+	};
+
+	bson_destroy(filter);
 	mongoc_cursor_destroy(cursor);
 	mongoc_collection_destroy(collection);
 	mongoc_client_pool_push(m_pool, client);
-	return recovery_data;
+	return business_state;
 }
 
-void Recorder::recordSystem(const char *message, SystemRecordType type) {
+void Recorder::recordSystemMessage(const char *message, SystemRecordType type) {
 	auto milliseconds_since_epoch = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
 	bson_error_t error;
 	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
@@ -173,15 +182,24 @@ void Recorder::pollRecords() {
 	auto business_records_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
 		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-		mongoc_collection_t *collection_be = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
+		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
+
+		OpenSide open_side = data.open_side;
+		if (!data.orders_count) {
+			open_side = NONE;
+		}
+
 		char clOrdId[64];
 		sprintf(clOrdId, "%i", data.clOrdId);
+
 		bson_t *insert_business_event = BCON_NEW (
 				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"clOrdId", BCON_UTF8(clOrdId),
 				"trigger_px", BCON_DOUBLE(data.trigger_px),
-				"remote_px", BCON_DOUBLE(data.remote_px)
+				"remote_px", BCON_DOUBLE(data.remote_px),
+				"open_side", BCON_INT32(open_side),
+				"orders_count", BCON_INT32(data.orders_count)
 		);
 
 		switch (data.side) {
@@ -197,35 +215,12 @@ void Recorder::pollRecords() {
 				break;
 		}
 
-		if (!mongoc_collection_insert_one(collection_be, insert_business_event, nullptr, nullptr, &error)) {
-			fprintf(stderr, "Recorder: %s\n", error.message);
-		}
-
-		OpenSide open_side = data.open_side;
-		if (!data.orders_count) {
-			open_side = NONE;
-		}
-
-		mongoc_collection_t *collection_recovery = mongoc_client_get_collection(client, m_db_name, "coll_recovery");
-		bson_t *insert_recovery = BCON_NEW (
-				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
-				"broker_name", BCON_UTF8(m_broker_name),
-				"open_side", BCON_INT32(open_side),
-				"orders_count", BCON_INT32(data.orders_count)
-		);
-
-		bson_t *query = BCON_NEW ("broker_name", m_broker_name);
-
-		if (!mongoc_collection_update(collection_recovery, MONGOC_UPDATE_UPSERT, query, insert_recovery, nullptr,
-		                              &error)) {
+		if (!mongoc_collection_insert_one(collection, insert_business_event, nullptr, nullptr, &error)) {
 			fprintf(stderr, "Recorder: %s\n", error.message);
 		}
 
 		bson_destroy(insert_business_event);
-		bson_destroy(insert_recovery);
-		bson_destroy(query);
-		mongoc_collection_destroy(collection_be);
-		mongoc_collection_destroy(collection_recovery);
+		mongoc_collection_destroy(collection);
 		mongoc_client_pool_push(m_pool, client);
 		return false;
 	};
