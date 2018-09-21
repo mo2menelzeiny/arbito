@@ -34,18 +34,14 @@ void RemoteMarketOffice::poll() {
 		return false;
 	};
 
-	auto now_us = 0L;
 	sbe::MessageHeader sbe_header;
 	sbe::MarketData sbe_market_data;
-	aeron::BusySpinIdleStrategy busySpinIdleStrategy;
+	aeron::NoOpIdleStrategy noOpIdleStrategy;
 	aeron::FragmentAssembler fragmentAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 	                                               aeron::index_t length, const aeron::Header &header) {
 		if (is_paused) {
 			return;
 		}
-
-		now_us = std::chrono::duration_cast<std::chrono::microseconds>(
-				std::chrono::steady_clock::now().time_since_epoch()).count();
 
 		sbe_header.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSENGER_BUFFER_SIZE);
 		sbe_market_data.wrapForDecode(reinterpret_cast<char *>(buffer.buffer() + offset),
@@ -57,7 +53,8 @@ void RemoteMarketOffice::poll() {
 				.bid = sbe_market_data.bid(),
 				.offer = sbe_market_data.offer(),
 				.timestamp_us  = sbe_market_data.timestamp(),
-				.rec_timestamp_us = now_us
+				.rec_timestamp_us = std::chrono::duration_cast<std::chrono::microseconds>(
+						std::chrono::steady_clock::now().time_since_epoch()).count()
 		};
 		m_remote_md_buffer->publish(next);
 	});
@@ -65,6 +62,6 @@ void RemoteMarketOffice::poll() {
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 		control_poller->poll(control_handler);
-		busySpinIdleStrategy.idle(m_messenger->marketDataSub()->poll(fragmentAssembler.handler(), 10));
+		noOpIdleStrategy.idle(m_messenger->marketDataSub()->poll(fragmentAssembler.handler(), 10));
 	}
 }

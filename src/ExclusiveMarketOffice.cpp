@@ -14,7 +14,6 @@ void ExclusiveMarketOffice::start() {
 }
 
 void ExclusiveMarketOffice::poll() {
-	auto now_us = 0L;
 	bool is_paused = false;
 	sbe::MessageHeader sbe_header;
 	sbe::MarketData sbe_market_data;
@@ -25,7 +24,7 @@ void ExclusiveMarketOffice::poll() {
 		switch (data.type) {
 			case CET_PAUSE: {
 				is_paused = true;
-				now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+				auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
 						std::chrono::steady_clock::now().time_since_epoch()).count();
 				sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
 						.blockLength(sbe::MarketData::sbeBlockLength())
@@ -39,7 +38,7 @@ void ExclusiveMarketOffice::poll() {
 						.timestamp(now_us);
 				aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 
-				while(m_messenger->marketDataExPub()->offer(m_atomic_buffer, 0, len) < -1);
+				while (m_messenger->marketDataExPub()->offer(m_atomic_buffer, 0, len) < -1);
 			}
 				break;
 
@@ -61,9 +60,6 @@ void ExclusiveMarketOffice::poll() {
 			return false;
 		}
 
-		now_us = std::chrono::duration_cast<std::chrono::microseconds>(
-				std::chrono::steady_clock::now().time_since_epoch()).count();
-
 		sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
 				.blockLength(sbe::MarketData::sbeBlockLength())
 				.templateId(sbe::MarketData::sbeTemplateId())
@@ -73,7 +69,7 @@ void ExclusiveMarketOffice::poll() {
 		                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
 				.bid(data.bid)
 				.offer(data.offer)
-				.timestamp(now_us);
+				.timestamp(data.timestamp_us);
 
 		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 
