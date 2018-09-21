@@ -10,19 +10,19 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &c
 		: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer),
 		  m_business_buffer(business_buffer), m_trade_buffer(trade_buffer), m_db_name(db_name) {
 	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createSingleProducer(
-			[]() { return ControlEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return ControlEvent(); }, 256, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-			[]() { return RemoteMarketDataEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return RemoteMarketDataEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_local_records_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-			[]() { return MarketDataEvent(); }, 1024, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return MarketDataEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_business_records_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-			[]() { return BusinessEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return BusinessEvent(); }, 256, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_trade_records_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-			[]() { return TradeEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return TradeEvent(); }, 256, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	bson_error_t error;
 	mongoc_init();
