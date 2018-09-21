@@ -72,7 +72,8 @@ int main() {
 
 		srand(static_cast<unsigned int>(time(nullptr)));
 
-		Recorder recorder(local_buffer, remote_buffer, business_buffer, trade_buffer, uri_string, broker, db_name);
+		Recorder recorder(control_buffer, local_buffer, remote_buffer, business_buffer, trade_buffer, uri_string,
+		                  broker, db_name);
 
 		Messenger messenger(remote_buffer, recorder, messenger_config);
 		messenger.start();
@@ -111,7 +112,7 @@ int main() {
 				swissquote_to->start();
 				break;
 			default:
-				recorder.recordSystem("Main: Broker undefined", SYSTEM_RECORD_TYPE_ERROR);
+				recorder.recordSystemMessage("Main: Broker undefined", SYSTEM_RECORD_TYPE_ERROR);
 				fprintf(stderr, "Main: Broker undefined\n");
 				return EXIT_FAILURE;
 		}
@@ -128,12 +129,12 @@ int main() {
 			auto gmt_time = std::gmtime(&t);
 			auto now = std::chrono::hours(gmt_time->tm_hour) + std::chrono::minutes(gmt_time->tm_min);
 			if (now >= lower_bound && now <= upper_bound) {
-				recorder.recordSystem("END OF DAY", SYSTEM_RECORD_TYPE_SUCCESS);
+				recorder.recordSystemMessage("END OF DAY", SYSTEM_RECORD_TYPE_SUCCESS);
 				return EXIT_SUCCESS;
 			}
 
 			if (now >= lower_bound && now >= upper_bound) {
-				recorder.recordSystem("END OF DAY", SYSTEM_RECORD_TYPE_SUCCESS);
+				recorder.recordSystemMessage("END OF DAY", SYSTEM_RECORD_TYPE_SUCCESS);
 				return EXIT_SUCCESS;
 			}
 		}

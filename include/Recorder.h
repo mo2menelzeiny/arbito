@@ -17,11 +17,13 @@
 #include "TradeEvent.h"
 #include "RemoteMarketDataEvent.h"
 #include "MarketDataEvent.h"
+#include "ControlEvent.h"
 #include "SystemRecordType.h"
 
 class Recorder {
 public:
-	Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
+	Recorder(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
+	         const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
 	         const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
 	         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
 	         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
@@ -40,10 +42,12 @@ private:
 	void pollRecords();
 
 private:
+	const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
 	const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_md_buffer;
 	const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
 	const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_buffer;
 	const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_buffer;
+	std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_records_buffer;
 	std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_records_buffer;
 	std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_records_buffer;
 	std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_records_buffer;
