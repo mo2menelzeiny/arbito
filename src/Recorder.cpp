@@ -1,13 +1,17 @@
 
 #include "Recorder.h"
 
-Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
+Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
+                   const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
                    const char *uri_string, int broker_number, const char *db_name)
 		: m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer),
 		  m_trade_buffer(trade_buffer), m_db_name(db_name) {
+	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createSingleProducer(
+			[]() { return ControlEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
 	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
 			[]() { return RemoteMarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
@@ -119,6 +123,18 @@ void Recorder::recordSystemMessage(const char *message, SystemRecordType type) {
 }
 
 void Recorder::pollBuffers() {
+	auto control_poller = m_control_buffer->newPoller();
+	m_control_buffer->addGatingSequences({control_poller->sequence()});
+	auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		try {
+			auto next = m_control_records_buffer->tryNext();
+			(*m_control_records_buffer)[next] = data;
+			m_control_records_buffer->publish(next);
+		} catch (Disruptor::InsufficientCapacityException &exception) {}
+
+		return false;
+	};
+
 	auto business_poller = m_business_buffer->newPoller();
 	m_business_buffer->addGatingSequences({business_poller->sequence()});
 	auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
@@ -169,6 +185,7 @@ void Recorder::pollBuffers() {
 
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		control_poller->poll(control_handler);
 		local_md_poller->poll(local_md_handler);
 		remote_md_poller->poll(remote_md_handler);
 		business_poller->poll(business_handler);
@@ -177,6 +194,32 @@ void Recorder::pollBuffers() {
 }
 
 void Recorder::pollRecords() {
+	auto control_records_poller = m_control_records_buffer->newPoller();
+	m_control_records_buffer->addGatingSequences({control_records_poller->sequence()});
+	auto control_records_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		bson_error_t error;
+		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_control_events");
+
+		bson_t *insert = BCON_NEW (
+				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
+				"broker_name", BCON_UTF8(m_broker_name),
+				"source", BCON_INT32(data.source),
+				"type", BCON_INT32(data.type),
+				"records", BCON_INT32(m_control_records_buffer->getRemainingCapacity()),
+				"control", BCON_INT32(m_control_buffer->getRemainingCapacity())
+		);
+
+		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
+			fprintf(stderr, "Recorder: %s\n", error.message);
+		}
+
+		bson_destroy(insert);
+		mongoc_collection_destroy(collection);
+		mongoc_client_pool_push(m_pool, client);
+		return false;
+	};
+
 	auto business_records_poller = m_business_records_buffer->newPoller();
 	m_business_records_buffer->addGatingSequences({business_records_poller->sequence()});
 	auto business_records_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
@@ -199,7 +242,9 @@ void Recorder::pollRecords() {
 				"trigger_px", BCON_DOUBLE(data.trigger_px),
 				"remote_px", BCON_DOUBLE(data.remote_px),
 				"open_side", BCON_INT32(open_side),
-				"orders_count", BCON_INT32(data.orders_count)
+				"orders_count", BCON_INT32(data.orders_count),
+				"records", BCON_INT64(m_business_records_buffer->getRemainingCapacity()),
+				"business", BCON_INT64(m_business_buffer->getRemainingCapacity())
 		);
 
 		switch (data.side) {
@@ -236,7 +281,9 @@ void Recorder::pollRecords() {
 				"broker_name", BCON_UTF8(m_broker_name),
 				"clOrdId", BCON_UTF8(data.clOrdId),
 				"orderId", BCON_UTF8(data.orderId),
-				"avgPx", BCON_DOUBLE(data.avgPx)
+				"avgPx", BCON_DOUBLE(data.avgPx),
+				"records", BCON_INT64(m_trade_records_buffer->getRemainingCapacity()),
+				"trade", BCON_INT64(m_trade_buffer->getRemainingCapacity())
 		);
 
 		switch (data.side) {
@@ -272,7 +319,9 @@ void Recorder::pollRecords() {
 				"rec_timestamp_us", BCON_DATE_TIME(data.rec_timestamp_us / 1000),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"offer", BCON_DOUBLE(data.offer),
-				"bid", BCON_DOUBLE(data.bid)
+				"bid", BCON_DOUBLE(data.bid),
+				"records", BCON_INT64(m_remote_records_buffer->getRemainingCapacity()),
+				"remote_md", BCON_INT64(m_remote_md_buffer->getRemainingCapacity())
 		);
 
 		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
@@ -296,12 +345,8 @@ void Recorder::pollRecords() {
 				"broker_name", BCON_UTF8(m_broker_name),
 				"offer", BCON_DOUBLE(data.offer),
 				"bid", BCON_DOUBLE(data.bid),
-				"local_records", BCON_INT64(m_local_records_buffer->getRemainingCapacity()),
-				"remote_records", BCON_INT64(m_remote_records_buffer->getRemainingCapacity()),
-				"local_md", BCON_INT64(m_local_md_buffer->getRemainingCapacity()),
-				"remote_md", BCON_INT64(m_remote_md_buffer->getRemainingCapacity()),
-				"business", BCON_INT64(m_business_buffer->getRemainingCapacity()),
-				"trade", BCON_INT64(m_trade_buffer->getRemainingCapacity())
+				"records", BCON_INT64(m_local_records_buffer->getRemainingCapacity()),
+				"local_md", BCON_INT64(m_local_md_buffer->getRemainingCapacity())
 		);
 
 		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
@@ -316,6 +361,7 @@ void Recorder::pollRecords() {
 
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
+		control_records_poller->poll(control_records_handler);
 		local_records_poller->poll(local_records_handler);
 		remote_records_poller->poll(remote_records_handler);
 		business_records_poller->poll(business_records_handler);
