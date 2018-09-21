@@ -10,7 +10,7 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &c
 		: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer),
 		  m_business_buffer(business_buffer), m_trade_buffer(trade_buffer), m_db_name(db_name) {
 	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createSingleProducer(
-			[]() { return ControlEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return ControlEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
 			[]() { return RemoteMarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());

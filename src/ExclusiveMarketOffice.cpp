@@ -77,12 +77,20 @@ void ExclusiveMarketOffice::poll() {
 				.bid(data.bid)
 				.offer(data.offer)
 				.timestamp(now_us);
-		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
-		std::int64_t result;
 
-		do {
-			result = m_messenger->marketDataExPub()->offer(m_atomic_buffer, 0, len);
-		} while (result < -1);
+		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
+		int back_pressure = 0;
+
+		while (m_messenger->marketDataExPub()->offer(m_atomic_buffer, 0, len) < -1) {
+			++back_pressure;
+		}
+
+		auto next = m_control_buffer->next();
+		(*m_control_buffer)[next].type = CET_BP;
+		(*m_control_buffer)[next].source = CES_EXCLUSIVE_M_OFFICE;
+		(*m_control_buffer)[next].timestamp_us = now_us;
+		(*m_control_buffer)[next].back_pressure = back_pressure;
+		m_control_buffer->publish(next);
 
 		return false;
 	};
