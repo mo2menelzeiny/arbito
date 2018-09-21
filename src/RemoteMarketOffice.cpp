@@ -65,6 +65,6 @@ void RemoteMarketOffice::poll() {
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 		control_poller->poll(control_handler);
-		busySpinIdleStrategy.idle(m_messenger->marketDataSub()->poll(fragmentAssembler.handler(), 1));
+		busySpinIdleStrategy.idle(m_messenger->marketDataSub()->poll(fragmentAssembler.handler(), 10));
 	}
 }
