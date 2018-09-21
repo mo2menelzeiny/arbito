@@ -6,6 +6,7 @@
 #include "swissquote/TradeOffice.h"
 #include "BusinessOffice.h"
 #include "RemoteMarketOffice.h"
+#include "ExclusiveMarketOffice.h"
 #include "Messenger.h"
 #include "Recorder.h"
 
@@ -71,14 +72,16 @@ int main() {
 
 		srand(static_cast<unsigned int>(time(nullptr)));
 
-		Recorder recorder(local_buffer, remote_buffer, business_buffer, trade_buffer, uri_string, broker,
-		                  db_name);
+		Recorder recorder(local_buffer, remote_buffer, business_buffer, trade_buffer, uri_string, broker, db_name);
 
 		Messenger messenger(remote_buffer, recorder, messenger_config);
 		messenger.start();
 
 		RemoteMarketOffice rmo(control_buffer, remote_buffer, messenger);
 		rmo.start();
+
+		ExclusiveMarketOffice emo(control_buffer, local_buffer, messenger);
+		emo.start();
 
 		BusinessOffice bo(control_buffer, local_buffer, remote_buffer, business_buffer, recorder, diff_open, diff_close,
 		                  lot_size);
@@ -92,19 +95,18 @@ int main() {
 
 		switch (broker) {
 			case 1:
-				lmax_mo = new LMAX::MarketOffice(control_buffer, local_buffer, recorder, messenger, mo_config, spread,
-				                                 lot_size);
-				lmax_to = new LMAX::TradeOffice(control_buffer, business_buffer, trade_buffer, recorder, messenger,
-				                                to_config, lot_size);
+				lmax_mo = new LMAX::MarketOffice(control_buffer, local_buffer, recorder, mo_config, spread, lot_size);
+				lmax_to = new LMAX::TradeOffice(control_buffer, business_buffer, trade_buffer, recorder, to_config,
+				                                lot_size);
 				lmax_mo->start();
 				lmax_to->start();
 				break;
 
 			case 2:
-				swissquote_mo = new SWISSQUOTE::MarketOffice(control_buffer, local_buffer, recorder, messenger,
-				                                             mo_config, spread, lot_size);
+				swissquote_mo = new SWISSQUOTE::MarketOffice(control_buffer, local_buffer, recorder, mo_config, spread,
+				                                             lot_size);
 				swissquote_to = new SWISSQUOTE::TradeOffice(control_buffer, business_buffer, trade_buffer, recorder,
-				                                            messenger, to_config, lot_size);
+				                                            to_config, lot_size);
 				swissquote_mo->start();
 				swissquote_to->start();
 				break;
@@ -129,7 +131,7 @@ int main() {
 				recorder.recordSystem("END OF DAY PAUSE", SYSTEM_RECORD_TYPE_SUCCESS);
 			}
 
-			if (now >= lower_bound && now >= upper_bound ) {
+			if (now >= lower_bound && now >= upper_bound) {
 				recorder.recordSystem("END OF DAY RESUME", SYSTEM_RECORD_TYPE_SUCCESS);
 			}
 		}

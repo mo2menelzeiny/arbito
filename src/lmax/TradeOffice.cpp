@@ -6,9 +6,9 @@ namespace LMAX {
 	TradeOffice::TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 	                         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
 	                         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
-	                         Recorder &recorder, Messenger &messenger, BrokerConfig broker_config, double lot_size)
+	                         Recorder &recorder, BrokerConfig broker_config, double lot_size)
 			: m_control_buffer(control_buffer), m_business_buffer(business_buffer), m_trade_buffer(trade_buffer),
-			  m_recorder(&recorder), m_messenger(&messenger), m_broker_config(broker_config), m_lot_size(lot_size) {
+			  m_recorder(&recorder), m_broker_config(broker_config), m_lot_size(lot_size) {
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
 		m_cfg.heartbtint = broker_config.heartbeat;

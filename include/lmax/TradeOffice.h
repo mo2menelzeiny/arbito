@@ -54,7 +54,7 @@ namespace LMAX {
 		TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 		            const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
 		            const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
-		            Recorder &recorder, Messenger &messenger, BrokerConfig broker_config, double lot_size);
+		            Recorder &recorder, BrokerConfig broker_config, double lot_size);
 
 		void start();
 
@@ -68,7 +68,6 @@ namespace LMAX {
 		const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_buffer;
 		const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_buffer;
 		Recorder *m_recorder;
-		Messenger *m_messenger;
 		BrokerConfig m_broker_config;
 		double m_lot_size;
 		SSL_CTX *m_ssl_ctx;

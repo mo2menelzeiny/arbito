@@ -54,7 +54,7 @@ namespace SWISSQUOTE {
 	public:
 		MarketOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 		             const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-		             Recorder &recorder, Messenger &messenger, BrokerConfig broker_config, double spread,
+		             Recorder &recorder, BrokerConfig broker_config, double spread,
 		             double lot_size);
 
 		void start();
@@ -68,7 +68,6 @@ namespace SWISSQUOTE {
 		const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
 		const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_md_buffer;
 		Recorder *m_recorder;
-		Messenger *m_messenger;
 		BrokerConfig m_broker_config;
 		double m_lot_size;
 		double m_spread;
@@ -77,8 +76,6 @@ namespace SWISSQUOTE {
 		struct swissquote_fix_session_cfg m_cfg;
 		struct swissquote_fix_session *m_session;
 		std::thread m_poller;
-		uint8_t m_buffer[MESSENGER_BUFFER_SIZE];
-		aeron::concurrent::AtomicBuffer m_atomic_buffer;
 	};
 }
 
