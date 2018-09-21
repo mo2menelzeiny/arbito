@@ -14,15 +14,13 @@ enum ControlEventSource {
 
 enum ControlEventType {
 	CET_PAUSE = 0,
-	CET_RESUME = 1,
-	CET_BP = 2
+	CET_RESUME = 1
 };
 
 struct ControlEvent {
 	ControlEventSource source;
 	ControlEventType type;
 	long timestamp_us;
-	int back_pressure;
 };
 
 #endif //ARBITO_CONTROLEVENT_H
