@@ -15,7 +15,7 @@ void ExclusiveMarketOffice::start() {
 
 void ExclusiveMarketOffice::poll() {
 	auto now_us = 0L;
-	bool isPaused = false;
+	bool is_paused = false;
 	sbe::MessageHeader sbe_header;
 	sbe::MarketData sbe_market_data;
 
@@ -24,7 +24,7 @@ void ExclusiveMarketOffice::poll() {
 	auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		switch (data.type) {
 			case CET_PAUSE: {
-				isPaused = true;
+				is_paused = true;
 				now_us = std::chrono::duration_cast<std::chrono::microseconds>(
 						std::chrono::steady_clock::now().time_since_epoch()).count();
 				sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
@@ -38,16 +38,13 @@ void ExclusiveMarketOffice::poll() {
 						.offer(99)
 						.timestamp(now_us);
 				aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
-				std::int64_t result;
 
-				do {
-					result = m_messenger->marketDataExPub()->offer(m_atomic_buffer, 0, len);
-				} while (result < -1);
+				while(m_messenger->marketDataExPub()->offer(m_atomic_buffer, 0, len) < -1);
 			}
 				break;
 
 			case CET_RESUME:
-				isPaused = false;
+				is_paused = false;
 				break;
 
 			default:
@@ -60,7 +57,7 @@ void ExclusiveMarketOffice::poll() {
 	auto local_md_poller = m_local_md_buffer->newPoller();
 	m_control_buffer->addGatingSequences({local_md_poller->sequence()});
 	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		if (isPaused) {
+		if (is_paused) {
 			return false;
 		}
 
@@ -79,18 +76,8 @@ void ExclusiveMarketOffice::poll() {
 				.timestamp(now_us);
 
 		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
-		int back_pressure = 0;
 
-		while (m_messenger->marketDataExPub()->offer(m_atomic_buffer, 0, len) < -1) {
-			++back_pressure;
-		}
-
-		auto next = m_control_buffer->next();
-		(*m_control_buffer)[next].type = CET_BP;
-		(*m_control_buffer)[next].source = CES_EXCLUSIVE_M_OFFICE;
-		(*m_control_buffer)[next].timestamp_us = now_us;
-		(*m_control_buffer)[next].back_pressure = back_pressure;
-		m_control_buffer->publish(next);
+		while (m_messenger->marketDataExPub()->offer(m_atomic_buffer, 0, len) < -1);
 
 		return false;
 	};
