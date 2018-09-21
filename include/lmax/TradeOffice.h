@@ -59,7 +59,7 @@ namespace LMAX {
 		void start();
 
 	private:
-		void initBrokerClient();
+		void connectToBroker();
 
 		void poll();
 

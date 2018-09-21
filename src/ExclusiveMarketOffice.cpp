@@ -15,7 +15,7 @@ void ExclusiveMarketOffice::start() {
 
 void ExclusiveMarketOffice::poll() {
 	auto now_us = 0L;
-	bool pause = false;
+	bool isPaused = false;
 	sbe::MessageHeader sbe_header;
 	sbe::MarketData sbe_market_data;
 
@@ -24,7 +24,7 @@ void ExclusiveMarketOffice::poll() {
 	auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		switch (data.type) {
 			case CET_PAUSE: {
-				pause = true;
+				isPaused = true;
 				now_us = std::chrono::duration_cast<std::chrono::microseconds>(
 						std::chrono::steady_clock::now().time_since_epoch()).count();
 				sbe_header.wrap(reinterpret_cast<char *>(m_buffer), 0, 0, MESSENGER_BUFFER_SIZE)
@@ -47,7 +47,7 @@ void ExclusiveMarketOffice::poll() {
 				break;
 
 			case CET_RESUME:
-				pause = false;
+				isPaused = false;
 				break;
 
 			default:
@@ -60,7 +60,7 @@ void ExclusiveMarketOffice::poll() {
 	auto local_md_poller = m_local_md_buffer->newPoller();
 	m_control_buffer->addGatingSequences({local_md_poller->sequence()});
 	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		if (pause) {
+		if (isPaused) {
 			return false;
 		}
 

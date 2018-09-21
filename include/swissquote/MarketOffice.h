@@ -60,7 +60,7 @@ namespace SWISSQUOTE {
 		void start();
 
 	private:
-		void initBrokerClient();
+		void connectToBroker();
 
 		void poll();
 

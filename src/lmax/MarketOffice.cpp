@@ -19,10 +19,10 @@ namespace LMAX {
 	}
 
 	void MarketOffice::start() {
-		initBrokerClient();
+		connectToBroker();
 	}
 
-	void MarketOffice::initBrokerClient() {
+	void MarketOffice::connectToBroker() {
 		SSL_load_error_strings();
 		SSL_library_init();
 		OpenSSL_add_all_algorithms();
@@ -54,8 +54,8 @@ namespace LMAX {
 		char **ap;
 		int saved_errno = 0;
 		for (ap = host_ent->h_addr_list; *ap; ap++) {
-
 			m_cfg.sockfd = socket(host_ent->h_addrtype, SOCK_STREAM, IPPROTO_TCP);
+
 			if (m_cfg.sockfd < 0) {
 				saved_errno = errno;
 				continue;
@@ -65,6 +65,7 @@ namespace LMAX {
 					.sin_family        = static_cast<sa_family_t>(host_ent->h_addrtype),
 					.sin_port        = htons(static_cast<uint16_t>(m_broker_config.port)),
 			};
+
 			memcpy(&socket_address.sin_addr, *ap, static_cast<size_t>(host_ent->h_length));
 
 			if (connect(m_cfg.sockfd, (const struct sockaddr *) &socket_address, sizeof(struct sockaddr_in)) < 0) {
@@ -73,6 +74,7 @@ namespace LMAX {
 				m_cfg.sockfd = -1;
 				continue;
 			}
+
 			break;
 		}
 
@@ -96,26 +98,21 @@ namespace LMAX {
 			return;
 		}
 
-		// SSL certificate
-		X509 *server_cert;
-		char *str;
-		server_cert = SSL_get_peer_certificate(m_ssl);
-		str = X509_NAME_oneline(X509_get_subject_name(server_cert), nullptr, 0);
-		OPENSSL_free(str);
-		str = X509_NAME_oneline(X509_get_issuer_name(server_cert), nullptr, 0);
-		OPENSSL_free(str);
-
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
 		if (lmax_fix_session_logon(m_session)) {
-			m_recorder->recordSystem("MarketOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "MarketOffice: Client Logon FAILED\n");
+			m_recorder->recordSystem("MarketOffice: Logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "MarketOffice: Logon FAILED\n");
 		}
+		m_recorder->recordSystem("MarketOffice: Logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		fprintf(stdout, "MarketOffice: Logon OK\n");
 
 		if (lmax_fix_session_marketdata_request(m_session)) {
-			m_recorder->recordSystem("MarketOffice: market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "MarketOffice: Client market data request FAILED\n");
+			m_recorder->recordSystem("MarketOffice: Market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "MarketOffice: Market data request FAILED\n");
 		}
+		m_recorder->recordSystem("MarketOffice: Market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		fprintf(stdout, "MarketOffice: Market data request OK\n");
 
 		poller = std::thread(&MarketOffice::poll, this);
 		poller.detach();
@@ -123,25 +120,6 @@ namespace LMAX {
 
 	void MarketOffice::poll() {
 		struct timespec curr{}, prev{};
-		bool pause = false;
-		auto control_poller = m_control_buffer->newPoller();
-		m_control_buffer->addGatingSequences({control_poller->sequence()});
-		auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-			switch (data.type) {
-				case CET_PAUSE:
-					pause = true;
-					break;
-
-				case CET_RESUME:
-					pause = false;
-					break;
-
-				default:
-					break;
-			}
-
-			return false;
-		};
 
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
@@ -153,27 +131,31 @@ namespace LMAX {
 				prev = curr;
 
 				if (!lmax_fix_session_keepalive(m_session, &curr)) {
-					break;
+					m_session->active = false;
+					continue;
 				}
 			}
 
 			if (lmax_fix_session_time_update(m_session)) {
-				break;
+				m_session->active = false;
+				continue;
 			}
 
-			control_poller->poll(control_handler);
-
-			struct lmax_fix_message *msg;
+			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
-				continue;
+				if(!msg) {
+					continue;
+				}
+
+				if(lmax_fix_session_admin(m_session, msg)) {
+					continue;
+				}
+
+				m_session->active = false;
 			}
 
 			switch (msg->type) {
 				case LMAX_FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
-					if (pause) {
-						continue;
-					}
-
 					if (m_spread < (lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value -
 					                lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0))
 					    || m_lot_size > lmax_fix_get_float(msg, lmax_MDEntrySize, 0.0)
@@ -188,45 +170,44 @@ namespace LMAX {
 							.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
 					};
 					m_local_md_buffer->publish(next);
-					continue;
 				}
+					continue;
+
 				case LMAX_FIX_MSG_TYPE_TEST_REQUEST:
 					lmax_fix_session_admin(m_session, msg);
 					continue;
+
 				default:
 					continue;
 			}
 		}
 
-		if (m_session->active) {
-			auto next_pause = m_control_buffer->next();
-			(*m_control_buffer)[next_pause] = (ControlEvent) {
-					.source = CES_MARKET_OFFICE,
-					.type = CET_PAUSE,
-					.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
-			};
-			m_control_buffer->publish(next_pause);
+		auto next_pause = m_control_buffer->next();
+		(*m_control_buffer)[next_pause] = (ControlEvent) {
+				.source = CES_MARKET_OFFICE,
+				.type = CET_PAUSE,
+				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+		};
+		m_control_buffer->publish(next_pause);
 
-			m_recorder->recordSystem("MarketOffice: Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "MarketOffice: Session FAILED\n");
+		m_recorder->recordSystem("MarketOffice: Connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
+		fprintf(stderr, "MarketOffice: Connection FAILED\n");
 
-			SSL_free(m_cfg.ssl);
-			ERR_free_strings();
-			EVP_cleanup();
-			lmax_fix_session_free(m_session);
+		std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
 
-			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
+		SSL_free(m_cfg.ssl);
+		ERR_free_strings();
+		EVP_cleanup();
+		lmax_fix_session_free(m_session);
 
-			initBrokerClient();
+		connectToBroker();
 
-			auto next_resume = m_control_buffer->next();
-			(*m_control_buffer)[next_resume] = (ControlEvent) {
-					.source = CES_MARKET_OFFICE,
-					.type = CET_RESUME,
-					.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
-			};
-			m_control_buffer->publish(next_resume);
-		}
-
+		auto next_resume = m_control_buffer->next();
+		(*m_control_buffer)[next_resume] = (ControlEvent) {
+				.source = CES_MARKET_OFFICE,
+				.type = CET_RESUME,
+				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+		};
+		m_control_buffer->publish(next_resume);
 	}
 }

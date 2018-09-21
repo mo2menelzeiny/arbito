@@ -21,10 +21,10 @@ namespace SWISSQUOTE {
 	}
 
 	void TradeOffice::start() {
-		initBrokerClient();
+		connectToBroker();
 	}
 
-	void TradeOffice::initBrokerClient() {
+	void TradeOffice::connectToBroker() {
 		SSL_load_error_strings();
 		SSL_library_init();
 		OpenSSL_add_all_algorithms();
@@ -40,7 +40,7 @@ namespace SWISSQUOTE {
 		// Session object
 		m_session = swissquote_fix_session_new(&m_cfg);
 		if (!m_session) {
-			m_recorder->recordSystem("TradeOffice: FIX Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->recordSystem("TradeOffice: FIX session FAILED", SYSTEM_RECORD_TYPE_ERROR);
 			fprintf(stderr, "TradeOffice: FIX session cannot be created\n");
 			return;
 		}
@@ -56,8 +56,8 @@ namespace SWISSQUOTE {
 		char **ap;
 		int saved_errno = 0;
 		for (ap = host_ent->h_addr_list; *ap; ap++) {
-
 			m_cfg.sockfd = socket(host_ent->h_addrtype, SOCK_STREAM, IPPROTO_TCP);
+
 			if (m_cfg.sockfd < 0) {
 				saved_errno = errno;
 				continue;
@@ -67,6 +67,7 @@ namespace SWISSQUOTE {
 					.sin_family        = static_cast<sa_family_t>(host_ent->h_addrtype),
 					.sin_port        = htons(static_cast<uint16_t>(m_broker_config.port)),
 			};
+
 			memcpy(&socket_address.sin_addr, *ap, static_cast<size_t>(host_ent->h_length));
 
 			if (connect(m_cfg.sockfd, (const struct sockaddr *) &socket_address, sizeof(struct sockaddr_in)) < 0) {
@@ -75,6 +76,7 @@ namespace SWISSQUOTE {
 				m_cfg.sockfd = -1;
 				continue;
 			}
+
 			break;
 		}
 
@@ -98,47 +100,20 @@ namespace SWISSQUOTE {
 			return;
 		}
 
-		// SSL certificate
-		X509 *server_cert;
-		char *str;
-		server_cert = SSL_get_peer_certificate(m_ssl);
-		str = X509_NAME_oneline(X509_get_subject_name(server_cert), nullptr, 0);
-		OPENSSL_free(str);
-		str = X509_NAME_oneline(X509_get_issuer_name(server_cert), nullptr, 0);
-		OPENSSL_free(str);
-
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
 		if (swissquote_fix_session_logon(m_session)) {
-			m_recorder->recordSystem("TradeOffice: broker client logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "TradeOffice: Client Logon FAILED\n");
+			m_recorder->recordSystem("TradeOffice: Logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			fprintf(stderr, "TradeOffice: Logon FAILED\n");
 		}
+		m_recorder->recordSystem("TradeOffice: Logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
+		fprintf(stdout, "TradeOffice: Logon OK\n");
 
 		m_poller = std::thread(&TradeOffice::poll, this);
 		m_poller.detach();
 	}
 
 	void TradeOffice::poll() {
-		bool pause = false;
-		auto control_poller = m_control_buffer->newPoller();
-		m_control_buffer->addGatingSequences({control_poller->sequence()});
-		auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-			switch (data.type) {
-				case CET_PAUSE:
-					pause = true;
-					break;
-
-				case CET_RESUME:
-					pause = false;
-					break;
-
-				default:
-					break;
-			}
-
-			return false;
-		};
-
 		auto business_poller = m_business_buffer->newPoller();
 		m_business_buffer->addGatingSequences({business_poller->sequence()});
 		auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
@@ -174,29 +149,33 @@ namespace SWISSQUOTE {
 				prev = curr;
 
 				if (!swissquote_fix_session_keepalive(m_session, &curr)) {
-					break;
+					m_session->active = false;
+					continue;
 				}
 			}
 
 			if (swissquote_fix_session_time_update(m_session)) {
-				break;
+				m_session->active = false;
+				continue;
 			}
 
-			control_poller->poll(control_handler);
 			business_poller->poll(business_handler);
 
-			struct swissquote_fix_message *msg;
-
+			struct swissquote_fix_message *msg = nullptr;
 			if (swissquote_fix_session_recv(m_session, &msg, SWISSQUOTE_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
-				continue;
+				if (!msg) {
+					continue;
+				}
+
+				if (swissquote_fix_session_admin(m_session, msg)){
+					continue;
+				}
+
+				m_session->active = false;
 			}
 
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT:
-					if (pause) {
-						continue;
-					}
-
 					if (swissquote_fix_get_field(msg, swissquote_ExecType)->string_value[0] == '2') {
 						auto next = m_trade_buffer->next();
 						swissquote_fix_get_string(swissquote_fix_get_field(msg, swissquote_OrderID),
@@ -210,10 +189,6 @@ namespace SWISSQUOTE {
 					}
 					continue;
 
-				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:
-					swissquote_fix_session_admin(m_session, msg);
-					continue;
-
 				case SWISSQUOTE_FIX_MSG_TYPE_REJECT: {
 					auto next = m_trade_buffer->next();
 					strcpy((*m_trade_buffer)[next].orderId, "FAILED");
@@ -225,39 +200,43 @@ namespace SWISSQUOTE {
 				}
 					continue;
 
+				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:
+					swissquote_fix_session_admin(m_session, msg);
+					continue;
+
 				default:
 					continue;
 			}
 		}
 
-		if (m_session->active) {
-			auto next_pause = m_control_buffer->next();
-			(*m_control_buffer)[next_pause] = (ControlEvent) {
-					.source = CES_TRADE_OFFICE,
-					.type = CET_PAUSE,
-					.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
-			};
-			m_control_buffer->publish(next_pause);
+		m_business_buffer->removeGatingSequence(business_poller->sequence());
 
-			m_recorder->recordSystem("TradeOffice: Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "TradeOffice: Session FAILED\n");
+		auto next_pause = m_control_buffer->next();
+		(*m_control_buffer)[next_pause] = (ControlEvent) {
+				.source = CES_TRADE_OFFICE,
+				.type = CET_PAUSE,
+				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+		};
+		m_control_buffer->publish(next_pause);
 
-			SSL_free(m_cfg.ssl);
-			ERR_free_strings();
-			EVP_cleanup();
-			swissquote_fix_session_free(m_session);
+		m_recorder->recordSystem("TradeOffice: Connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
+		fprintf(stderr, "TradeOffice: Connection FAILED\n");
 
-			std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
+		std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
 
-			initBrokerClient();
+		SSL_free(m_cfg.ssl);
+		ERR_free_strings();
+		EVP_cleanup();
+		swissquote_fix_session_free(m_session);
 
-			auto next_resume = m_control_buffer->next();
-			(*m_control_buffer)[next_resume] = (ControlEvent) {
-					.source = CES_TRADE_OFFICE,
-					.type = CET_RESUME,
-					.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
-			};
-			m_control_buffer->publish(next_resume);
-		}
+		connectToBroker();
+
+		auto next_resume = m_control_buffer->next();
+		(*m_control_buffer)[next_resume] = (ControlEvent) {
+				.source = CES_TRADE_OFFICE,
+				.type = CET_RESUME,
+				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+		};
+		m_control_buffer->publish(next_resume);
 	}
 }

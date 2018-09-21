@@ -128,11 +128,13 @@ int main() {
 			auto gmt_time = std::gmtime(&t);
 			auto now = std::chrono::hours(gmt_time->tm_hour) + std::chrono::minutes(gmt_time->tm_min);
 			if (now >= lower_bound && now <= upper_bound) {
-				recorder.recordSystem("END OF DAY PAUSE", SYSTEM_RECORD_TYPE_SUCCESS);
+				recorder.recordSystem("END OF DAY", SYSTEM_RECORD_TYPE_SUCCESS);
+				return EXIT_SUCCESS;
 			}
 
 			if (now >= lower_bound && now >= upper_bound) {
-				recorder.recordSystem("END OF DAY RESUME", SYSTEM_RECORD_TYPE_SUCCESS);
+				recorder.recordSystem("END OF DAY", SYSTEM_RECORD_TYPE_SUCCESS);
+				return EXIT_SUCCESS;
 			}
 		}
 

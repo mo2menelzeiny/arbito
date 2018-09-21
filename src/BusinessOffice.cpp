@@ -19,16 +19,16 @@ void BusinessOffice::start() {
 }
 
 void BusinessOffice::poll() {
-	bool pause = false;
+	bool isPaused = false;
 	auto control_poller = m_control_buffer->newPoller();
 	m_control_buffer->addGatingSequences({control_poller->sequence()});
 	auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		switch (data.type) {
 			case CET_PAUSE:
-				pause = true;
+				isPaused = true;
 				break;
 			case CET_RESUME:
-				pause = false;
+				isPaused = false;
 				break;
 			default:
 				break;
@@ -39,21 +39,21 @@ void BusinessOffice::poll() {
 
 	RemoteMarketDataEvent remote_md{.bid = -99.0, .offer = 99.0};
 	std::deque<MarketDataEvent> local_md;
-	bool order_delay_check = false;
+	bool isOrderDelayed = false;
 	time_t order_delay = ORDER_DELAY_SEC;
 	time_t order_delay_start = time(nullptr);
 	long now_us = 0;
 
 	auto trigger_handler = [&]() {
-		if (pause) {
+		if (isPaused) {
 			return;
 		}
 
-		if (order_delay_check && ((time(nullptr) - order_delay_start) < order_delay)) {
+		if (isOrderDelayed && ((time(nullptr) - order_delay_start) < order_delay)) {
 			return;
 		}
 
-		order_delay_check = false;
+		isOrderDelayed = false;
 
 		if (!m_orders_count) {
 			m_open_side = NONE;
@@ -78,7 +78,7 @@ void BusinessOffice::poll() {
 						m_business_buffer->publish(next);
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
-						order_delay_check = true;
+						isOrderDelayed = true;
 						return;
 					}
 
@@ -97,7 +97,7 @@ void BusinessOffice::poll() {
 						m_business_buffer->publish(next);
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
-						order_delay_check = true;
+						isOrderDelayed = true;
 						return;
 					}
 
@@ -120,7 +120,7 @@ void BusinessOffice::poll() {
 						m_business_buffer->publish(next);
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
-						order_delay_check = true;
+						isOrderDelayed = true;
 						return;
 					}
 
@@ -139,7 +139,7 @@ void BusinessOffice::poll() {
 						m_business_buffer->publish(next);
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
-						order_delay_check = true;
+						isOrderDelayed = true;
 						return;
 					}
 
@@ -162,7 +162,7 @@ void BusinessOffice::poll() {
 						m_business_buffer->publish(next);
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
-						order_delay_check = true;
+						isOrderDelayed = true;
 						return;
 					}
 
@@ -182,7 +182,7 @@ void BusinessOffice::poll() {
 						m_business_buffer->publish(next);
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
-						order_delay_check = true;
+						isOrderDelayed = true;
 						return;
 					}
 
