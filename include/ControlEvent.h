@@ -1,6 +1,7 @@
 
 #ifndef ARBITO_CONTROLEVENT_H
 #define ARBITO_CONTROLEVENT_H
+
 enum ControlEventSource {
 	CES_TRADE_OFFICE = 0,
 	CES_MARKET_OFFICE = 1,
@@ -16,6 +17,7 @@ enum ControlEventType {
 	CET_RESUME = 1,
 	CET_BP = 2
 };
+
 struct ControlEvent {
 	ControlEventSource source;
 	ControlEventType type;
