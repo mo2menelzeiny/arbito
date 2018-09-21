@@ -14,17 +14,17 @@ void RemoteMarketOffice::start() {
 }
 
 void RemoteMarketOffice::poll() {
-	bool pause = false;
+	bool isPaused = false;
 	auto control_poller = m_control_buffer->newPoller();
 	m_control_buffer->addGatingSequences({control_poller->sequence()});
 	auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		switch (data.type) {
 			case CET_PAUSE:
-				pause = true;
+				isPaused = true;
 				break;
 
 			case CET_RESUME:
-				pause = false;
+				isPaused = false;
 				break;
 
 			default:
@@ -40,7 +40,7 @@ void RemoteMarketOffice::poll() {
 	aeron::BusySpinIdleStrategy busySpinIdleStrategy;
 	aeron::FragmentAssembler fragmentAssembler([&](aeron::AtomicBuffer &buffer, aeron::index_t offset,
 	                                               aeron::index_t length, const aeron::Header &header) {
-		if (pause) {
+		if (isPaused) {
 			return;
 		}
 
