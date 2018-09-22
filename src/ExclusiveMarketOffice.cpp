@@ -54,7 +54,7 @@ void ExclusiveMarketOffice::poll() {
 	};
 
 	auto local_md_poller = m_local_md_buffer->newPoller();
-	m_control_buffer->addGatingSequences({local_md_poller->sequence()});
+	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
 	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		if (is_paused) {
 			return false;
