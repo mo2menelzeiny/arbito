@@ -132,11 +132,6 @@ int main() {
 				recorder.recordSystemMessage("END OF DAY", SYSTEM_RECORD_TYPE_SUCCESS);
 				return EXIT_SUCCESS;
 			}
-
-			if (now >= lower_bound && now >= upper_bound) {
-				recorder.recordSystemMessage("END OF DAY", SYSTEM_RECORD_TYPE_SUCCESS);
-				return EXIT_SUCCESS;
-			}
 		}
 
 	} catch (const std::exception &exception) {
