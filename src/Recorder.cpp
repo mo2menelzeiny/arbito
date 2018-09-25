@@ -1,28 +1,29 @@
 
 #include "Recorder.h"
 
-Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-                   const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
+Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
+                   const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
                    const char *uri_string, int broker_number, const char *db_name)
-		: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer),
-		  m_business_buffer(business_buffer), m_trade_buffer(trade_buffer), m_db_name(db_name) {
-	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createSingleProducer(
-			[]() { return ControlEvent(); }, 256, std::make_shared<Disruptor::BusySpinWaitStrategy>());
-
-	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-			[]() { return RemoteMarketDataEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		: m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer),
+		  m_trade_buffer(trade_buffer), m_control_buffer(control_buffer), m_db_name(db_name) {
 
 	m_local_records_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-			[]() { return MarketDataEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return MarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
+	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
+			[]() { return RemoteMarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_business_records_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-			[]() { return BusinessEvent(); }, 256, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return BusinessEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_trade_records_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-			[]() { return TradeEvent(); }, 256, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return TradeEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
+	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createSingleProducer(
+			[]() { return ControlEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	bson_error_t error;
 	mongoc_init();
@@ -53,10 +54,18 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &c
 }
 
 void Recorder::start() {
-	m_records_poller = std::thread(&Recorder::pollRecords, this);
-	m_records_poller.detach();
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(1, &cpuset);
 	m_buffers_poller = std::thread(&Recorder::pollBuffers, this);
+	pthread_setaffinity_np(m_buffers_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
+	pthread_setname_np(m_buffers_poller.native_handle(), "recorder-buff");
 	m_buffers_poller.detach();
+
+	m_records_poller = std::thread(&Recorder::pollRecords, this);
+	pthread_setname_np(m_records_poller.native_handle(), "recorder-poll");
+	m_records_poller.detach();
+
 }
 
 BusinessState Recorder::fetchBusinessState() {
@@ -171,7 +180,7 @@ void Recorder::pollBuffers() {
 		return false;
 	};
 
-	auto local_md_poller = m_local_md_buffer->newPoller();
+	/*auto local_md_poller = m_local_md_buffer->newPoller();
 	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
 	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		try {
@@ -181,12 +190,12 @@ void Recorder::pollBuffers() {
 		} catch (Disruptor::InsufficientCapacityException &exception) {}
 
 		return false;
-	};
+	};*/
 
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 		control_poller->poll(control_handler);
-		local_md_poller->poll(local_md_handler);
+		// local_md_poller->poll(local_md_handler);
 		remote_md_poller->poll(remote_md_handler);
 		business_poller->poll(business_handler);
 		trade_poller->poll(trade_handler);
@@ -326,7 +335,7 @@ void Recorder::pollRecords() {
 		return false;
 	};
 
-	auto local_records_poller = m_local_records_buffer->newPoller();
+	/*auto local_records_poller = m_local_records_buffer->newPoller();
 	m_local_records_buffer->addGatingSequences({local_records_poller->sequence()});
 	auto local_records_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
@@ -347,12 +356,12 @@ void Recorder::pollRecords() {
 		mongoc_collection_destroy(collection);
 		mongoc_client_pool_push(m_pool, client);
 		return false;
-	};
+	};*/
 
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 		control_records_poller->poll(control_records_handler);
-		local_records_poller->poll(local_records_handler);
+		// local_records_poller->poll(local_records_handler);
 		remote_records_poller->poll(remote_records_handler);
 		business_records_poller->poll(business_records_handler);
 		trade_records_poller->poll(trade_records_handler);

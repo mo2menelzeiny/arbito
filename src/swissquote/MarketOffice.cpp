@@ -115,6 +115,11 @@ namespace SWISSQUOTE {
 		fprintf(stdout, "MarketOffice: Market data request OK\n");
 
 		m_poller = std::thread(&MarketOffice::poll, this);
+		cpu_set_t cpuset;
+		CPU_ZERO(&cpuset);
+		CPU_SET(2, &cpuset);
+		pthread_setaffinity_np(m_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
+		pthread_setname_np(m_poller.native_handle(), "local");
 		m_poller.detach();
 	}
 

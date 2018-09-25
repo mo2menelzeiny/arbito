@@ -56,23 +56,23 @@ int main() {
 		};
 
 		auto remote_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-				[]() { return RemoteMarketDataEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return RemoteMarketDataEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto local_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-				[]() { return MarketDataEvent(); }, 512, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return MarketDataEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto business_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-				[]() { return BusinessEvent(); }, 256, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return BusinessEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto trade_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-				[]() { return TradeEvent(); }, 256, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return TradeEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto control_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
-				[]() { return ControlEvent(); }, 256, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return ControlEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		srand(static_cast<unsigned int>(time(nullptr)));
 
-		Recorder recorder(control_buffer, local_buffer, remote_buffer, business_buffer, trade_buffer, uri_string,
+		Recorder recorder(local_buffer, remote_buffer, business_buffer, trade_buffer, control_buffer, uri_string,
 		                  broker, db_name);
 
 		Messenger messenger(remote_buffer, recorder, messenger_config);
@@ -120,7 +120,7 @@ int main() {
 		recorder.start();
 
 		auto lower_bound = std::chrono::hours(20) + std::chrono::minutes(55);
-		auto upper_bound = std::chrono::hours(21) + std::chrono::minutes(15);
+		auto upper_bound = std::chrono::hours(21) + std::chrono::minutes(5);
 
 		while (true) {
 			std::this_thread::sleep_for(std::chrono::minutes(1));

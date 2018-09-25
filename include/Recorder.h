@@ -22,12 +22,12 @@
 
 class Recorder {
 public:
-	Recorder(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-	         const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-	         const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
-	         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
-	         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
-	         const char *uri_string, int broker_num, const char *db_name);
+	Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
+		         const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+		         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
+		         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
+		         const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
+		         const char *uri_string, int broker_num, const char *db_name);
 
 	void start();
 

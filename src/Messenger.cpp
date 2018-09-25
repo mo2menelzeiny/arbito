@@ -5,7 +5,7 @@ Messenger::Messenger(const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDat
                      Recorder &recorder, MessengerConfig config)
 		: m_remote_md_buffer(remote_md_buffer), m_recorder(&recorder), m_config(config) {}
 
-void Messenger::mediaDriver() {
+void Messenger::poll() {
 	aeron_driver_context_t *context = nullptr;
 	aeron_driver_t *driver = nullptr;
 
@@ -34,6 +34,14 @@ void Messenger::mediaDriver() {
 }
 
 void Messenger::start() {
+	m_poller = std::thread(&Messenger::poll, this);
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(4, &cpuset);
+	pthread_setaffinity_np(m_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
+	pthread_setname_np(m_poller.native_handle(), "conductor");
+	m_poller.detach();
+
 	m_aeron_context.newSubscriptionHandler([](const std::string &channel, std::int32_t streamId,
 	                                          std::int64_t correlationId) {
 	});
@@ -69,9 +77,6 @@ void Messenger::start() {
 		fprintf(stderr, "Messenger: %s\n", exception.what());
 	});
 
-	m_media_driver = std::thread(&Messenger::mediaDriver, this);
-	m_media_driver.detach();
-
 	m_aeron_client = std::make_shared<aeron::Aeron>(m_aeron_context);
 
 	std::int64_t md_pub_id = m_aeron_client->addExclusivePublication(m_config.pub_channel,
@@ -82,6 +87,7 @@ void Messenger::start() {
 	} while (!m_market_data_ex_pub);
 
 	std::int64_t md_sub_id = m_aeron_client->addSubscription(m_config.sub_channel, m_config.market_data_stream_id);
+
 	do {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 		m_market_data_sub = m_aeron_client->findSubscription(md_sub_id);

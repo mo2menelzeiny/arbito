@@ -117,6 +117,11 @@ namespace LMAX {
 		fprintf(stdout, "TradeOffice: Logon OK\n");
 
 		m_poller = std::thread(&TradeOffice::poll, this);
+		cpu_set_t cpuset;
+		CPU_ZERO(&cpuset);
+		CPU_SET(2, &cpuset);
+		pthread_setaffinity_np(m_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
+		pthread_setname_np(m_poller.native_handle(), "trade");
 		m_poller.detach();
 
 	}
