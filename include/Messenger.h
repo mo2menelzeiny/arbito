@@ -29,13 +29,13 @@ public:
 	void start();
 
 private:
-	void mediaDriver();
+	void poll();
 
 private:
 	const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
 	Recorder *m_recorder;
 	MessengerConfig m_config;
-	std::thread m_media_driver;
+	std::thread m_poller;
 	aeron::Context m_aeron_context;
 	std::shared_ptr<aeron::Aeron> m_aeron_client;
 	std::shared_ptr<aeron::ExclusivePublication> m_market_data_ex_pub;

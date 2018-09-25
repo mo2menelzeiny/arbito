@@ -10,6 +10,11 @@ ExclusiveMarketOffice::ExclusiveMarketOffice(
 
 void ExclusiveMarketOffice::start() {
 	m_poller = std::thread(&ExclusiveMarketOffice::poll, this);
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(3, &cpuset);
+	pthread_setaffinity_np(m_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
+	pthread_setname_np(m_poller.native_handle(), "exclusive");
 	m_poller.detach();
 }
 
