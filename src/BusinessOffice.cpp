@@ -20,7 +20,7 @@ void BusinessOffice::start() {
 	m_poller = std::thread(&BusinessOffice::poll, this);
 	cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
-	CPU_SET(1, &cpuset);
+	CPU_SET(3, &cpuset);
 	pthread_setaffinity_np(m_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(m_poller.native_handle(), "business");
 	m_poller.detach();

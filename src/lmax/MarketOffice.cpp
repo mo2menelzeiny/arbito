@@ -117,7 +117,7 @@ namespace LMAX {
 		m_poller = std::thread(&MarketOffice::poll, this);
 		cpu_set_t cpuset;
 		CPU_ZERO(&cpuset);
-		CPU_SET(2, &cpuset);
+		CPU_SET(1, &cpuset);
 		pthread_setaffinity_np(m_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
 		pthread_setname_np(m_poller.native_handle(), "local");
 		m_poller.detach();
@@ -129,7 +129,6 @@ namespace LMAX {
 		clock_gettime(CLOCK_MONOTONIC, &prev);
 
 		while (m_session->active) {
-			std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 			clock_gettime(CLOCK_MONOTONIC, &curr);
 
 			if ((curr.tv_sec - prev.tv_sec) > 0.1 * m_session->heartbtint) {
