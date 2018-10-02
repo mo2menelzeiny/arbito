@@ -16,6 +16,8 @@
 <p>To configure on reboot add the entries in <code>vi /etc/sysctl.conf</code>
 <p>Set TCP buffer size <code>sudo sysctl -w net.core.rmem_max=2097152</code>
 <p>Set TCP buffer size <code>sudo sysctl -w net.core.wmem_max=2097152</code>
+<p>Set timestamps off <code>sysctl -w net.ipv4.tcp_timestamps=0</code>
+<code>net.ipv4.tcp_low_latency=1</code>
 
 #### OS Scheduler
 #####Grub boot
@@ -24,8 +26,14 @@
 <p>Add <code>"isolcpus=1,2,3,4"</code> to <code>GRUB_CMDLINE_LINUX_DEFAULT</code>
 <p>Then <code>update-grub</code>
 <p>Alternative is directly edeting the kernel entry in <code>/boot/grub/grub.conf</code>
+<code>transparent_hugepage=madvise</code>
 
 #####CPUSet Shield
 <p>Using cpuset tool $cset
 <p>create a shield under the name of docker <code>cset shield -k on --userset=docker -c 1-4</code>
+
+##### IRQ Balance
+<p> stop <code>service irqbalance stop</code>
+<p> remove from boot set <code>enabled="0"</code> in <code>/etc/default/irqbalance</code>
+<p> or <code>update-rc.d -f irqbalance remove</code>
 
