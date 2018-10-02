@@ -3,6 +3,8 @@
 
 namespace LMAX {
 
+	using namespace std::chrono;
+
 	TradeOffice::TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 	                         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
 	                         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
@@ -179,7 +181,7 @@ namespace LMAX {
 					continue;
 				}
 
-				if(lmax_fix_session_admin(m_session, msg)) {
+				if (lmax_fix_session_admin(m_session, msg)) {
 					continue;
 				}
 
@@ -194,7 +196,8 @@ namespace LMAX {
 						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_ClOrdID), (*m_trade_buffer)[next].clOrdId, 64);
 						(*m_trade_buffer)[next].side = lmax_fix_get_field(msg, lmax_Side)->string_value[0];
 						(*m_trade_buffer)[next].avgPx = lmax_fix_get_field(msg, lmax_AvgPx)->float_value;
-						(*m_trade_buffer)[next].timestamp_us = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L);
+						(*m_trade_buffer)[next].timestamp_us = duration_cast<microseconds>(
+								steady_clock::now().time_since_epoch()).count();
 						m_trade_buffer->publish(next);
 					}
 					continue;
@@ -205,7 +208,8 @@ namespace LMAX {
 					strcpy((*m_trade_buffer)[next].clOrdId, "FAILED");
 					(*m_trade_buffer)[next].side = '0';
 					(*m_trade_buffer)[next].avgPx = 0;
-					(*m_trade_buffer)[next].timestamp_us = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L);
+					(*m_trade_buffer)[next].timestamp_us = duration_cast<microseconds>(
+							steady_clock::now().time_since_epoch()).count();
 					m_trade_buffer->publish(next);
 				}
 					continue;
@@ -226,7 +230,7 @@ namespace LMAX {
 		(*m_control_buffer)[next_pause] = (ControlEvent) {
 				.source = CES_TRADE_OFFICE,
 				.type = CET_PAUSE,
-				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_pause);
 
@@ -246,7 +250,7 @@ namespace LMAX {
 		(*m_control_buffer)[next_resume] = (ControlEvent) {
 				.source = CES_TRADE_OFFICE,
 				.type = CET_RESUME,
-				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_resume);
 	}
