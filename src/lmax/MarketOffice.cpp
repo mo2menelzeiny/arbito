@@ -3,6 +3,8 @@
 
 namespace LMAX {
 
+	using namespace std::chrono;
+
 	MarketOffice::MarketOffice(
 			const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 			const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
@@ -147,11 +149,11 @@ namespace LMAX {
 
 			struct lmax_fix_message *msg = nullptr;
 			if (lmax_fix_session_recv(m_session, &msg, LMAX_FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
-				if(!msg) {
+				if (!msg) {
 					continue;
 				}
 
-				if(lmax_fix_session_admin(m_session, msg)) {
+				if (lmax_fix_session_admin(m_session, msg)) {
 					continue;
 				}
 
@@ -171,7 +173,7 @@ namespace LMAX {
 					(*m_local_md_buffer)[next] = (MarketDataEvent) {
 							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
 							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-							.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+							.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
 					};
 					m_local_md_buffer->publish(next);
 				}
@@ -190,7 +192,7 @@ namespace LMAX {
 		(*m_control_buffer)[next_pause] = (ControlEvent) {
 				.source = CES_MARKET_OFFICE,
 				.type = CET_PAUSE,
-				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_pause);
 
@@ -210,7 +212,7 @@ namespace LMAX {
 		(*m_control_buffer)[next_resume] = (ControlEvent) {
 				.source = CES_MARKET_OFFICE,
 				.type = CET_RESUME,
-				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_resume);
 	}

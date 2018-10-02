@@ -3,6 +3,8 @@
 
 namespace SWISSQUOTE {
 
+	using namespace std::chrono;
+
 	MarketOffice::MarketOffice(
 			const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 			const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
@@ -171,7 +173,7 @@ namespace SWISSQUOTE {
 					(*m_local_md_buffer)[next] = (MarketDataEvent) {
 							.bid = swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0),
 							.offer = swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value,
-							.timestamp_us = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+							.timestamp_us = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
 					};
 					m_local_md_buffer->publish(next);
 				}
@@ -190,7 +192,7 @@ namespace SWISSQUOTE {
 		(*m_control_buffer)[next_pause] = (ControlEvent) {
 				.source = CES_MARKET_OFFICE,
 				.type = CET_PAUSE,
-				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_pause);
 
@@ -210,7 +212,7 @@ namespace SWISSQUOTE {
 		(*m_control_buffer)[next_resume] = (ControlEvent) {
 				.source = CES_MARKET_OFFICE,
 				.type = CET_RESUME,
-				.timestamp_us  = (curr.tv_sec * 1000000L) + (curr.tv_nsec / 1000L)
+				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_resume);
 	}
