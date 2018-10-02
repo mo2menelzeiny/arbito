@@ -11,19 +11,19 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 		  m_trade_buffer(trade_buffer), m_control_buffer(control_buffer), m_db_name(db_name) {
 
 	m_local_records_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-			[]() { return MarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return MarketDataEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-			[]() { return RemoteMarketDataEvent(); }, 128, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return RemoteMarketDataEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_business_records_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-			[]() { return BusinessEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return BusinessEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_trade_records_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-			[]() { return TradeEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return TradeEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createSingleProducer(
-			[]() { return ControlEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
+			[]() { return ControlEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	bson_error_t error;
 	mongoc_init();
@@ -54,13 +54,9 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 }
 
 void Recorder::start() {
-	m_buffers_poller = std::thread(&Recorder::pollBuffers, this);
-	pthread_setname_np(m_buffers_poller.native_handle(), "recorder-buff");
-	m_buffers_poller.detach();
-
-	m_records_poller = std::thread(&Recorder::pollRecords, this);
-	pthread_setname_np(m_records_poller.native_handle(), "recorder-poll");
-	m_records_poller.detach();
+	m_poller = std::thread(&Recorder::poll, this);
+	pthread_setname_np(m_poller.native_handle(), "recorder");
+	m_poller.detach();
 }
 
 BusinessState Recorder::fetchBusinessState() {
@@ -126,78 +122,7 @@ void Recorder::recordSystemMessage(const char *message, SystemRecordType type) {
 	mongoc_client_pool_push(m_pool, client);
 }
 
-void Recorder::pollBuffers() {
-	auto control_poller = m_control_buffer->newPoller();
-	m_control_buffer->addGatingSequences({control_poller->sequence()});
-	auto control_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		try {
-			auto next = m_control_records_buffer->tryNext();
-			(*m_control_records_buffer)[next] = data;
-			m_control_records_buffer->publish(next);
-		} catch (Disruptor::InsufficientCapacityException &exception) {}
-
-		return false;
-	};
-
-	auto business_poller = m_business_buffer->newPoller();
-	m_business_buffer->addGatingSequences({business_poller->sequence()});
-	auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		try {
-			auto next = m_business_records_buffer->tryNext();
-			(*m_business_records_buffer)[next] = data;
-			m_business_records_buffer->publish(next);
-		} catch (Disruptor::InsufficientCapacityException &exception) {}
-
-		return false;
-	};
-
-	auto trade_poller = m_trade_buffer->newPoller();
-	m_trade_buffer->addGatingSequences({trade_poller->sequence()});
-	auto trade_handler = [&](TradeEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		try {
-			auto next = m_trade_records_buffer->tryNext();
-			(*m_trade_records_buffer)[next] = data;
-			m_trade_records_buffer->publish(next);
-		} catch (Disruptor::InsufficientCapacityException &exception) {}
-
-		return false;
-	};
-
-	auto remote_md_poller = m_remote_md_buffer->newPoller();
-	m_remote_md_buffer->addGatingSequences({remote_md_poller->sequence()});
-	auto remote_md_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		try {
-			auto next = m_remote_records_buffer->tryNext();
-			(*m_remote_records_buffer)[next] = data;
-			m_remote_records_buffer->publish(next);
-		} catch (Disruptor::InsufficientCapacityException &exception) {}
-
-		return false;
-	};
-
-	/*auto local_md_poller = m_local_md_buffer->newPoller();
-	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
-	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		try {
-			auto next = m_local_records_buffer->tryNext();
-			(*m_local_records_buffer)[next] = data;
-			m_local_records_buffer->publish(next);
-		} catch (Disruptor::InsufficientCapacityException &exception) {}
-
-		return false;
-	};*/
-
-	while (true) {
-		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
-		control_poller->poll(control_handler);
-		// local_md_poller->poll(local_md_handler);
-		remote_md_poller->poll(remote_md_handler);
-		business_poller->poll(business_handler);
-		trade_poller->poll(trade_handler);
-	}
-}
-
-void Recorder::pollRecords() {
+void Recorder::poll() {
 	auto control_records_poller = m_control_records_buffer->newPoller();
 	m_control_records_buffer->addGatingSequences({control_records_poller->sequence()});
 	auto control_records_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
@@ -330,7 +255,7 @@ void Recorder::pollRecords() {
 		return false;
 	};
 
-	/*auto local_records_poller = m_local_records_buffer->newPoller();
+	auto local_records_poller = m_local_records_buffer->newPoller();
 	m_local_records_buffer->addGatingSequences({local_records_poller->sequence()});
 	auto local_records_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
@@ -351,12 +276,12 @@ void Recorder::pollRecords() {
 		mongoc_collection_destroy(collection);
 		mongoc_client_pool_push(m_pool, client);
 		return false;
-	};*/
+	};
 
 	while (true) {
 		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 		control_records_poller->poll(control_records_handler);
-		// local_records_poller->poll(local_records_handler);
+		local_records_poller->poll(local_records_handler);
 		remote_records_poller->poll(remote_records_handler);
 		business_records_poller->poll(business_records_handler);
 		trade_records_poller->poll(trade_records_handler);

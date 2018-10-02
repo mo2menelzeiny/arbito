@@ -183,14 +183,22 @@ void Messenger::poll() {
 		                              sbe::MessageHeader::encodedLength(), sbe_header.blockLength(),
 		                              sbe_header.version(), MESSENGER_BUFFER_SIZE);
 
-		auto next = m_remote_md_buffer->next();
-		(*m_remote_md_buffer)[next] = (RemoteMarketDataEvent) {
+		auto data = (RemoteMarketDataEvent) {
 				.bid = sbe_market_data.bid(),
 				.offer = sbe_market_data.offer(),
 				.timestamp_us  = sbe_market_data.timestamp(),
 				.rec_timestamp_us = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
 		};
+
+		auto next = m_remote_md_buffer->next();
+		(*m_remote_md_buffer)[next] = data;
 		m_remote_md_buffer->publish(next);
+
+		try {
+			auto next_record = m_recorder->m_remote_records_buffer->tryNext();
+			(*m_recorder->m_remote_records_buffer)[next_record] = data;
+			m_recorder->m_remote_records_buffer->publish(next_record);
+		} catch (...) {}
 	});
 
 	while (true) {
