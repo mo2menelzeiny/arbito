@@ -54,18 +54,13 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 }
 
 void Recorder::start() {
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(3, &cpuset);
 	m_buffers_poller = std::thread(&Recorder::pollBuffers, this);
-	pthread_setaffinity_np(m_buffers_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(m_buffers_poller.native_handle(), "recorder-buff");
 	m_buffers_poller.detach();
 
 	m_records_poller = std::thread(&Recorder::pollRecords, this);
 	pthread_setname_np(m_records_poller.native_handle(), "recorder-poll");
 	m_records_poller.detach();
-
 }
 
 BusinessState Recorder::fetchBusinessState() {

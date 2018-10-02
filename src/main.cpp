@@ -5,8 +5,6 @@
 #include "swissquote/MarketOffice.h"
 #include "swissquote/TradeOffice.h"
 #include "BusinessOffice.h"
-#include "RemoteMarketOffice.h"
-#include "ExclusiveMarketOffice.h"
 #include "Messenger.h"
 #include "Recorder.h"
 
@@ -56,33 +54,27 @@ int main() {
 		};
 
 		auto remote_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-				[]() { return RemoteMarketDataEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return RemoteMarketDataEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto local_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-				[]() { return MarketDataEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return MarketDataEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto business_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-				[]() { return BusinessEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return BusinessEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto trade_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-				[]() { return TradeEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return TradeEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		auto control_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
-				[]() { return ControlEvent(); }, 8, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+				[]() { return ControlEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 		srand(static_cast<unsigned int>(time(nullptr)));
 
 		Recorder recorder(local_buffer, remote_buffer, business_buffer, trade_buffer, control_buffer, uri_string,
 		                  broker, db_name);
 
-		Messenger messenger(remote_buffer, recorder, messenger_config);
+		Messenger messenger(control_buffer, local_buffer, remote_buffer, recorder, messenger_config);
 		messenger.start();
-
-		RemoteMarketOffice rmo(control_buffer, remote_buffer, messenger);
-		rmo.start();
-
-		ExclusiveMarketOffice emo(control_buffer, local_buffer, messenger);
-		emo.start();
 
 		BusinessOffice bo(control_buffer, local_buffer, remote_buffer, business_buffer, recorder, diff_open, diff_close,
 		                  lot_size);
