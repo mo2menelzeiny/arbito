@@ -162,7 +162,7 @@ void Messenger::poll() {
 		                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
 				.bid(data.bid)
 				.offer(data.offer)
-				.timestamp(data.timestamp_us);
+				.timestamp(duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count());
 
 		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 
