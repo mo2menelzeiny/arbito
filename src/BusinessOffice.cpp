@@ -1,6 +1,8 @@
 
 #include "BusinessOffice.h"
 
+using namespace std::chrono;
+
 BusinessOffice::BusinessOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
                                const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
                                const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
@@ -220,9 +222,7 @@ void BusinessOffice::poll() {
 	};
 
 	while (true) {
-		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
-		now_us = std::chrono::duration_cast<std::chrono::microseconds>(
-				std::chrono::steady_clock::now().time_since_epoch()).count();
+		now_us = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
 
 		if (local_md.size() > 1 && (now_us - local_md.back().timestamp_us > MD_DELAY_US)) {
 			local_md.pop_back();
