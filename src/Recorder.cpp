@@ -8,7 +8,7 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
                    const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
                    const char *uri_string, int broker_number, const char *db_name)
 		: m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer),
-		  m_trade_buffer(trade_buffer), m_control_buffer(control_buffer), m_db_name(db_name) {
+		  m_trade_buffer(trade_buffer), m_control_buffer(control_buffer), m_uri(uri_string), m_db_name(db_name) {
 
 	m_local_records_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
 			[]() { return MarketDataEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
@@ -25,21 +25,7 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
 			[]() { return ControlEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
-	bson_error_t error;
 	mongoc_init();
-	m_uri = mongoc_uri_new_with_error(uri_string, &error);
-
-	if (!m_uri) {
-		fprintf(stderr,
-		        "Recorder: failed to parse URI: %s\n"
-		        "error message:       %s\n",
-		        uri_string,
-		        error.message);
-		return;
-	}
-
-	m_pool = mongoc_client_pool_new(m_uri);
-	mongoc_client_pool_set_error_api(m_pool, 2);
 
 	switch (broker_number) {
 		case 1:
@@ -54,13 +40,27 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 }
 
 void Recorder::start() {
+	bson_error_t error;
+	auto uri = mongoc_uri_new_with_error(m_uri, &error);
+
+	if (!uri) {
+		fprintf(stderr,
+		        "Recorder: failed to parse URI: %s\n"
+		        "error message:       %s\n",
+		        m_uri,
+		        error.message);
+		return;
+	}
+	m_pool = mongoc_client_pool_new(uri);
+	mongoc_client_pool_set_error_api(m_pool, 2);
+
 	m_poller = std::thread(&Recorder::poll, this);
 	pthread_setname_np(m_poller.native_handle(), "recorder");
 	m_poller.detach();
 }
 
 BusinessState Recorder::fetchBusinessState() {
-	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+	mongoc_client_t *client = mongoc_client_new(m_uri);
 	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
 	mongoc_cursor_t *cursor;
 	const bson_t *doc;
@@ -89,14 +89,14 @@ BusinessState Recorder::fetchBusinessState() {
 	bson_destroy(filter);
 	mongoc_cursor_destroy(cursor);
 	mongoc_collection_destroy(collection);
-	mongoc_client_pool_push(m_pool, client);
+	mongoc_client_destroy(client);
 	return business_state;
 }
 
 void Recorder::recordSystemMessage(const char *message, SystemRecordType type) {
 	auto milliseconds_since_epoch = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
 	bson_error_t error;
-	mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
+	mongoc_client_t *client = mongoc_client_new(m_uri);
 	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_system");
 	bson_t *insert = BCON_NEW (
 			"broker_name", BCON_UTF8(m_broker_name),
@@ -119,7 +119,7 @@ void Recorder::recordSystemMessage(const char *message, SystemRecordType type) {
 
 	bson_destroy(insert);
 	mongoc_collection_destroy(collection);
-	mongoc_client_pool_push(m_pool, client);
+	mongoc_client_destroy(client);
 }
 
 void Recorder::poll() {
