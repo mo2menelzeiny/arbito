@@ -112,15 +112,16 @@ namespace SWISSQUOTE {
 		fprintf(stdout, "TradeOffice: Logon OK\n");
 
 		m_poller = std::thread(&TradeOffice::poll, this);
-		cpu_set_t cpuset;
-		CPU_ZERO(&cpuset);
-		CPU_SET(2, &cpuset);
-		pthread_setaffinity_np(m_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
-		pthread_setname_np(m_poller.native_handle(), "trade");
 		m_poller.detach();
 	}
 
 	void TradeOffice::poll() {
+		cpu_set_t cpuset;
+		CPU_ZERO(&cpuset);
+		CPU_SET(2, &cpuset);
+		pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+		pthread_setname_np(pthread_self(), "trade");
+
 		auto business_poller = m_business_buffer->newPoller();
 		m_business_buffer->addGatingSequences({business_poller->sequence()});
 		auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {

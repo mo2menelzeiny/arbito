@@ -20,15 +20,16 @@ BusinessOffice::BusinessOffice(const std::shared_ptr<Disruptor::RingBuffer<Contr
 void BusinessOffice::start() {
 	m_business_state = m_recorder->fetchBusinessState();
 	m_poller = std::thread(&BusinessOffice::poll, this);
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(3, &cpuset);
-	pthread_setaffinity_np(m_poller.native_handle(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(m_poller.native_handle(), "business");
 	m_poller.detach();
 }
 
 void BusinessOffice::poll() {
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(3, &cpuset);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+	pthread_setname_np(pthread_self(), "business");
+
 	bool is_paused = false;
 	auto control_poller = m_control_buffer->newPoller();
 	m_control_buffer->addGatingSequences({control_poller->sequence()});
