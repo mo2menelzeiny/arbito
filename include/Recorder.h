@@ -12,6 +12,9 @@
 #include <Disruptor/Disruptor.h>
 #include <Disruptor/BusySpinWaitStrategy.h>
 
+// SpdLog
+#include "spdlog/sinks/daily_file_sink.h"
+
 // Domain
 #include "BusinessEvent.h"
 #include "TradeEvent.h"
