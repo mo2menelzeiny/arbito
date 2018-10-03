@@ -31,7 +31,11 @@ file(GLOB HEADERS
         include/sbe/*.h
         include/sbe/otf/*.h
         include/lmax/*.h
-        include/swissquote/*.h)
+        include/swissquote/*.h
+        include/spdlog/*.h
+        include/spdlog/details/*.h
+        include/spdlog/fmt/*.h
+        include/spdlog/sinks/*.h)
 
 file(GLOB SOURCES
         src/*.cpp
