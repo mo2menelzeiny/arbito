@@ -71,12 +71,7 @@ void Messenger::start() {
 		m_market_data_sub = m_aeron_client->findSubscription(md_sub_id);
 	} while (!m_market_data_sub);
 
-	cpu_set_t cpuset_poller;
-	CPU_ZERO(&cpuset_poller);
-	CPU_SET(4, &cpuset_poller);
 	m_poller = std::thread(&Messenger::poll, this);
-	pthread_setaffinity_np(m_poller.native_handle(), sizeof(cpu_set_t), &cpuset_poller);
-	pthread_setname_np(m_poller.native_handle(), "messenger");
 	m_poller.detach();
 }
 
@@ -109,6 +104,12 @@ void Messenger::mediaDriver() {
 }
 
 void Messenger::poll() {
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(4, &cpuset);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+	pthread_setname_np(pthread_self(), "messenger");
+
 	bool is_paused = false;
 	sbe::MessageHeader sbe_header;
 	sbe::MarketData sbe_market_data;
