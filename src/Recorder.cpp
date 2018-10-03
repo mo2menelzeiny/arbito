@@ -231,27 +231,12 @@ void Recorder::poll() {
 		return false;
 	};
 
+	auto latency_logger = spdlog::daily_logger_st("Latency", "latency_log");
 	auto remote_records_poller = m_remote_records_buffer->newPoller();
 	m_remote_records_buffer->addGatingSequences({remote_records_poller->sequence()});
 	auto remote_records_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		bson_error_t error;
-		mongoc_client_t *client = mongoc_client_pool_pop(m_pool);
-		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_remote_md_events");
-		bson_t *insert = BCON_NEW (
-				"timestamp_us", BCON_DATE_TIME(data.timestamp_us / 1000),
-				"rec_timestamp_us", BCON_DATE_TIME(data.rec_timestamp_us / 1000),
-				"broker_name", BCON_UTF8(m_broker_name),
-				"offer", BCON_DOUBLE(data.offer),
-				"bid", BCON_DOUBLE(data.bid)
-		);
-
-		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
-			fprintf(stderr, "Recorder: %s\n", error.message);
-		}
-
-		bson_destroy(insert);
-		mongoc_collection_destroy(collection);
-		mongoc_client_pool_push(m_pool, client);
+		latency_logger->info("{} ms", (data.rec_timestamp_us - data.timestamp_us) / 1000);
+		latency_logger->flush();
 		return false;
 	};
 
