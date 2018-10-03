@@ -14,11 +14,6 @@ Messenger::Messenger(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> 
 
 void Messenger::start() {
 	m_media_driver = std::thread(&Messenger::mediaDriver, this);
-	cpu_set_t cpuset_media_driver;
-	CPU_ZERO(&cpuset_media_driver);
-	CPU_SET(5, &cpuset_media_driver);
-	pthread_setaffinity_np(m_media_driver.native_handle(), sizeof(cpu_set_t), &cpuset_media_driver);
-	pthread_setname_np(m_media_driver.native_handle(), "media-driver");
 	m_media_driver.detach();
 
 	m_aeron_context.newSubscriptionHandler([](const std::string &channel, std::int32_t streamId,
@@ -76,6 +71,12 @@ void Messenger::start() {
 }
 
 void Messenger::mediaDriver() {
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(5, &cpuset);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+	pthread_setname_np(pthread_self(), "media-driver");
+
 	aeron_driver_context_t *context = nullptr;
 	aeron_driver_t *driver = nullptr;
 

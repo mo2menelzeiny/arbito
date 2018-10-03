@@ -72,6 +72,7 @@ int main() {
 
 		Recorder recorder(local_buffer, remote_buffer, business_buffer, trade_buffer, control_buffer, uri_string,
 		                  broker, db_name);
+		recorder.start();
 
 		Messenger messenger(control_buffer, local_buffer, remote_buffer, recorder, messenger_config);
 		messenger.start();
@@ -109,7 +110,7 @@ int main() {
 				return EXIT_FAILURE;
 		}
 
-		recorder.start();
+		pthread_setname_np(pthread_self(), "main");
 
 		auto lower_bound = std::chrono::hours(20) + std::chrono::minutes(55);
 		auto upper_bound = std::chrono::hours(21) + std::chrono::minutes(5);
