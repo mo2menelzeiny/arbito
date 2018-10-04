@@ -20,7 +20,7 @@ enum ControlEventType {
 struct ControlEvent {
 	ControlEventSource source;
 	ControlEventType type;
-	long timestamp_us;
+	long timestamp_ms;
 };
 
 #endif //ARBITO_CONTROLEVENT_H

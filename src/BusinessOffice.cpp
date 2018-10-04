@@ -53,7 +53,7 @@ void BusinessOffice::poll() {
 	bool is_order_delayed = false;
 	time_t order_delay = ORDER_DELAY_SEC;
 	time_t order_delay_start = time(nullptr);
-	long now_us = 0;
+	long now_ms = 0;
 
 	auto trigger_handler = [&]() {
 		if (is_paused) {
@@ -76,17 +76,32 @@ void BusinessOffice::poll() {
 					if (m_business_state.orders_count < MAX_OPEN_ORDERS &&
 					    (remote_md.bid - local_md[i].offer) >= m_diff_open) {
 						++m_business_state.orders_count;
-						auto next = m_business_buffer->next();
-						(*m_business_buffer)[next] = (BusinessEvent) {
+						auto data = (BusinessEvent) {
 								.side = '1',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].offer,
 								.remote_px = remote_md.bid,
-								.timestamp_us = now_us,
+								.timestamp_ms = now_ms,
 								.open_side = m_business_state.open_side,
 								.orders_count = m_business_state.orders_count
 						};
-						m_business_buffer->publish(next);
+
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+						}
+
+						try {
+							auto next_record = m_recorder->m_business_records_buffer->tryNext();
+							(*m_recorder->m_business_records_buffer)[next_record] = data;
+							m_recorder->m_business_records_buffer->publish(next_record);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+						}
+
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
@@ -95,17 +110,32 @@ void BusinessOffice::poll() {
 
 					if ((local_md[i].bid - remote_md.offer) >= m_diff_close) {
 						--m_business_state.orders_count;
-						auto next = m_business_buffer->next();
-						(*m_business_buffer)[next] = (BusinessEvent) {
+						auto data = (BusinessEvent) {
 								.side = '2',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].bid,
 								.remote_px = remote_md.offer,
-								.timestamp_us = now_us,
+								.timestamp_ms = now_ms,
 								.open_side = m_business_state.open_side,
 								.orders_count = m_business_state.orders_count
 						};
-						m_business_buffer->publish(next);
+
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+						}
+
+						try {
+							auto next_record = m_recorder->m_business_records_buffer->tryNext();
+							(*m_recorder->m_business_records_buffer)[next_record] = data;
+							m_recorder->m_business_records_buffer->publish(next_record);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+						}
+
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
@@ -118,17 +148,32 @@ void BusinessOffice::poll() {
 					if (m_business_state.orders_count < MAX_OPEN_ORDERS &&
 					    (local_md[i].bid - remote_md.offer) >= m_diff_open) {
 						++m_business_state.orders_count;
-						auto next = m_business_buffer->next();
-						(*m_business_buffer)[next] = (BusinessEvent) {
+						auto data = (BusinessEvent) {
 								.side = '2',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].bid,
 								.remote_px = remote_md.offer,
-								.timestamp_us = now_us,
+								.timestamp_ms = now_ms,
 								.open_side = m_business_state.open_side,
 								.orders_count = m_business_state.orders_count
 						};
-						m_business_buffer->publish(next);
+
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+						}
+
+						try {
+							auto next_record = m_recorder->m_business_records_buffer->tryNext();
+							(*m_recorder->m_business_records_buffer)[next_record] = data;
+							m_recorder->m_business_records_buffer->publish(next_record);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+						}
+
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
@@ -137,17 +182,32 @@ void BusinessOffice::poll() {
 
 					if (remote_md.bid - local_md[i].offer >= m_diff_close) {
 						--m_business_state.orders_count;
-						auto next = m_business_buffer->next();
-						(*m_business_buffer)[next] = (BusinessEvent) {
+						auto data = (BusinessEvent) {
 								.side = '1',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].offer,
 								.remote_px = remote_md.bid,
-								.timestamp_us = now_us,
+								.timestamp_ms = now_ms,
 								.open_side = m_business_state.open_side,
 								.orders_count = m_business_state.orders_count
 						};
-						m_business_buffer->publish(next);
+
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+						}
+
+						try {
+							auto next_record = m_recorder->m_business_records_buffer->tryNext();
+							(*m_recorder->m_business_records_buffer)[next_record] = data;
+							m_recorder->m_business_records_buffer->publish(next_record);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+						}
+
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
@@ -160,17 +220,32 @@ void BusinessOffice::poll() {
 					if ((local_md[i].bid - remote_md.offer) >= m_diff_open) {
 						m_business_state.open_side = OPEN_SELL;
 						++m_business_state.orders_count;
-						auto next = m_business_buffer->next();
-						(*m_business_buffer)[next] = (BusinessEvent) {
+						auto data = (BusinessEvent) {
 								.side = '2',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].bid,
 								.remote_px = remote_md.offer,
-								.timestamp_us = now_us,
+								.timestamp_ms = now_ms,
 								.open_side = m_business_state.open_side,
 								.orders_count = m_business_state.orders_count
 						};
-						m_business_buffer->publish(next);
+
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+						}
+
+						try {
+							auto next_record = m_recorder->m_business_records_buffer->tryNext();
+							(*m_recorder->m_business_records_buffer)[next_record] = data;
+							m_recorder->m_business_records_buffer->publish(next_record);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+						}
+
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
@@ -180,17 +255,32 @@ void BusinessOffice::poll() {
 					if ((remote_md.bid - local_md[i].offer) >= m_diff_open) {
 						m_business_state.open_side = OPEN_BUY;
 						++m_business_state.orders_count;
-						auto next = m_business_buffer->next();
-						(*m_business_buffer)[next] = (BusinessEvent) {
+						auto data = (BusinessEvent) {
 								.side = '1',
 								.clOrdId = rand(),
 								.trigger_px = local_md[i].offer,
 								.remote_px = remote_md.bid,
-								.timestamp_us = now_us,
+								.timestamp_ms = now_ms,
 								.open_side = m_business_state.open_side,
 								.orders_count = m_business_state.orders_count
 						};
-						m_business_buffer->publish(next);
+
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+						}
+
+						try {
+							auto next_record = m_recorder->m_business_records_buffer->tryNext();
+							(*m_recorder->m_business_records_buffer)[next_record] = data;
+							m_recorder->m_business_records_buffer->publish(next_record);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+						}
+
 						local_md.erase(local_md.begin() + i);
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
@@ -205,8 +295,8 @@ void BusinessOffice::poll() {
 	auto local_md_poller = m_local_md_buffer->newPoller();
 	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
 	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		if (local_md.size() == 1 && (now_us - local_md.front().timestamp_us > MD_DELAY_US)) {
-			local_md.front().timestamp_us = now_us;
+		if (local_md.size() == 1 && (now_ms - local_md.front().timestamp_ms > MD_DELAY_MS)) {
+			local_md.front().timestamp_ms = now_ms;
 		}
 
 		local_md.push_front(data);
@@ -223,9 +313,9 @@ void BusinessOffice::poll() {
 	};
 
 	while (true) {
-		now_us = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
+		now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 
-		if (local_md.size() > 1 && (now_us - local_md.back().timestamp_us > MD_DELAY_US)) {
+		if (local_md.size() > 1 && (now_ms - local_md.back().timestamp_ms > MD_DELAY_MS)) {
 			local_md.pop_back();
 		}
 

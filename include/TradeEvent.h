@@ -7,7 +7,7 @@ struct TradeEvent {
 	char clOrdId[64];
 	char side;
 	double avgPx;
-	long timestamp_us;
+	long timestamp_ms;
 };
 
 #endif //ARBITO_ORDEREVENT_H

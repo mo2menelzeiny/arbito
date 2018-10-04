@@ -9,7 +9,7 @@ struct BusinessEvent {
 	int clOrdId;
 	double trigger_px;
 	double remote_px;
-	long timestamp_us;
+	long timestamp_ms;
 	OpenSide open_side;
 	int orders_count;
 };

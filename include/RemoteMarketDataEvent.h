@@ -5,8 +5,8 @@
 struct RemoteMarketDataEvent {
 	double bid;
 	double offer;
-	long timestamp_us;
-	long rec_timestamp_us;
+	long timestamp_ms;
+	long rec_timestamp_ms;
 };
 // 16 bytes for doubles + 8 bytes for longs = 24 bytes
 

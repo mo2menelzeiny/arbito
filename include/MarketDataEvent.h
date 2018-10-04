@@ -5,7 +5,7 @@
 struct MarketDataEvent {
 	double bid;
 	double offer;
-	long timestamp_us;
+	long timestamp_ms;
 };
 
 

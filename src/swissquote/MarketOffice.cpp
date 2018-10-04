@@ -170,13 +170,19 @@ namespace SWISSQUOTE {
 						continue;
 					}
 
-					auto next = m_local_md_buffer->next();
-					(*m_local_md_buffer)[next] = (MarketDataEvent) {
+					auto data = (MarketDataEvent) {
 							.bid = swissquote_fix_get_float(msg, swissquote_MDEntryPx, 0.0),
 							.offer = swissquote_fix_get_field_at(msg, msg->nr_fields - 4)->float_value,
-							.timestamp_us = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
+							.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000)
 					};
-					m_local_md_buffer->publish(next);
+
+					try {
+						auto next = m_local_md_buffer->next();
+						(*m_local_md_buffer)[next] = data;
+						m_local_md_buffer->publish(next);
+					} catch (Disruptor::InsufficientCapacityException &e) {
+						fprintf(stderr, "MarketOffice: Market buffer InsufficientCapacityException\n");
+					}
 				}
 					continue;
 
@@ -193,7 +199,7 @@ namespace SWISSQUOTE {
 		(*m_control_buffer)[next_pause] = (ControlEvent) {
 				.source = CES_MARKET_OFFICE,
 				.type = CET_PAUSE,
-				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
+				.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_pause);
 
@@ -213,7 +219,7 @@ namespace SWISSQUOTE {
 		(*m_control_buffer)[next_resume] = (ControlEvent) {
 				.source = CES_MARKET_OFFICE,
 				.type = CET_RESUME,
-				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
+				.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_resume);
 	}
