@@ -192,26 +192,55 @@ namespace LMAX {
 			switch (msg->type) {
 				case LMAX_FIX_MSG_TYPE_EXECUTION_REPORT:
 					if (lmax_fix_get_field(msg, lmax_ExecType)->string_value[0] == 'F') {
-						auto next = m_trade_buffer->next();
-						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_OrderID), (*m_trade_buffer)[next].orderId, 64);
-						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_ClOrdID), (*m_trade_buffer)[next].clOrdId, 64);
-						(*m_trade_buffer)[next].side = lmax_fix_get_field(msg, lmax_Side)->string_value[0];
-						(*m_trade_buffer)[next].avgPx = lmax_fix_get_field(msg, lmax_AvgPx)->float_value;
-						(*m_trade_buffer)[next].timestamp_us = duration_cast<microseconds>(
-								steady_clock::now().time_since_epoch()).count();
-						m_trade_buffer->publish(next);
+						auto data = TradeEvent();
+						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_OrderID), data.orderId, 64);
+						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_ClOrdID), data.clOrdId, 64);
+						data.side = lmax_fix_get_field(msg, lmax_Side)->string_value[0];
+						data.avgPx = lmax_fix_get_field(msg, lmax_AvgPx)->float_value;
+						data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
+
+						try {
+							auto next = m_trade_buffer->tryNext();
+							(*m_trade_buffer)[next] = data;
+							m_trade_buffer->publish(next);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "TradeOffice: Trade buffer InsufficientCapacityException\n");
+						}
+
+						try {
+							auto next = m_recorder->m_trade_records_buffer->tryNext();
+							(*m_recorder->m_trade_records_buffer)[next] = data;
+							m_recorder->m_trade_records_buffer->publish(next);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							fprintf(stderr, "TradeOffice: Trade records buffer InsufficientCapacityException\n");
+						}
+								
 					}
 					continue;
 
 				case LMAX_FIX_MSG_TYPE_REJECT: {
-					auto next = m_trade_buffer->next();
-					strcpy((*m_trade_buffer)[next].orderId, "FAILED");
-					strcpy((*m_trade_buffer)[next].clOrdId, "FAILED");
-					(*m_trade_buffer)[next].side = '0';
-					(*m_trade_buffer)[next].avgPx = 0;
-					(*m_trade_buffer)[next].timestamp_us = duration_cast<microseconds>(
-							steady_clock::now().time_since_epoch()).count();
-					m_trade_buffer->publish(next);
+					auto data = TradeEvent();
+					strcpy(data.orderId, "FAILED");
+					strcpy(data.clOrdId, "FAILED");
+					data.side = '0';
+					data.avgPx = 0;
+					data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
+
+					try {
+						auto next = m_trade_buffer->tryNext();
+						(*m_trade_buffer)[next] = data;
+						m_trade_buffer->publish(next);
+					} catch (Disruptor::InsufficientCapacityException &e) {
+						fprintf(stderr, "TradeOffice: Trade buffer InsufficientCapacityException\n");
+					}
+
+					try {
+						auto next_record = m_recorder->m_trade_records_buffer->tryNext();
+						(*m_recorder->m_trade_records_buffer)[next_record] = data;
+						m_recorder->m_trade_records_buffer->publish(next_record);
+					} catch (Disruptor::InsufficientCapacityException &e) {
+						fprintf(stderr, "TradeOffice: Trade records buffer InsufficientCapacityException\n");
+					}
 				}
 					continue;
 
@@ -231,7 +260,7 @@ namespace LMAX {
 		(*m_control_buffer)[next_pause] = (ControlEvent) {
 				.source = CES_TRADE_OFFICE,
 				.type = CET_PAUSE,
-				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
+				.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_pause);
 
@@ -251,7 +280,7 @@ namespace LMAX {
 		(*m_control_buffer)[next_resume] = (ControlEvent) {
 				.source = CES_TRADE_OFFICE,
 				.type = CET_RESUME,
-				.timestamp_us  = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
+				.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 		m_control_buffer->publish(next_resume);
 	}

@@ -6,6 +6,6 @@
 #define ORDER_DELAY_SEC 60
 #define RECONNECT_DELAY_SEC 60
 #define MAX_OPEN_ORDERS 5
-#define MD_DELAY_US 15000
+#define MD_DELAY_MS 15
 
 #endif //ARBITO_CONFIG_H

@@ -30,13 +30,13 @@ void Messenger::start() {
 	});
 
 	m_aeron_context.unavailableImageHandler([&](aeron::Image &image) {
-		auto now_us = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
+		auto now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 		auto next = m_remote_md_buffer->next();
 		(*m_remote_md_buffer)[next] = (RemoteMarketDataEvent) {
 				.bid = -99.0,
 				.offer = 99.0,
-				.timestamp_us  = now_us,
-				.rec_timestamp_us = now_us
+				.timestamp_ms  = now_ms,
+				.rec_timestamp_ms = now_ms
 		};
 		m_remote_md_buffer->publish(next);
 		m_recorder->recordSystemMessage("Messenger: Image unavailable", SYSTEM_RECORD_TYPE_ERROR);
@@ -130,7 +130,7 @@ void Messenger::poll() {
 				                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
 						.bid(-99)
 						.offer(99)
-						.timestamp(duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count());
+						.timestamp(duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count());
 				aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 
 				while (m_market_data_ex_pub->offer(m_atomic_buffer, 0, len) < -1);
@@ -164,7 +164,7 @@ void Messenger::poll() {
 		                              sbe::MessageHeader::encodedLength(), MESSENGER_BUFFER_SIZE)
 				.bid(data.bid)
 				.offer(data.offer)
-				.timestamp(duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count());
+				.timestamp(data.timestamp_ms);
 
 		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe_market_data.encodedLength();
 
@@ -188,19 +188,25 @@ void Messenger::poll() {
 		auto data = (RemoteMarketDataEvent) {
 				.bid = sbe_market_data.bid(),
 				.offer = sbe_market_data.offer(),
-				.timestamp_us  = sbe_market_data.timestamp(),
-				.rec_timestamp_us = duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count()
+				.timestamp_ms  = sbe_market_data.timestamp(),
+				.rec_timestamp_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 		};
 
-		auto next = m_remote_md_buffer->next();
-		(*m_remote_md_buffer)[next] = data;
-		m_remote_md_buffer->publish(next);
+		try {
+			auto next = m_remote_md_buffer->tryNext();
+			(*m_remote_md_buffer)[next] = data;
+			m_remote_md_buffer->publish(next);
+		} catch (Disruptor::InsufficientCapacityException &e) {
+			fprintf(stderr, "Messenger: remote buffer InsufficientCapacityException\n");
+		}
 
 		try {
 			auto next_record = m_recorder->m_remote_records_buffer->tryNext();
 			(*m_recorder->m_remote_records_buffer)[next_record] = data;
 			m_recorder->m_remote_records_buffer->publish(next_record);
-		} catch (...) {}
+		} catch (Disruptor::InsufficientCapacityException &e) {
+			fprintf(stderr, "Messenger: remote records buffer InsufficientCapacityException\n");
+		}
 	});
 
 	while (true) {

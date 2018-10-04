@@ -56,7 +56,6 @@ private:
 	const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_buffer;
 	const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_buffer;
 	const char *m_uri;
-	mongoc_client_pool_t *m_pool;
 	const char *m_broker_name;
 	const char *m_db_name;
 	std::thread m_poller;
