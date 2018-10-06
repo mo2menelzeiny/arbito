@@ -16,8 +16,8 @@
 <p>To configure on reboot add the entries in <code>vi /etc/sysctl.conf</code>
 <p>Set TCP buffer size <code>sudo sysctl -w net.core.rmem_max=2097152</code>
 <p>Set TCP buffer size <code>sudo sysctl -w net.core.wmem_max=2097152</code>
-<p>Set timestamps off <code>sysctl -w net.ipv4.tcp_timestamps=0</code>
-<code>net.ipv4.tcp_low_latency=1</code>
+<p>Set timestamps off <code>sudo sysctl -w net.ipv4.tcp_timestamps=0</code>
+<p>Set TCP to low latency <code>sudo sysctl -w net.ipv4.tcp_low_latency=1</code>
 
 #### OS Scheduler
 #####Grub boot
