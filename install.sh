@@ -18,10 +18,10 @@ make -j 4 install PREFIX=/usr/local
 cd ../..
 
 echo "Installing Aeron.."
-wget https://github.com/real-logic/aeron/archive/1.11.1.tar.gz
-tar zvxf 1.11.1.tar.gz
-rm 1.11.1.tar.gz
-cd aeron-1.11.1
+wget https://github.com/real-logic/aeron/archive/1.11.2.tar.gz
+tar zvxf 1.11.2.tar.gz
+rm 1.11.2.tar.gz
+cd aeron-1.11.2
 mkdir -p cppbuild/Debug
 cd cppbuild/Debug
 cmake -DBUILD_AERON_DRIVER=ON ../..
