@@ -35,7 +35,8 @@ file(GLOB HEADERS
         include/spdlog/*.h
         include/spdlog/details/*.h
         include/spdlog/fmt/*.h
-        include/spdlog/sinks/*.h)
+        include/spdlog/sinks/*.h
+        include/date/*.h)
 
 file(GLOB SOURCES
         src/*.cpp
