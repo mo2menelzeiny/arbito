@@ -1,6 +1,9 @@
 
 #include "Recorder.h"
 
+using namespace date;
+using namespace std::chrono;
+
 Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
                    const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
@@ -11,21 +14,19 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 		  m_trade_buffer(trade_buffer), m_control_buffer(control_buffer), m_uri(uri_string), m_db_name(db_name) {
 
 	m_local_records_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-			[]() { return MarketDataEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return MarketDataEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-			[]() { return RemoteMarketDataEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return RemoteMarketDataEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_business_records_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-			[]() { return BusinessEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return BusinessEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_trade_records_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-			[]() { return TradeEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+			[]() { return TradeEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
-			[]() { return ControlEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
-
-	mongoc_init();
+			[]() { return ControlEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
 	switch (broker_number) {
 		case 1:
@@ -40,6 +41,8 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 }
 
 void Recorder::start() {
+	mongoc_init();
+
 	bson_error_t error;
 	auto uri = mongoc_uri_new_with_error(m_uri, &error);
 
@@ -48,17 +51,21 @@ void Recorder::start() {
 		        "Recorder: failed to parse URI: %s\n"
 		        "error message:       %s\n",
 		        m_uri,
-		        error.message);
+		        error.message
+		);
 		return;
 	}
+
+	m_mongoc_client = mongoc_client_new(m_uri);
+	mongoc_coll_orders = mongoc_client_get_collection(m_mongoc_client, m_db_name, "coll_orders");
 
 	m_poller = std::thread(&Recorder::poll, this);
 	m_poller.detach();
 }
 
-BusinessState Recorder::fetchBusinessState() {
+BusinessState Recorder::fetchBusinessState() { // thread safe
 	mongoc_client_t *client = mongoc_client_new(m_uri);
-	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_orders");
 	mongoc_cursor_t *cursor;
 	const bson_t *doc;
 	bson_iter_t iter;
@@ -90,15 +97,14 @@ BusinessState Recorder::fetchBusinessState() {
 	return business_state;
 }
 
-void Recorder::recordSystemMessage(const char *message, SystemRecordType type) {
-	auto milliseconds_since_epoch = std::chrono::system_clock::now().time_since_epoch() / std::chrono::milliseconds(1);
+void Recorder::recordSystemMessage(const char *message, SystemRecordType type) { // thread safe
 	bson_error_t error;
 	mongoc_client_t *client = mongoc_client_new(m_uri);
 	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_system");
 	bson_t *insert = BCON_NEW (
 			"broker_name", BCON_UTF8(m_broker_name),
 			"message", BCON_UTF8(message),
-			"created_at", BCON_DATE_TIME(milliseconds_since_epoch)
+			"timestamp_ms", BCON_DATE_TIME(duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count())
 	);
 
 	switch (type) {
@@ -126,47 +132,63 @@ void Recorder::poll() {
 	m_business_records_buffer->addGatingSequences({business_records_poller->sequence()});
 	auto business_records_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
-		mongoc_client_t *client = mongoc_client_new(m_uri);
-		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_business_events");
-
 		OpenSide open_side = data.open_side;
-		if (!data.orders_count) {
-			open_side = NONE;
-		}
 
 		char clOrdId[64];
 		sprintf(clOrdId, "%i", data.clOrdId);
 
-		bson_t *insert_business_event = BCON_NEW (
+		bson_t *insert = BCON_NEW (
 				"timestamp_ms", BCON_DATE_TIME(data.timestamp_ms),
 				"broker_name", BCON_UTF8(m_broker_name),
 				"clOrdId", BCON_UTF8(clOrdId),
-				"trigger_px", BCON_DOUBLE(data.trigger_px),
-				"remote_px", BCON_DOUBLE(data.remote_px),
-				"open_side", BCON_INT32(open_side),
+				"open_side", BCON_INT32(data.orders_count > 0 ? open_side : NONE),
 				"orders_count", BCON_INT32(data.orders_count)
 		);
 
 		switch (data.side) {
 			case '1':
-				BSON_APPEND_UTF8(insert_business_event, "side", "BUY");
+				BSON_APPEND_UTF8(insert, "side", "BUY");
 				break;
 
 			case '2':
-				BSON_APPEND_UTF8(insert_business_event, "side", "SELL");
+				BSON_APPEND_UTF8(insert, "side", "SELL");
 				break;
 
 			default:
+				fprintf(stderr, "Recorder: Invalid side value\n");
+				BSON_APPEND_UTF8(insert, "side", "FAILED");
 				break;
 		}
 
-		if (!mongoc_collection_insert_one(collection, insert_business_event, nullptr, nullptr, &error)) {
+		switch (open_side) {
+			case OPEN_BUY:
+				if (data.side == '1') {
+					BSON_APPEND_UTF8(insert, "order_type", "OPEN");
+				} else {
+					BSON_APPEND_UTF8(insert, "order_type", "CLOSE");
+				}
+				break;
+			case OPEN_SELL:
+				if (data.side == '2') {
+					BSON_APPEND_UTF8(insert, "order_type", "OPEN");
+				} else {
+					BSON_APPEND_UTF8(insert, "order_type", "CLOSE");
+				}
+				break;
+			case NONE:
+				fprintf(stderr, "Recorder: Invalid side value\n");
+				BSON_APPEND_UTF8(insert, "order_type", "FAILED");
+				break;
+		}
+
+		BSON_APPEND_DOUBLE(insert, "trigger_px", data.trigger_px);
+		BSON_APPEND_DOUBLE(insert, "remote_px", data.remote_px);
+
+		if (!mongoc_collection_insert_one(mongoc_coll_orders, insert, nullptr, nullptr, &error)) {
 			fprintf(stderr, "Recorder: %s\n", error.message);
 		}
 
-		bson_destroy(insert_business_event);
-		mongoc_collection_destroy(collection);
-		mongoc_client_destroy(client);
+		bson_destroy(insert);
 		return false;
 	};
 
@@ -174,71 +196,84 @@ void Recorder::poll() {
 	m_trade_records_buffer->addGatingSequences({trade_records_poller->sequence()});
 	auto trade_records_handler = [&](TradeEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
-		mongoc_client_t *client = mongoc_client_new(m_uri);
-		mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_trade_events");
-		bson_t *insert = BCON_NEW (
-				"timestamp_ms", BCON_DATE_TIME(data.timestamp_ms),
-				"broker_name", BCON_UTF8(m_broker_name),
-				"clOrdId", BCON_UTF8(data.clOrdId),
+		bson_t *selector = BCON_NEW ("clOrdId", data.clOrdId);
+		bson_t *update_or_insert = BCON_NEW (
+				"$set", "{",
+				"exec_timestamp_ms", BCON_DATE_TIME(data.timestamp_ms),
 				"orderId", BCON_UTF8(data.orderId),
-				"avgPx", BCON_DOUBLE(data.avgPx)
+				"avgPx", BCON_DOUBLE(data.avgPx),
+				"}"
 		);
 
-		switch (data.side) {
-			case '1':
-				BSON_APPEND_UTF8(insert, "side", "BUY");
-				break;
-			case '2':
-				BSON_APPEND_UTF8(insert, "side", "SELL");
-				break;
-			default:
-				BSON_APPEND_UTF8(insert, "side", "FAILED");
-				break;
-		}
+		bson_t *opts = BCON_NEW ("upsert", BCON_BOOL(true));
 
-		if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
+		if (!mongoc_collection_update_one(mongoc_coll_orders, selector, update_or_insert, opts, nullptr, &error)) {
 			fprintf(stderr, "Recorder: %s\n", error.message);
 		}
 
-		bson_destroy(insert);
-		mongoc_collection_destroy(collection);
-		mongoc_client_destroy(client);
+		bson_destroy(update_or_insert);
+		bson_destroy(opts);
 		return false;
 	};
 
-	int latency_flush_counter = 0;
-	long latency_max = 0, latency_min = 99, latency_tot = 0;
 	auto latency_logger = spdlog::daily_logger_st("Latency", "latency_log");
+	auto remote_logger = spdlog::daily_logger_st("Remote", "remote_log");
 	auto remote_records_poller = m_remote_records_buffer->newPoller();
 	m_remote_records_buffer->addGatingSequences({remote_records_poller->sequence()});
 	auto remote_records_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		++latency_flush_counter;
-		long latency = data.rec_timestamp_ms - data.timestamp_ms;
-		latency_tot += latency;
-
-		if (latency_max < latency) {
-			latency_max = latency;
-		}
-
-		if (latency_min > latency) {
-			latency_min = latency;
-		}
-
-		if (latency_flush_counter >= 10) {
-			long latency_avg = latency_tot / latency_flush_counter;
-			latency_logger->info("Average: {}ms Min: {}ms Max: {}ms", latency_avg, latency_min, latency_max);
-			latency_logger->flush();
-			latency_tot = latency_min = latency_max =  0;
-			latency_flush_counter = 0;
-		}
-
+		milliseconds recv_duration(data.rec_timestamp_ms), ts_duration(data.timestamp_ms);
+		time_point<system_clock> recv_tp(recv_duration), ts_tp(ts_duration);
+		std::stringstream recv_ss, ts_ss;
+		recv_ss << format("%T", time_point_cast<milliseconds>(recv_tp));
+		ts_ss << format("%T", time_point_cast<milliseconds>(ts_tp));
+		remote_logger->info(
+				"offer: {} bid: {} remote: {} timestamp: {}",
+				data.offer, data.bid, ts_ss.str(), recv_ss.str()
+		);
+		remote_logger->flush();
+		latency_logger->info("{}ms", data.rec_timestamp_ms - data.timestamp_ms);
+		latency_logger->flush();
 		return false;
 	};
 
+	auto local_logger = spdlog::daily_logger_st("Local", "local_log");
+	auto local_records_poller = m_local_records_buffer->newPoller();
+	m_local_records_buffer->addGatingSequences({local_records_poller->sequence()});
+	auto local_records_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		milliseconds ts_duration(data.timestamp_ms);
+		time_point<system_clock> ts_tp(ts_duration);
+		std::stringstream ts_ss;
+		ts_ss << format("%T", time_point_cast<milliseconds>(ts_tp));
+		local_logger->info(
+				"offer: {} bid: {} broker: {} timestamp: {}",
+				data.offer, data.bid, data.sending_time, ts_ss.str()
+		);
+		local_logger->flush();
+		return false;
+	};
+
+	/*auto control_logger = spdlog::daily_logger_st("Control", "control_log");
+	auto control_records_poller = m_control_records_buffer->newPoller();
+	m_control_records_buffer->addGatingSequences({control_records_poller->sequence()});
+	auto control_records_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		milliseconds ts_duration(data.timestamp_ms);
+		time_point<system_clock> ts_tp(ts_duration);
+		std::stringstream ts_ss;
+		ts_ss << format("%T", time_point_cast<milliseconds>(ts_tp));
+		control_logger->info(
+				"source: {} type: {} timestamp: {}",
+				data.source, data.type, ts_ss.str()
+		);
+		control_logger->flush();
+		return false;
+	};*/
+
 	while (true) {
-		std::this_thread::sleep_for(std::chrono::nanoseconds(1));
 		remote_records_poller->poll(remote_records_handler);
+		local_records_poller->poll(local_records_handler);
 		business_records_poller->poll(business_records_handler);
 		trade_records_poller->poll(trade_records_handler);
+		// control_records_poller->poll(control_records_handler);
+		std::this_thread::yield();
 	}
 }

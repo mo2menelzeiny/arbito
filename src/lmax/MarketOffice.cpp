@@ -170,18 +170,26 @@ namespace LMAX {
 						continue;
 					}
 
-					auto data = (MarketDataEvent) {
-							.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0),
-							.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value,
-							.timestamp_ms  = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000)
-					};
+					auto data = MarketDataEvent();
+					data.bid = lmax_fix_get_float(msg, lmax_MDEntryPx, 0.0);
+					data.offer = lmax_fix_get_field_at(msg, msg->nr_fields - 2)->float_value;
+					data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
+					lmax_fix_get_string(lmax_fix_get_field(msg, lmax_SendingTime), data.sending_time, 64);
 
 					try {
-						auto next = m_local_md_buffer->next();
+						auto next = m_local_md_buffer->tryNext();
 						(*m_local_md_buffer)[next] = data;
 						m_local_md_buffer->publish(next);
 					} catch (Disruptor::InsufficientCapacityException &e) {
 						fprintf(stderr, "MarketOffice: Market buffer InsufficientCapacityException\n");
+					}
+
+					try {
+						auto next_record = m_recorder->m_local_records_buffer->tryNext();
+						(*m_recorder->m_local_records_buffer)[next_record] = data;
+						m_recorder->m_local_records_buffer->publish(next_record);
+					} catch (Disruptor::InsufficientCapacityException &e) {
+						fprintf(stderr, "MarketOffice: Market records buffer InsufficientCapacityException\n");
 					}
 				}
 					continue;

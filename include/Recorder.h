@@ -7,6 +7,7 @@
 
 // C
 #include <chrono>
+#include <date/date.h>
 
 // Disruptor
 #include <Disruptor/Disruptor.h>
@@ -58,6 +59,8 @@ private:
 	const char *m_uri;
 	const char *m_broker_name;
 	const char *m_db_name;
+	mongoc_client_t *m_mongoc_client;
+	mongoc_collection_t *mongoc_coll_orders;
 	std::thread m_poller;
 };
 
