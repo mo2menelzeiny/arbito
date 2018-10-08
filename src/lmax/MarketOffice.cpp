@@ -206,12 +206,13 @@ namespace LMAX {
 		m_recorder->recordSystemMessage("MarketOffice: Connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
 		fprintf(stderr, "MarketOffice: Connection FAILED\n");
 
-		std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
-
-		SSL_free(m_cfg.ssl);
+		close(m_session->sockfd);
+		SSL_free(m_session->ssl);
 		ERR_free_strings();
 		EVP_cleanup();
 		lmax_fix_session_free(m_session);
+
+		std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
 
 		connectToBroker();
 
