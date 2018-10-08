@@ -102,7 +102,7 @@ void BusinessOffice::poll() {
 							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
 						}
 
-						local_md.erase(local_md.begin() + i);
+						local_md.clear();
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
 						return;
@@ -136,7 +136,7 @@ void BusinessOffice::poll() {
 							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
 						}
 
-						local_md.erase(local_md.begin() + i);
+						local_md.clear();
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
 						return;
@@ -174,7 +174,7 @@ void BusinessOffice::poll() {
 							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
 						}
 
-						local_md.erase(local_md.begin() + i);
+						local_md.clear();
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
 						return;
@@ -208,7 +208,7 @@ void BusinessOffice::poll() {
 							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
 						}
 
-						local_md.erase(local_md.begin() + i);
+						local_md.clear();
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
 						return;
@@ -246,7 +246,7 @@ void BusinessOffice::poll() {
 							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
 						}
 
-						local_md.erase(local_md.begin() + i);
+						local_md.clear();
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
 						return;
@@ -281,7 +281,7 @@ void BusinessOffice::poll() {
 							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
 						}
 
-						local_md.erase(local_md.begin() + i);
+						local_md.clear();
 						order_delay_start = time(nullptr);
 						is_order_delayed = true;
 						return;
@@ -300,7 +300,6 @@ void BusinessOffice::poll() {
 		}
 
 		local_md.push_front(data);
-		trigger_handler();
 		return false;
 	};
 
@@ -308,7 +307,6 @@ void BusinessOffice::poll() {
 	m_remote_md_buffer->addGatingSequences({remote_md_poller->sequence()});
 	auto remote_md_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
 		remote_md = data;
-		trigger_handler();
 		return false;
 	};
 
@@ -322,5 +320,6 @@ void BusinessOffice::poll() {
 		control_poller->poll(control_handler);
 		local_md_poller->poll(local_md_handler);
 		remote_md_poller->poll(remote_md_handler);
+		trigger_handler();
 	}
 }
