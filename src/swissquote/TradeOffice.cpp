@@ -249,11 +249,8 @@ namespace SWISSQUOTE {
 				}
 					continue;
 
-				case SWISSQUOTE_FIX_MSG_TYPE_TEST_REQUEST:
-					swissquote_fix_session_admin(m_session, msg);
-					continue;
-
 				default:
+					swissquote_fix_session_admin(m_session, msg);
 					continue;
 			}
 		}
