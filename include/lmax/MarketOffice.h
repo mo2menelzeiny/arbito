@@ -60,7 +60,7 @@ namespace LMAX {
 
 	private:
 
-		void connectToBroker();
+		bool connectToBroker();
 
 		void poll();
 
@@ -75,7 +75,6 @@ namespace LMAX {
 		SSL *m_ssl;
 		struct lmax_fix_session_cfg m_cfg;
 		struct lmax_fix_session *m_session;
-		std::thread m_poller;
 	};
 }
 

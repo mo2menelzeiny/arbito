@@ -39,7 +39,6 @@ private:
 	double m_diff_open;
 	double m_diff_close;
 	double m_lot_size;
-	std::thread m_poller;
 	BusinessState m_business_state;
 };
 

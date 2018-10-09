@@ -23,10 +23,20 @@ namespace SWISSQUOTE {
 	}
 
 	void TradeOffice::start() {
-		connectToBroker();
+		while (!connectToBroker()) {
+			close(m_session->sockfd);
+			SSL_free(m_session->ssl);
+			ERR_free_strings();
+			EVP_cleanup();
+			swissquote_fix_session_free(m_session);
+			std::this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
+		};
+
+		auto poller = std::thread(&TradeOffice::poll, this);
+		poller.detach();
 	}
 
-	void TradeOffice::connectToBroker() {
+	bool TradeOffice::connectToBroker() {
 		SSL_load_error_strings();
 		SSL_library_init();
 		OpenSSL_add_all_algorithms();
@@ -39,20 +49,17 @@ namespace SWISSQUOTE {
 		m_ssl = SSL_new(m_ssl_ctx);
 		m_cfg.ssl = m_ssl;
 
-		// Session object
 		m_session = swissquote_fix_session_new(&m_cfg);
 		if (!m_session) {
-			m_recorder->recordSystemMessage("TradeOffice: FIX session FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "TradeOffice: FIX session cannot be created\n");
-			return;
+			m_recorder->systemEvent("TradeOffice: FIX session FAILED", SE_TYPE_ERROR);
+			return false;
 		}
 
-		// Socket connection
 		struct hostent *host_ent = gethostbyname(m_broker_config.host);
 
 		if (!host_ent) {
-			m_recorder->recordSystemMessage("TradeOffice: Host lookup FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			error("TradeOffice: Unable to look up %s (%s)", m_broker_config.host, hstrerror(h_errno));
+			m_recorder->systemEvent("TradeOffice: Host lookup FAILED", SE_TYPE_ERROR);
+			return false;
 		}
 
 		char **ap;
@@ -83,36 +90,30 @@ namespace SWISSQUOTE {
 		}
 
 		if (m_cfg.sockfd < 0) {
-			m_recorder->recordSystemMessage("TradeOffice: Socket connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			error("TradeOffice: Unable to connect to a socket (%s)", strerror(saved_errno));
+			m_recorder->systemEvent("TradeOffice: Socket connection FAILED", SE_TYPE_ERROR);
+			return false;
 		}
 
 		if (swissquote_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0) {
-			m_recorder->recordSystemMessage("TradeOffice: Socket option FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			die("TradeOffice: cannot set socket option TCP_NODELAY");
+			m_recorder->systemEvent("TradeOffice: Socket option FAILED", SE_TYPE_ERROR);
+			return false;
 		}
 
-		// SSL connection
 		SSL_set_fd(m_cfg.ssl, m_cfg.sockfd);
 		int ssl_errno = SSL_connect(m_cfg.ssl);
 
 		if (ssl_errno <= 0) {
-			m_recorder->recordSystemMessage("TradeOffice: SSL FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "TradeOffice: SSL FAILED\n");
-			return;
+			m_recorder->systemEvent("TradeOffice: SSL FAILED", SE_TYPE_ERROR);
+			return false;
 		}
 
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
 		if (swissquote_fix_session_logon(m_session)) {
-			m_recorder->recordSystemMessage("TradeOffice: Logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "TradeOffice: Logon FAILED\n");
+			m_recorder->systemEvent("TradeOffice: Logon FAILED", SE_TYPE_ERROR);
+			return false;
 		}
-		m_recorder->recordSystemMessage("TradeOffice: Logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
-		fprintf(stdout, "TradeOffice: Logon OK\n");
-
-		m_poller = std::thread(&TradeOffice::poll, this);
-		m_poller.detach();
+		m_recorder->systemEvent("TradeOffice: Logon OK", SE_TYPE_SUCCESS);
 	}
 
 	void TradeOffice::poll() {
@@ -196,7 +197,10 @@ namespace SWISSQUOTE {
 							(*m_trade_buffer)[next] = data;
 							m_trade_buffer->publish(next);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "TradeOffice: Trade buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"TradeOffice: Trade buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						try {
@@ -204,7 +208,10 @@ namespace SWISSQUOTE {
 							(*m_recorder->m_trade_records_buffer)[next_record] = data;
 							m_recorder->m_trade_records_buffer->publish(next_record);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "TradeOffice: Trade records buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"TradeOffice: Trade records buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 					}
@@ -223,7 +230,10 @@ namespace SWISSQUOTE {
 						(*m_trade_buffer)[next] = data;
 						m_trade_buffer->publish(next);
 					} catch (Disruptor::InsufficientCapacityException &e) {
-						fprintf(stderr, "TradeOffice: Trade buffer InsufficientCapacityException\n");
+						m_recorder->systemEvent(
+								"TradeOffice: Trade buffer InsufficientCapacityException",
+								SE_TYPE_ERROR
+						);
 					}
 
 					try {
@@ -231,7 +241,10 @@ namespace SWISSQUOTE {
 						(*m_recorder->m_trade_records_buffer)[next_record] = data;
 						m_recorder->m_trade_records_buffer->publish(next_record);
 					} catch (Disruptor::InsufficientCapacityException &e) {
-						fprintf(stderr, "TradeOffice: Trade records buffer InsufficientCapacityException\n");
+						m_recorder->systemEvent(
+								"TradeOffice: Trade records buffer InsufficientCapacityException",
+								SE_TYPE_ERROR
+						);
 					}
 				}
 					continue;
@@ -247,33 +260,42 @@ namespace SWISSQUOTE {
 
 		m_business_buffer->removeGatingSequence(business_poller->sequence());
 
-		auto next_pause = m_control_buffer->next();
-		(*m_control_buffer)[next_pause] = (ControlEvent) {
-				.source = CES_TRADE_OFFICE,
-				.type = CET_PAUSE,
-				.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
-		};
-		m_control_buffer->publish(next_pause);
+		try {
+			auto next_pause = m_control_buffer->tryNext();
+			(*m_control_buffer)[next_pause] = (ControlEvent) {
+					.source = CES_TRADE_OFFICE,
+					.type = CET_PAUSE,
+					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
+			};
+			m_control_buffer->publish(next_pause);
+		} catch (Disruptor::InsufficientCapacityException &e) {
+			m_recorder->systemEvent("TradeOffice: control buffer InsufficientCapacityException", SE_TYPE_ERROR);
+		}
 
-		m_recorder->recordSystemMessage("TradeOffice: Connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
-		fprintf(stderr, "TradeOffice: Connection FAILED\n");
+		m_recorder->systemEvent("TradeOffice: Connection FAILED", SE_TYPE_ERROR);
 
-		close(m_session->sockfd);
-		SSL_free(m_session->ssl);
-		ERR_free_strings();
-		EVP_cleanup();
-		swissquote_fix_session_free(m_session);
+		do {
+			close(m_session->sockfd);
+			SSL_free(m_session->ssl);
+			ERR_free_strings();
+			EVP_cleanup();
+			swissquote_fix_session_free(m_session);
+			std::this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
+		} while (!connectToBroker());
 
-		std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
+		auto poller = std::thread(&TradeOffice::poll, this);
+		poller.detach();
 
-		connectToBroker();
-
-		auto next_resume = m_control_buffer->next();
-		(*m_control_buffer)[next_resume] = (ControlEvent) {
-				.source = CES_TRADE_OFFICE,
-				.type = CET_RESUME,
-				.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
-		};
-		m_control_buffer->publish(next_resume);
+		try {
+			auto next_resume = m_control_buffer->tryNext();
+			(*m_control_buffer)[next_resume] = (ControlEvent) {
+					.source = CES_TRADE_OFFICE,
+					.type = CET_RESUME,
+					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
+			};
+			m_control_buffer->publish(next_resume);
+		} catch (Disruptor::InsufficientCapacityException &e) {
+			m_recorder->systemEvent("TradeOffice: control buffer InsufficientCapacityException", SE_TYPE_ERROR);
+		}
 	}
 }

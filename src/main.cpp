@@ -105,8 +105,7 @@ int main() {
 				swissquote_to->start();
 				break;
 			default:
-				recorder.recordSystemMessage("Main: Broker undefined", SYSTEM_RECORD_TYPE_ERROR);
-				fprintf(stderr, "Main: Broker undefined\n");
+				recorder.systemEvent("Main: Broker undefined", SE_TYPE_ERROR);
 				return EXIT_FAILURE;
 		}
 
@@ -122,7 +121,7 @@ int main() {
 			auto gmt_time = std::gmtime(&t);
 			auto now = std::chrono::hours(gmt_time->tm_hour) + std::chrono::minutes(gmt_time->tm_min);
 			if (now >= lower_bound && now <= upper_bound) {
-				recorder.recordSystemMessage("END OF DAY", SYSTEM_RECORD_TYPE_SUCCESS);
+				recorder.systemEvent("END OF DAY", SE_TYPE_SUCCESS);
 				return EXIT_SUCCESS;
 			}
 		}

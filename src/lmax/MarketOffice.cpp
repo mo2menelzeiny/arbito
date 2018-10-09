@@ -21,10 +21,20 @@ namespace LMAX {
 	}
 
 	void MarketOffice::start() {
-		connectToBroker();
+		while (!connectToBroker()) {
+			close(m_session->sockfd);
+			SSL_free(m_session->ssl);
+			ERR_free_strings();
+			EVP_cleanup();
+			lmax_fix_session_free(m_session);
+			std::this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
+		};
+
+		auto poller = std::thread(&MarketOffice::poll, this);
+		poller.detach();
 	}
 
-	void MarketOffice::connectToBroker() {
+	bool MarketOffice::connectToBroker() {
 		SSL_load_error_strings();
 		SSL_library_init();
 		OpenSSL_add_all_algorithms();
@@ -37,20 +47,17 @@ namespace LMAX {
 		m_ssl = SSL_new(m_ssl_ctx);
 		m_cfg.ssl = m_ssl;
 
-		// Session object
 		m_session = lmax_fix_session_new(&m_cfg);
 		if (!m_session) {
-			m_recorder->recordSystemMessage("MarketOffice: FIX Session FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "MarketOffice: FIX session cannot be created\n");
-			return;
+			m_recorder->systemEvent("MarketOffice: FIX Session FAILED", SE_TYPE_ERROR);
+			return false;
 		}
 
-		// Socket connection
 		struct hostent *host_ent = gethostbyname(m_broker_config.host);
 
 		if (!host_ent) {
-			m_recorder->recordSystemMessage("MarketOffice: Host lookup FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			error("MarketOffice: Unable to look up %s (%s)", m_broker_config.host, hstrerror(h_errno));
+			m_recorder->systemEvent("MarketOffice: Host lookup FAILED", SE_TYPE_ERROR);
+			return false;
 		}
 
 		char **ap;
@@ -81,43 +88,39 @@ namespace LMAX {
 		}
 
 		if (m_cfg.sockfd < 0) {
-			m_recorder->recordSystemMessage("MarketOffice: Socket connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			error("MarketOffice: Unable to connect to a socket (%s)", strerror(saved_errno));
+			m_recorder->systemEvent("MarketOffice: Socket connection FAILED", SE_TYPE_ERROR);
+			return false;
 		}
 
 		if (lmax_socket_setopt(m_cfg.sockfd, IPPROTO_TCP, TCP_NODELAY, 1) < 0) {
-			m_recorder->recordSystemMessage("MarketOffice: Socket option FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			die("MarketOffice: cannot set socket option TCP_NODELAY");
+			m_recorder->systemEvent("MarketOffice: Socket option FAILED", SE_TYPE_ERROR);
+			return false;
 		}
 
-		// SSL connection
 		SSL_set_fd(m_cfg.ssl, m_cfg.sockfd);
 		int ssl_errno = SSL_connect(m_cfg.ssl);
 
 		if (ssl_errno <= 0) {
-			m_recorder->recordSystemMessage("MarketOffice: SSL FAILED", SYSTEM_RECORD_TYPE_ERROR);
+			m_recorder->systemEvent("MarketOffice: SSL FAILED", SE_TYPE_ERROR);
 			fprintf(stderr, "MarketOffice: SSL FAILED\n");
-			return;
+			return false;
 		}
 
 		fcntl(m_cfg.sockfd, F_SETFL, O_NONBLOCK);
 
 		if (lmax_fix_session_logon(m_session)) {
-			m_recorder->recordSystemMessage("MarketOffice: Logon FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "MarketOffice: Logon FAILED\n");
+			m_recorder->systemEvent("MarketOffice: Logon FAILED", SE_TYPE_ERROR);
+			return false;
 		}
-		m_recorder->recordSystemMessage("MarketOffice: Logon OK", SYSTEM_RECORD_TYPE_SUCCESS);
-		fprintf(stdout, "MarketOffice: Logon OK\n");
+		m_recorder->systemEvent("MarketOffice: Logon OK", SE_TYPE_SUCCESS);
 
 		if (lmax_fix_session_marketdata_request(m_session)) {
-			m_recorder->recordSystemMessage("MarketOffice: Market data request FAILED", SYSTEM_RECORD_TYPE_ERROR);
-			fprintf(stderr, "MarketOffice: Market data request FAILED\n");
+			m_recorder->systemEvent("MarketOffice: Market data request FAILED", SE_TYPE_ERROR);
+			return false;
 		}
-		m_recorder->recordSystemMessage("MarketOffice: Market data request OK", SYSTEM_RECORD_TYPE_SUCCESS);
-		fprintf(stdout, "MarketOffice: Market data request OK\n");
+		m_recorder->systemEvent("MarketOffice: Market data request OK", SE_TYPE_SUCCESS);
 
-		m_poller = std::thread(&MarketOffice::poll, this);
-		m_poller.detach();
+		return true;
 	}
 
 	void MarketOffice::poll() {
@@ -181,7 +184,10 @@ namespace LMAX {
 						(*m_local_md_buffer)[next] = data;
 						m_local_md_buffer->publish(next);
 					} catch (Disruptor::InsufficientCapacityException &e) {
-						fprintf(stderr, "MarketOffice: Market buffer InsufficientCapacityException\n");
+						m_recorder->systemEvent(
+								"MarketOffice: Market buffer InsufficientCapacityException",
+								SE_TYPE_ERROR
+						);
 					}
 
 					try {
@@ -189,7 +195,10 @@ namespace LMAX {
 						(*m_recorder->m_local_records_buffer)[next_record] = data;
 						m_recorder->m_local_records_buffer->publish(next_record);
 					} catch (Disruptor::InsufficientCapacityException &e) {
-						fprintf(stderr, "MarketOffice: Market records buffer InsufficientCapacityException\n");
+						m_recorder->systemEvent(
+								"MarketOffice: Market records buffer InsufficientCapacityException",
+								SE_TYPE_ERROR
+						);
 					}
 				}
 					continue;
@@ -203,33 +212,48 @@ namespace LMAX {
 			}
 		}
 
-		auto next_pause = m_control_buffer->next();
-		(*m_control_buffer)[next_pause] = (ControlEvent) {
-				.source = CES_MARKET_OFFICE,
-				.type = CET_PAUSE,
-				.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
-		};
-		m_control_buffer->publish(next_pause);
+		try {
+			auto next_pause = m_control_buffer->tryNext();
+			(*m_control_buffer)[next_pause] = (ControlEvent) {
+					.source = CES_MARKET_OFFICE,
+					.type = CET_PAUSE,
+					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
+			};
+			m_control_buffer->publish(next_pause);
+		} catch (Disruptor::InsufficientCapacityException &e) {
+			m_recorder->systemEvent(
+					"MarketOffice: control buffer InsufficientCapacityException",
+					SE_TYPE_ERROR
+			);
+		}
 
-		m_recorder->recordSystemMessage("MarketOffice: Connection FAILED", SYSTEM_RECORD_TYPE_ERROR);
-		fprintf(stderr, "MarketOffice: Connection FAILED\n");
+		m_recorder->systemEvent("MarketOffice: Connection FAILED", SE_TYPE_ERROR);
 
-		close(m_session->sockfd);
-		SSL_free(m_session->ssl);
-		ERR_free_strings();
-		EVP_cleanup();
-		lmax_fix_session_free(m_session);
+		do {
+			close(m_session->sockfd);
+			SSL_free(m_session->ssl);
+			ERR_free_strings();
+			EVP_cleanup();
+			lmax_fix_session_free(m_session);
+			std::this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
+		} while (!connectToBroker());
 
-		std::this_thread::sleep_for(std::chrono::seconds(RECONNECT_DELAY_SEC));
+		auto poller = std::thread(&MarketOffice::poll, this);
+		poller.detach();
 
-		connectToBroker();
-
-		auto next_resume = m_control_buffer->next();
-		(*m_control_buffer)[next_resume] = (ControlEvent) {
-				.source = CES_MARKET_OFFICE,
-				.type = CET_RESUME,
-				.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
-		};
-		m_control_buffer->publish(next_resume);
+		try {
+			auto next_resume = m_control_buffer->tryNext();
+			(*m_control_buffer)[next_resume] = (ControlEvent) {
+					.source = CES_MARKET_OFFICE,
+					.type = CET_RESUME,
+					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
+			};
+			m_control_buffer->publish(next_resume);
+		} catch (Disruptor::InsufficientCapacityException &e) {
+			m_recorder->systemEvent(
+					"MarketOffice: control buffer InsufficientCapacityException",
+					SE_TYPE_ERROR
+			);
+		}
 	}
 }
