@@ -203,11 +203,8 @@ namespace LMAX {
 				}
 					continue;
 
-				case LMAX_FIX_MSG_TYPE_TEST_REQUEST:
-					lmax_fix_session_admin(m_session, msg);
-					continue;
-
 				default:
+					lmax_fix_session_admin(m_session, msg);
 					continue;
 			}
 		}
