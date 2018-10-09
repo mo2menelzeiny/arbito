@@ -22,7 +22,8 @@
 #include "RemoteMarketDataEvent.h"
 #include "MarketDataEvent.h"
 #include "ControlEvent.h"
-#include "SystemRecordType.h"
+#include "SystemEventType.h"
+#include "SystemEvent.h"
 
 class Recorder {
 public:
@@ -35,9 +36,9 @@ public:
 
 	void start();
 
-	BusinessState fetchBusinessState();
+	BusinessState businessState();
 
-	void recordSystemMessage(const char *message, SystemRecordType type);
+	void systemEvent(const char *message, SystemEventType type);
 
 private:
 
@@ -49,6 +50,7 @@ public:
 	std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_records_buffer;
 	std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_records_buffer;
 	std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_records_buffer;
+	std::shared_ptr<Disruptor::RingBuffer<SystemEvent>> m_system_records_buffer;
 
 private:
 	const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
@@ -61,7 +63,6 @@ private:
 	const char *m_db_name;
 	mongoc_client_t *m_mongoc_client;
 	mongoc_collection_t *mongoc_coll_orders;
-	std::thread m_poller;
 };
 
 

@@ -28,6 +28,9 @@ Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>>
 	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
 			[]() { return ControlEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
+	m_system_records_buffer = Disruptor::RingBuffer<SystemEvent>::createMultiProducer(
+			[]() { return SystemEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+
 	switch (broker_number) {
 		case 1:
 			m_broker_name = "LMAX";
@@ -59,11 +62,11 @@ void Recorder::start() {
 	m_mongoc_client = mongoc_client_new(m_uri);
 	mongoc_coll_orders = mongoc_client_get_collection(m_mongoc_client, m_db_name, "coll_orders");
 
-	m_poller = std::thread(&Recorder::poll, this);
-	m_poller.detach();
+	auto poller = std::thread(&Recorder::poll, this);
+	poller.detach();
 }
 
-BusinessState Recorder::fetchBusinessState() { // thread safe
+BusinessState Recorder::businessState() {
 	mongoc_client_t *client = mongoc_client_new(m_uri);
 	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_orders");
 	mongoc_cursor_t *cursor;
@@ -97,32 +100,11 @@ BusinessState Recorder::fetchBusinessState() { // thread safe
 	return business_state;
 }
 
-void Recorder::recordSystemMessage(const char *message, SystemRecordType type) { // thread safe
-	bson_error_t error;
-	mongoc_client_t *client = mongoc_client_new(m_uri);
-	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_db_name, "coll_system");
-	bson_t *insert = BCON_NEW (
-			"broker_name", BCON_UTF8(m_broker_name),
-			"message", BCON_UTF8(message),
-			"timestamp_ms", BCON_DATE_TIME(duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count())
-	);
-
-	switch (type) {
-		case SYSTEM_RECORD_TYPE_SUCCESS:
-			BSON_APPEND_UTF8(insert, "message_type", "SUCCESS");
-			break;
-		case SYSTEM_RECORD_TYPE_ERROR:
-			BSON_APPEND_UTF8(insert, "message_type", "ERROR");
-			break;
-	}
-
-	if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
-		fprintf(stderr, "Recorder: %s\n", error.message);
-	}
-
-	bson_destroy(insert);
-	mongoc_collection_destroy(collection);
-	mongoc_client_destroy(client);
+void Recorder::systemEvent(const char *message, SystemEventType type) {
+	auto next = m_system_records_buffer->next();
+	(*m_system_records_buffer)[next].type = type;
+	strcpy((*m_system_records_buffer)[next].message, message);
+	m_system_records_buffer->publish(next);
 }
 
 void Recorder::poll() {
@@ -252,28 +234,28 @@ void Recorder::poll() {
 		return false;
 	};
 
-	/*auto control_logger = spdlog::daily_logger_st("Control", "control_log");
-	auto control_records_poller = m_control_records_buffer->newPoller();
-	m_control_records_buffer->addGatingSequences({control_records_poller->sequence()});
-	auto control_records_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		milliseconds ts_duration(data.timestamp_ms);
-		time_point<system_clock> ts_tp(ts_duration);
-		std::stringstream ts_ss;
-		ts_ss << format("%T", time_point_cast<milliseconds>(ts_tp));
-		control_logger->info(
-				"source: {} type: {} timestamp: {}",
-				data.source, data.type, ts_ss.str()
-		);
-		control_logger->flush();
+	auto system_logger = spdlog::daily_logger_st("System", "system_log");
+	auto system_records_poller = m_system_records_buffer->newPoller();
+	m_system_records_buffer->addGatingSequences({system_records_poller->sequence()});
+	auto system_records_handler = [&](SystemEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		switch (data.type) {
+			case SE_TYPE_ERROR:
+				system_logger->error("{}", data.message);
+				break;
+			case SE_TYPE_SUCCESS:
+				system_logger->info("{}", data.message);
+				break;
+		}
+		system_logger->flush();
 		return false;
-	};*/
+	};
 
 	while (true) {
 		remote_records_poller->poll(remote_records_handler);
 		local_records_poller->poll(local_records_handler);
 		business_records_poller->poll(business_records_handler);
 		trade_records_poller->poll(trade_records_handler);
-		// control_records_poller->poll(control_records_handler);
+		system_records_poller->poll(system_records_handler);
 		std::this_thread::yield();
 	}
 }

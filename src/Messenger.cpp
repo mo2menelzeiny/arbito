@@ -13,8 +13,8 @@ Messenger::Messenger(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> 
 }
 
 void Messenger::start() {
-	m_media_driver = std::thread(&Messenger::mediaDriver, this);
-	m_media_driver.detach();
+	auto media_driver = std::thread(&Messenger::mediaDriver, this);
+	media_driver.detach();
 
 	m_aeron_context.newSubscriptionHandler([](const std::string &channel, std::int32_t streamId,
 	                                          std::int64_t correlationId) {
@@ -25,29 +25,43 @@ void Messenger::start() {
 	});
 
 	m_aeron_context.availableImageHandler([&](aeron::Image &image) {
-		m_recorder->recordSystemMessage("Messenger: Image available", SYSTEM_RECORD_TYPE_SUCCESS);
-		fprintf(stdout, "Messenger: Image available\n");
+		m_recorder->systemEvent("Messenger: Image available", SE_TYPE_SUCCESS);
 	});
 
 	m_aeron_context.unavailableImageHandler([&](aeron::Image &image) {
 		auto now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-		auto next = m_remote_md_buffer->next();
-		(*m_remote_md_buffer)[next] = (RemoteMarketDataEvent) {
-				.bid = -99.0,
-				.offer = 99.0,
-				.timestamp_ms  = now_ms,
-				.rec_timestamp_ms = now_ms
-		};
-		m_remote_md_buffer->publish(next);
-		m_recorder->recordSystemMessage("Messenger: Image unavailable", SYSTEM_RECORD_TYPE_ERROR);
-		fprintf(stderr, "Messenger: Image unavailable\n");
+		try {
+			auto next = m_remote_md_buffer->tryNext();
+			(*m_remote_md_buffer)[next] = (RemoteMarketDataEvent) {
+					.bid = -99.0,
+					.offer = 99.0,
+					.timestamp_ms  = now_ms,
+					.rec_timestamp_ms = now_ms
+			};
+			m_remote_md_buffer->publish(next);
+		} catch (Disruptor::InsufficientCapacityException &e) {
+			m_recorder->systemEvent("Messenger: remote buffer InsufficientCapacityException", SE_TYPE_ERROR);
+		}
+
+		try {
+			auto next = m_recorder->m_remote_records_buffer->tryNext();
+			(*m_recorder->m_remote_records_buffer)[next] = (RemoteMarketDataEvent) {
+					.bid = -99.0,
+					.offer = 99.0,
+					.timestamp_ms  = now_ms,
+					.rec_timestamp_ms = now_ms
+			};
+			m_recorder->m_remote_records_buffer->publish(next);
+		} catch (Disruptor::InsufficientCapacityException &e) {
+			m_recorder->systemEvent("Messenger: remote records buffer InsufficientCapacityException", SE_TYPE_ERROR);
+		}
+		m_recorder->systemEvent("Messenger: Image unavailable", SE_TYPE_ERROR);
 	});
 
 	m_aeron_context.errorHandler([&](const std::exception &exception) {
 		std::string buffer("Messenger: ");
 		buffer.append(exception.what());
-		m_recorder->recordSystemMessage(buffer.c_str(), SYSTEM_RECORD_TYPE_ERROR);
-		fprintf(stderr, "Messenger: %s\n", exception.what());
+		m_recorder->systemEvent(buffer.c_str(), SE_TYPE_ERROR);
 	});
 
 	m_aeron_client = std::make_shared<aeron::Aeron>(m_aeron_context);
@@ -66,8 +80,8 @@ void Messenger::start() {
 		m_market_data_sub = m_aeron_client->findSubscription(md_sub_id);
 	} while (!m_market_data_sub);
 
-	m_poller = std::thread(&Messenger::poll, this);
-	m_poller.detach();
+	auto poller = std::thread(&Messenger::poll, this);
+	poller.detach();
 }
 
 void Messenger::mediaDriver() {
@@ -81,17 +95,17 @@ void Messenger::mediaDriver() {
 	aeron_driver_t *driver = nullptr;
 
 	if (aeron_driver_context_init(&context) < 0) {
-		fprintf(stderr, "ERROR: context init (%d) %s\n", aeron_errcode(), aeron_errmsg());
+		m_recorder->systemEvent("Messenger: context init", SE_TYPE_ERROR);
 		goto cleanup;
 	}
 
 	if (aeron_driver_init(&driver, context) < 0) {
-		fprintf(stderr, "ERROR: driver init (%d) %s\n", aeron_errcode(), aeron_errmsg());
+		m_recorder->systemEvent("Messenger: Driver init", SE_TYPE_ERROR);
 		goto cleanup;
 	}
 
 	if (aeron_driver_start(driver, true) < 0) {
-		fprintf(stderr, "ERROR: driver start (%d) %s\n", aeron_errcode(), aeron_errmsg());
+		m_recorder->systemEvent("Messenger: driver start", SE_TYPE_ERROR);
 		goto cleanup;
 	}
 
@@ -197,7 +211,7 @@ void Messenger::poll() {
 			(*m_remote_md_buffer)[next] = data;
 			m_remote_md_buffer->publish(next);
 		} catch (Disruptor::InsufficientCapacityException &e) {
-			fprintf(stderr, "Messenger: remote buffer InsufficientCapacityException\n");
+			m_recorder->systemEvent("Messenger: remote buffer InsufficientCapacityException", SE_TYPE_ERROR);
 		}
 
 		try {
@@ -205,7 +219,7 @@ void Messenger::poll() {
 			(*m_recorder->m_remote_records_buffer)[next_record] = data;
 			m_recorder->m_remote_records_buffer->publish(next_record);
 		} catch (Disruptor::InsufficientCapacityException &e) {
-			fprintf(stderr, "Messenger: remote records buffer InsufficientCapacityException\n");
+			m_recorder->systemEvent("Messenger: remote records buffer InsufficientCapacityException", SE_TYPE_ERROR);
 		}
 	});
 

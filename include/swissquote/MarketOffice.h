@@ -60,7 +60,7 @@ namespace SWISSQUOTE {
 		void start();
 
 	private:
-		void connectToBroker();
+		bool connectToBroker();
 
 		void poll();
 
@@ -75,7 +75,6 @@ namespace SWISSQUOTE {
 		SSL *m_ssl;
 		struct swissquote_fix_session_cfg m_cfg;
 		struct swissquote_fix_session *m_session;
-		std::thread m_poller;
 	};
 }
 

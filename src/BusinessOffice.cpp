@@ -18,9 +18,9 @@ BusinessOffice::BusinessOffice(const std::shared_ptr<Disruptor::RingBuffer<Contr
 }
 
 void BusinessOffice::start() {
-	m_business_state = m_recorder->fetchBusinessState();
-	m_poller = std::thread(&BusinessOffice::poll, this);
-	m_poller.detach();
+	m_business_state = m_recorder->businessState();
+	auto poller = std::thread(&BusinessOffice::poll, this);
+	poller.detach();
 }
 
 void BusinessOffice::poll() {
@@ -91,7 +91,10 @@ void BusinessOffice::poll() {
 							(*m_business_buffer)[next] = data;
 							m_business_buffer->publish(next);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						try {
@@ -99,7 +102,10 @@ void BusinessOffice::poll() {
 							(*m_recorder->m_business_records_buffer)[next_record] = data;
 							m_recorder->m_business_records_buffer->publish(next_record);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business records buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						local_md.clear();
@@ -125,7 +131,10 @@ void BusinessOffice::poll() {
 							(*m_business_buffer)[next] = data;
 							m_business_buffer->publish(next);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						try {
@@ -133,7 +142,10 @@ void BusinessOffice::poll() {
 							(*m_recorder->m_business_records_buffer)[next_record] = data;
 							m_recorder->m_business_records_buffer->publish(next_record);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business records buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						local_md.clear();
@@ -163,7 +175,10 @@ void BusinessOffice::poll() {
 							(*m_business_buffer)[next] = data;
 							m_business_buffer->publish(next);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						try {
@@ -171,7 +186,10 @@ void BusinessOffice::poll() {
 							(*m_recorder->m_business_records_buffer)[next_record] = data;
 							m_recorder->m_business_records_buffer->publish(next_record);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business records buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						local_md.clear();
@@ -197,7 +215,10 @@ void BusinessOffice::poll() {
 							(*m_business_buffer)[next] = data;
 							m_business_buffer->publish(next);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						try {
@@ -205,7 +226,10 @@ void BusinessOffice::poll() {
 							(*m_recorder->m_business_records_buffer)[next_record] = data;
 							m_recorder->m_business_records_buffer->publish(next_record);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business records buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						local_md.clear();
@@ -235,7 +259,10 @@ void BusinessOffice::poll() {
 							(*m_business_buffer)[next] = data;
 							m_business_buffer->publish(next);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						try {
@@ -243,7 +270,10 @@ void BusinessOffice::poll() {
 							(*m_recorder->m_business_records_buffer)[next_record] = data;
 							m_recorder->m_business_records_buffer->publish(next_record);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business records buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						local_md.clear();
@@ -270,7 +300,10 @@ void BusinessOffice::poll() {
 							(*m_business_buffer)[next] = data;
 							m_business_buffer->publish(next);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						try {
@@ -278,7 +311,10 @@ void BusinessOffice::poll() {
 							(*m_recorder->m_business_records_buffer)[next_record] = data;
 							m_recorder->m_business_records_buffer->publish(next_record);
 						} catch (Disruptor::InsufficientCapacityException &e) {
-							fprintf(stderr, "BusinessOffice: Business records buffer InsufficientCapacityException\n");
+							m_recorder->systemEvent(
+									"BusinessOffice: Business records buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
 						local_md.clear();
@@ -298,7 +334,6 @@ void BusinessOffice::poll() {
 		if (local_md.size() == 1 && (now_ms - local_md.front().timestamp_ms > MD_DELAY_MS)) {
 			local_md.front().timestamp_ms = now_ms;
 		}
-
 		local_md.push_front(data);
 		return false;
 	};
@@ -312,11 +347,9 @@ void BusinessOffice::poll() {
 
 	while (true) {
 		now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-
 		if (local_md.size() > 1 && (now_ms - local_md.back().timestamp_ms > MD_DELAY_MS)) {
 			local_md.pop_back();
 		}
-
 		control_poller->poll(control_handler);
 		local_md_poller->poll(local_md_handler);
 		remote_md_poller->poll(remote_md_handler);
