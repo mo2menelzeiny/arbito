@@ -54,7 +54,7 @@ namespace SWISSQUOTE {
 		TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 		            const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
 		            const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
-		            Recorder &recorder, BrokerConfig broker_config, double lot_size);
+		            Recorder &recorder, BrokerConfig broker_config, double lot_size, const char *main_account);
 
 		void start();
 
@@ -70,6 +70,7 @@ namespace SWISSQUOTE {
 		Recorder *m_recorder;
 		BrokerConfig m_broker_config;
 		double m_lot_size;
+		const char *m_main_account;
 		SSL_CTX *m_ssl_ctx;
 		SSL *m_ssl;
 		struct swissquote_fix_session_cfg m_cfg;

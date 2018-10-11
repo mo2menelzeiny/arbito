@@ -118,6 +118,8 @@ namespace SWISSQUOTE {
 			return false;
 		}
 		m_recorder->systemEvent("MarketOffice: Market data request OK", SE_TYPE_SUCCESS);
+
+		return true;
 	}
 
 	void MarketOffice::poll() {

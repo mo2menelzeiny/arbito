@@ -9,9 +9,10 @@ namespace SWISSQUOTE {
 			const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
 			const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
 			const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
-			Recorder &recorder, BrokerConfig broker_config, double lot_size)
+			Recorder &recorder, BrokerConfig broker_config, double lot_size, const char *main_account)
 			: m_control_buffer(control_buffer), m_business_buffer(business_buffer), m_trade_buffer(trade_buffer),
-			  m_recorder(&recorder), m_broker_config(broker_config), m_lot_size(lot_size) {
+			  m_recorder(&recorder), m_broker_config(broker_config), m_lot_size(lot_size),
+			  m_main_account(main_account) {
 		// Session configurations
 		swissquote_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &swissquote_fix_dialects[SWISSQUOTE_FIX_4_4];
@@ -114,6 +115,8 @@ namespace SWISSQUOTE {
 			return false;
 		}
 		m_recorder->systemEvent("TradeOffice: Logon OK", SE_TYPE_SUCCESS);
+
+		return true;
 	}
 
 	void TradeOffice::poll() {
@@ -134,8 +137,8 @@ namespace SWISSQUOTE {
 					SWISSQUOTE_FIX_CHAR_FIELD(swissquote_Side, data.side),
 					SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
 					SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_lot_size),
-					SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1') // Market best
-
+					SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1'),
+					SWISSQUOTE_FIX_STRING_FIELD(swissquote_Account, m_main_account)
 			};
 
 			struct swissquote_fix_message order_msg{};
@@ -182,6 +185,7 @@ namespace SWISSQUOTE {
 				m_session->active = false;
 			}
 
+			swissquote_fprintmsg(stdout, msg);
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT:
 					if (swissquote_fix_get_field(msg, swissquote_ExecType)->string_value[0] == '2') {
@@ -193,15 +197,24 @@ namespace SWISSQUOTE {
 						data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
 
 						try {
-							auto next = m_trade_buffer->tryNext();
-							(*m_trade_buffer)[next] = data;
-							m_trade_buffer->publish(next);
+							auto next_record = m_recorder->m_trade_records_buffer->tryNext();
+							(*m_recorder->m_trade_records_buffer)[next_record] = data;
+							m_recorder->m_trade_records_buffer->publish(next_record);
 						} catch (Disruptor::InsufficientCapacityException &e) {
 							m_recorder->systemEvent(
-									"TradeOffice: Trade buffer InsufficientCapacityException",
+									"TradeOffice: Trade records buffer InsufficientCapacityException",
 									SE_TYPE_ERROR
 							);
 						}
+					}
+
+					if (swissquote_fix_get_field(msg, swissquote_ExecType)->string_value[0] == '8') {
+						auto data = TradeEvent();
+						strcpy(data.orderId, "FAILED");
+						swissquote_fix_get_string(swissquote_fix_get_field(msg, swissquote_ClOrdID), data.clOrdId, 64);
+						data.side = swissquote_fix_get_field(msg, swissquote_Side)->string_value[0];
+						data.avgPx = 0;
+						data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
 
 						try {
 							auto next_record = m_recorder->m_trade_records_buffer->tryNext();
@@ -214,39 +227,13 @@ namespace SWISSQUOTE {
 							);
 						}
 
-					}
-					continue;
-
-				case SWISSQUOTE_FIX_MSG_TYPE_REJECT: {
-					auto data = TradeEvent();
-					strcpy(data.orderId, "FAILED");
-					strcpy(data.clOrdId, "FAILED");
-					data.side = '0';
-					data.avgPx = 0;
-					data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
-
-					try {
-						auto next = m_trade_buffer->tryNext();
-						(*m_trade_buffer)[next] = data;
-						m_trade_buffer->publish(next);
-					} catch (Disruptor::InsufficientCapacityException &e) {
-						m_recorder->systemEvent(
-								"TradeOffice: Trade buffer InsufficientCapacityException",
-								SE_TYPE_ERROR
-						);
+						char text[64];
+						swissquote_fix_get_string(swissquote_fix_get_field(msg, swissquote_Text), text, 64);
+						std::stringstream ss;
+						ss << "TradeOffice: Order rejected Text: " << text;
+						m_recorder->systemEvent(ss.str().c_str(), SE_TYPE_ERROR);
 					}
 
-					try {
-						auto next_record = m_recorder->m_trade_records_buffer->tryNext();
-						(*m_recorder->m_trade_records_buffer)[next_record] = data;
-						m_recorder->m_trade_records_buffer->publish(next_record);
-					} catch (Disruptor::InsufficientCapacityException &e) {
-						m_recorder->systemEvent(
-								"TradeOffice: Trade records buffer InsufficientCapacityException",
-								SE_TYPE_ERROR
-						);
-					}
-				}
 					continue;
 
 				default:
