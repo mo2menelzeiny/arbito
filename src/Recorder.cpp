@@ -250,12 +250,28 @@ void Recorder::poll() {
 		return false;
 	};
 
+	auto control_records_poller = m_control_records_buffer->newPoller();
+	m_control_records_buffer->addGatingSequences({control_records_poller->sequence()});
+	auto control_records_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		milliseconds ts_duration(data.timestamp_ms);
+		time_point<system_clock> ts_tp(ts_duration);
+		std::stringstream ts_ss;
+		ts_ss << format("%T", time_point_cast<milliseconds>(ts_tp));
+		system_logger->info(
+				"Control event: source: {} type: {} timestamp: {}",
+				data.source, data.type, ts_ss.str()
+		);
+		system_logger->flush();
+		return false;
+	};
+
 	while (true) {
 		remote_records_poller->poll(remote_records_handler);
 		local_records_poller->poll(local_records_handler);
 		business_records_poller->poll(business_records_handler);
 		trade_records_poller->poll(trade_records_handler);
 		system_records_poller->poll(system_records_handler);
+		control_records_poller->poll(control_records_handler);
 		std::this_thread::yield();
 	}
 }
