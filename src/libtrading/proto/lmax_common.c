@@ -225,7 +225,8 @@ int lmax_fix_session_logon(struct lmax_fix_session *session) {
 
 	if (!lmax_fix_message_type_is(response, LMAX_FIX_MSG_TYPE_LOGON)) {
 		lmax_fix_session_logout(session, "First message not a logon");
-
+		fprintf(stderr, "Logon rejected:\n");
+		lmax_fprintmsg(stderr, response);
 		return -1;
 	}
 
