@@ -15,6 +15,7 @@
 
 // SpdLog
 #include "spdlog/sinks/daily_file_sink.h"
+#include "spdlog/sinks/stdout_sinks.h"
 
 // Domain
 #include "BusinessEvent.h"

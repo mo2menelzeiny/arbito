@@ -234,7 +234,7 @@ void Recorder::poll() {
 		return false;
 	};
 
-	auto system_logger = spdlog::daily_logger_st("System", "system_log");
+	auto system_logger = spdlog::stdout_logger_st("System");
 	auto system_records_poller = m_system_records_buffer->newPoller();
 	m_system_records_buffer->addGatingSequences({system_records_poller->sequence()});
 	auto system_records_handler = [&](SystemEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
