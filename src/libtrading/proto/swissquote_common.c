@@ -223,6 +223,8 @@ int swissquote_fix_session_logon(struct swissquote_fix_session *session) {
 
 	if (!swissquote_fix_message_type_is(response, SWISSQUOTE_FIX_MSG_TYPE_LOGON)) {
 		swissquote_fix_session_logout(session, "First message not a logon");
+		fprintf(stderr, "Logon rejected:\n");
+		swissquote_fprintmsg(stderr, response);
 		return -1;
 	}
 
