@@ -185,7 +185,6 @@ namespace SWISSQUOTE {
 				m_session->active = false;
 			}
 
-			swissquote_fprintmsg(stdout, msg);
 			switch (msg->type) {
 				case SWISSQUOTE_FIX_MSG_TYPE_EXECUTION_REPORT:
 					if (swissquote_fix_get_field(msg, swissquote_ExecType)->string_value[0] == '2') {
