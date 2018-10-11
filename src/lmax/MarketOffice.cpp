@@ -102,7 +102,6 @@ namespace LMAX {
 
 		if (ssl_errno <= 0) {
 			m_recorder->systemEvent("MarketOffice: SSL FAILED", SE_TYPE_ERROR);
-			fprintf(stderr, "MarketOffice: SSL FAILED\n");
 			return false;
 		}
 
