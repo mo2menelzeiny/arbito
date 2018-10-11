@@ -112,6 +112,8 @@ namespace LMAX {
 			return false;
 		}
 		m_recorder->systemEvent("TradeOffice: Logon OK", SE_TYPE_SUCCESS);
+
+		return true;
 	}
 
 	void TradeOffice::poll() {
@@ -191,17 +193,6 @@ namespace LMAX {
 						data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
 
 						try {
-							auto next = m_trade_buffer->tryNext();
-							(*m_trade_buffer)[next] = data;
-							m_trade_buffer->publish(next);
-						} catch (Disruptor::InsufficientCapacityException &e) {
-							m_recorder->systemEvent(
-									"TradeOffice: Trade buffer InsufficientCapacityException",
-									SE_TYPE_ERROR
-							);
-						}
-
-						try {
 							auto next_record = m_recorder->m_trade_records_buffer->tryNext();
 							(*m_recorder->m_trade_records_buffer)[next_record] = data;
 							m_recorder->m_trade_records_buffer->publish(next_record);
@@ -213,38 +204,33 @@ namespace LMAX {
 						}
 								
 					}
-					continue;
 
-				case LMAX_FIX_MSG_TYPE_REJECT: {
-					auto data = TradeEvent();
-					strcpy(data.orderId, "FAILED");
-					strcpy(data.clOrdId, "FAILED");
-					data.side = '0';
-					data.avgPx = 0;
-					data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
+					if (lmax_fix_get_field(msg, lmax_ExecType)->string_value[0] == '8') {
+						auto data = TradeEvent();
+						strcpy(data.orderId, "FAILED");
+						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_ClOrdID), data.clOrdId, 64);
+						data.side = lmax_fix_get_field(msg, lmax_Side)->string_value[0];
+						data.avgPx = 0;
+						data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
 
-					try {
-						auto next = m_trade_buffer->tryNext();
-						(*m_trade_buffer)[next] = data;
-						m_trade_buffer->publish(next);
-					} catch (Disruptor::InsufficientCapacityException &e) {
-						m_recorder->systemEvent(
-								"TradeOffice: Trade buffer InsufficientCapacityException",
-								SE_TYPE_ERROR
-						);
+						try {
+							auto next_record = m_recorder->m_trade_records_buffer->tryNext();
+							(*m_recorder->m_trade_records_buffer)[next_record] = data;
+							m_recorder->m_trade_records_buffer->publish(next_record);
+						} catch (Disruptor::InsufficientCapacityException &e) {
+							m_recorder->systemEvent(
+									"TradeOffice: Trade records buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
+						}
+
+						char text[64];
+						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_Text), text, 64);
+						std::stringstream ss;
+						ss << "TradeOffice: Order rejected Text: " << text;
+						m_recorder->systemEvent(ss.str().c_str(), SE_TYPE_ERROR);
 					}
 
-					try {
-						auto next_record = m_recorder->m_trade_records_buffer->tryNext();
-						(*m_recorder->m_trade_records_buffer)[next_record] = data;
-						m_recorder->m_trade_records_buffer->publish(next_record);
-					} catch (Disruptor::InsufficientCapacityException &e) {
-						m_recorder->systemEvent(
-								"TradeOffice: Trade records buffer InsufficientCapacityException",
-								SE_TYPE_ERROR
-						);
-					}
-				}
 					continue;
 
 				default:

@@ -68,17 +68,41 @@ int main() {
 		auto control_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
 				[]() { return ControlEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
 
+		pthread_setname_np(pthread_self(), "main");
+
 		srand(static_cast<unsigned int>(time(nullptr)));
 
-		Recorder recorder(local_buffer, remote_buffer, business_buffer, trade_buffer, control_buffer, uri_string,
-		                  broker, db_name);
+		Recorder recorder(
+				local_buffer,
+				remote_buffer,
+				business_buffer,
+				trade_buffer,
+				control_buffer,
+				uri_string,
+				broker,
+				db_name
+		);
 		recorder.start();
 
-		Messenger messenger(control_buffer, local_buffer, remote_buffer, recorder, messenger_config);
+		Messenger messenger(
+				control_buffer,
+				local_buffer,
+				remote_buffer,
+				recorder,
+				messenger_config
+		);
 		messenger.start();
 
-		BusinessOffice bo(control_buffer, local_buffer, remote_buffer, business_buffer, recorder, diff_open, diff_close,
-		                  lot_size);
+		BusinessOffice bo(
+				control_buffer,
+				local_buffer,
+				remote_buffer,
+				business_buffer,
+				recorder,
+				diff_open,
+				diff_close,
+				lot_size
+		);
 		bo.start();
 
 		LMAX::TradeOffice *lmax_to;
@@ -89,18 +113,44 @@ int main() {
 
 		switch (broker) {
 			case 1:
-				lmax_mo = new LMAX::MarketOffice(control_buffer, local_buffer, recorder, mo_config, spread, lot_size);
-				lmax_to = new LMAX::TradeOffice(control_buffer, business_buffer, trade_buffer, recorder, to_config,
-				                                lot_size);
+				lmax_mo = new LMAX::MarketOffice(
+						control_buffer,
+						local_buffer,
+						recorder,
+						mo_config,
+						spread,
+						lot_size
+				);
+				lmax_to = new LMAX::TradeOffice(
+						control_buffer,
+						business_buffer,
+						trade_buffer,
+						recorder,
+						to_config,
+						lot_size
+				);
 				lmax_mo->start();
 				lmax_to->start();
 				break;
 
 			case 2:
-				swissquote_mo = new SWISSQUOTE::MarketOffice(control_buffer, local_buffer, recorder, mo_config, spread,
-				                                             lot_size);
-				swissquote_to = new SWISSQUOTE::TradeOffice(control_buffer, business_buffer, trade_buffer, recorder,
-				                                            to_config, lot_size);
+				swissquote_mo = new SWISSQUOTE::MarketOffice(
+						control_buffer,
+						local_buffer,
+						recorder,
+						mo_config,
+						spread,
+						lot_size
+				);
+				swissquote_to = new SWISSQUOTE::TradeOffice(
+						control_buffer,
+						business_buffer,
+						trade_buffer,
+						recorder,
+						to_config,
+						lot_size,
+						getenv("ACCOUNT")
+				);
 				swissquote_mo->start();
 				swissquote_to->start();
 				break;
@@ -108,8 +158,6 @@ int main() {
 				recorder.systemEvent("Main: Broker undefined", SE_TYPE_ERROR);
 				return EXIT_FAILURE;
 		}
-
-		pthread_setname_np(pthread_self(), "main");
 
 		auto lower_bound = std::chrono::hours(20) + std::chrono::minutes(55);
 		auto upper_bound = std::chrono::hours(21) + std::chrono::minutes(5);
