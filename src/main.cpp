@@ -129,8 +129,8 @@ int main() {
 						to_config,
 						lot_size
 				);
-				//lmax_mo->start();
-				//lmax_to->start();
+				lmax_mo->start();
+				lmax_to->start();
 				break;
 
 			case 2:
