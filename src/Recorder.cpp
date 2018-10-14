@@ -257,10 +257,7 @@ void Recorder::poll() {
 		time_point<system_clock> ts_tp(ts_duration);
 		std::stringstream ts_ss;
 		ts_ss << format("%T", time_point_cast<milliseconds>(ts_tp));
-		system_logger->info(
-				"Control event: source: {} type: {} timestamp: {}",
-				data.source, data.type, ts_ss.str()
-		);
+		system_logger->info("Control event: type: {} timestamp: {}", data.type, ts_ss.str());
 		system_logger->flush();
 		return false;
 	};

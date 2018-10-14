@@ -211,7 +211,6 @@ namespace LMAX {
 		try {
 			auto next_pause = m_control_buffer->tryNext();
 			(*m_control_buffer)[next_pause] = (ControlEvent) {
-					.source = CES_MARKET_OFFICE,
 					.type = CET_PAUSE,
 					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 			};
@@ -240,7 +239,6 @@ namespace LMAX {
 		try {
 			auto next_resume = m_control_buffer->tryNext();
 			(*m_control_buffer)[next_resume] = (ControlEvent) {
-					.source = CES_MARKET_OFFICE,
 					.type = CET_RESUME,
 					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 			};
