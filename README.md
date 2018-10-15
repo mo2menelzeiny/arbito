@@ -20,7 +20,7 @@
 <p>Set TCP to low latency <code>sudo sysctl -w net.ipv4.tcp_low_latency=1</code>
 
 #### OS Scheduler
-#####Grub boot
+##### Grub boot
 <p>Ioslate cores 1,2,3,4 in grub configurations
 <p>Edit grub file <code>vi /etc/default/grub</code>
 <p>Add <code>"isolcpus=1,2,3,4"</code> to <code>GRUB_CMDLINE_LINUX_DEFAULT</code>
@@ -28,7 +28,7 @@
 <p>Alternative is directly edeting the kernel entry in <code>/boot/grub/grub.conf</code>
 <code>transparent_hugepage=madvise</code>
 
-#####CPUSet Shield
+##### CPUSet Shield
 <p>Using cpuset tool $cset
 <p>create a shield under the name of docker <code>cset shield -k on --userset=docker -c 1-4</code>
 
