@@ -88,7 +88,11 @@ namespace LMAX {
 		}
 
 		if (m_cfg.sockfd < 0) {
-			m_recorder->systemEvent("TradeOffice: Socket connection FAILED", SE_TYPE_ERROR);
+			std::stringstream ss;
+			ss << "TradeOffice: Socket connection FAILED " << saved_errno;
+			const std::string& tmp = ss.str();
+			const char *cstr = tmp.c_str();
+			m_recorder->systemEvent(cstr, SE_TYPE_ERROR);
 			return false;
 		}
 
