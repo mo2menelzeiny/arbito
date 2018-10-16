@@ -3,14 +3,25 @@
 
 using namespace std::chrono;
 
-BusinessOffice::BusinessOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-                               const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-                               const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
-                               const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
-                               Recorder &recorder, double diff_open, double diff_close, double lot_size)
-		: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer),
-		  m_business_buffer(business_buffer), m_recorder(&recorder), m_diff_open(diff_open), m_diff_close(diff_close),
-		  m_lot_size(lot_size) {
+BusinessOffice::BusinessOffice(
+		const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
+		const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
+		const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+		const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
+		Recorder &recorder,
+		double diff_open,
+		double diff_close,
+		double lot_size,
+		int max_orders
+) : m_control_buffer(control_buffer),
+    m_local_md_buffer(local_md_buffer),
+    m_remote_md_buffer(remote_md_buffer),
+    m_business_buffer(business_buffer),
+    m_recorder(&recorder),
+    m_diff_open(diff_open),
+    m_diff_close(diff_close),
+    m_lot_size(lot_size),
+    m_max_orders(max_orders) {
 	m_business_state = (BusinessState) {
 			.open_side = NONE,
 			.orders_count = 0
@@ -81,7 +92,7 @@ void BusinessOffice::poll() {
 		for (std::size_t i = 0; i < local_md.size(); i++) {
 			switch (m_business_state.open_side) {
 				case OPEN_BUY:
-					if (m_business_state.orders_count < MAX_OPEN_ORDERS &&
+					if (m_business_state.orders_count < m_max_orders &&
 					    (remote_md.bid - local_md[i].offer) >= m_diff_open) {
 						++m_business_state.orders_count;
 						auto data = (BusinessEvent) {
@@ -165,7 +176,7 @@ void BusinessOffice::poll() {
 					break;
 
 				case OPEN_SELL:
-					if (m_business_state.orders_count < MAX_OPEN_ORDERS &&
+					if (m_business_state.orders_count < m_max_orders &&
 					    (local_md[i].bid - remote_md.offer) >= m_diff_open) {
 						++m_business_state.orders_count;
 						auto data = (BusinessEvent) {

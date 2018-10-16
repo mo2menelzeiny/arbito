@@ -23,7 +23,11 @@ public:
 			const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
 			const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
 			const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer, Recorder &recorder,
-			double diff_open, double diff_close, double lot_size);
+			double diff_open,
+			double diff_close,
+			double lot_size,
+			int max_orders
+	);
 
 	void start();
 
@@ -39,6 +43,7 @@ private:
 	double m_diff_open;
 	double m_diff_close;
 	double m_lot_size;
+	int m_max_orders;
 	BusinessState m_business_state;
 };
 

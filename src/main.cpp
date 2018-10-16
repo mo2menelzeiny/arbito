@@ -23,6 +23,9 @@ int main() {
 		double lot_size = atof(getenv("LOT_SIZE"));
 		double diff_open = atof(getenv("DIFF_OPEN"));
 		double diff_close = atof(getenv("DIFF_CLOSE"));
+		int max_orders = atoi(getenv("MAX_ORDERS"));
+
+		const char *main_account = getenv("ACCOUNT"); // swissquote only
 
 		const char *uri_string = getenv("MONGO_URI");
 		const char *db_name = getenv("MONGO_DB");
@@ -101,7 +104,8 @@ int main() {
 				recorder,
 				diff_open,
 				diff_close,
-				lot_size
+				lot_size,
+				max_orders
 		);
 		bo.start();
 
@@ -149,7 +153,7 @@ int main() {
 						recorder,
 						to_config,
 						lot_size,
-						getenv("ACCOUNT")
+						main_account
 				);
 				swissquote_mo->start();
 				swissquote_to->start();
