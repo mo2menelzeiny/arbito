@@ -146,15 +146,19 @@ void Recorder::poll() {
 			case OPEN_BUY:
 				if (data.side == '1') {
 					BSON_APPEND_UTF8(insert, "order_type", "OPEN");
+					systemEvent("BusinessOffice: OPEN", SE_TYPE_SUCCESS);
 				} else {
 					BSON_APPEND_UTF8(insert, "order_type", "CLOSE");
+					systemEvent("BusinessOffice: CLOSE", SE_TYPE_SUCCESS);
 				}
 				break;
 			case OPEN_SELL:
 				if (data.side == '2') {
 					BSON_APPEND_UTF8(insert, "order_type", "OPEN");
+					systemEvent("BusinessOffice: OPEN", SE_TYPE_SUCCESS);
 				} else {
 					BSON_APPEND_UTF8(insert, "order_type", "CLOSE");
+					systemEvent("BusinessOffice: CLOSE", SE_TYPE_SUCCESS);
 				}
 				break;
 			case NONE:
