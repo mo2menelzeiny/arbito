@@ -21,6 +21,14 @@ void BusinessOffice::start() {
 	m_business_state = m_recorder->businessState();
 	auto poller = std::thread(&BusinessOffice::poll, this);
 	poller.detach();
+	std::stringstream ss;
+	ss << "BusinessOffice: Open side: "
+	   << m_business_state.open_side
+	   << " Orders count: "
+	   << m_business_state.orders_count;
+	const std::string &tmp = ss.str();
+	const char *cstr = tmp.c_str();
+	m_recorder->systemEvent(cstr, SE_TYPE_SUCCESS);
 }
 
 void BusinessOffice::poll() {
