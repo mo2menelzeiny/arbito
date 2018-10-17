@@ -12,7 +12,8 @@ BusinessOffice::BusinessOffice(
 		double diff_open,
 		double diff_close,
 		double lot_size,
-		int max_orders
+		int max_orders,
+		int local_delay
 ) : m_control_buffer(control_buffer),
     m_local_md_buffer(local_md_buffer),
     m_remote_md_buffer(remote_md_buffer),
@@ -21,7 +22,8 @@ BusinessOffice::BusinessOffice(
     m_diff_open(diff_open),
     m_diff_close(diff_close),
     m_lot_size(lot_size),
-    m_max_orders(max_orders) {
+    m_max_orders(max_orders),
+    m_local_delay(local_delay) {
 	m_business_state = (BusinessState) {
 			.open_side = NONE,
 			.orders_count = 0
@@ -350,7 +352,7 @@ void BusinessOffice::poll() {
 	auto local_md_poller = m_local_md_buffer->newPoller();
 	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
 	auto local_md_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
-		if (local_md.size() == 1 && (now_ms - local_md.front().timestamp_ms > MD_DELAY_MS)) {
+		if (local_md.size() == 1 && (now_ms - local_md.front().timestamp_ms > m_local_delay)) {
 			local_md.front().timestamp_ms = now_ms;
 		}
 		local_md.push_front(data);
@@ -366,7 +368,7 @@ void BusinessOffice::poll() {
 
 	while (true) {
 		now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-		if (local_md.size() > 1 && (now_ms - local_md.back().timestamp_ms > MD_DELAY_MS)) {
+		if (local_md.size() > 1 && (now_ms - local_md.back().timestamp_ms > m_local_delay)) {
 			local_md.pop_back();
 		}
 		control_poller->poll(control_handler);
