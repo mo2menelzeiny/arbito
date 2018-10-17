@@ -232,7 +232,9 @@ namespace LMAX {
 						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_Text), text, 64);
 						std::stringstream ss;
 						ss << "TradeOffice: Order rejected Text: " << text;
-						m_recorder->systemEvent(ss.str().c_str(), SE_TYPE_ERROR);
+						const std::string &tmp = ss.str();
+						const char *cstr = tmp.c_str();
+						m_recorder->systemEvent(cstr, SE_TYPE_ERROR);
 					}
 
 					continue;
