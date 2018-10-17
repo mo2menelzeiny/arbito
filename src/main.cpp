@@ -24,6 +24,7 @@ int main() {
 		double diff_open = atof(getenv("DIFF_OPEN"));
 		double diff_close = atof(getenv("DIFF_CLOSE"));
 		int max_orders = atoi(getenv("MAX_ORDERS"));
+		int local_delay = atoi(getenv("LOCAL_DELAY"));
 
 		const char *main_account = getenv("ACCOUNT"); // swissquote only
 
@@ -105,7 +106,8 @@ int main() {
 				diff_open,
 				diff_close,
 				lot_size,
-				max_orders
+				max_orders,
+				local_delay
 		);
 		bo.start();
 
@@ -133,8 +135,8 @@ int main() {
 						to_config,
 						lot_size
 				);
-				lmax_mo->start();
 				lmax_to->start();
+				lmax_mo->start();
 				break;
 
 			case 2:
@@ -155,8 +157,8 @@ int main() {
 						lot_size,
 						main_account
 				);
-				swissquote_mo->start();
 				swissquote_to->start();
+				swissquote_mo->start();
 				break;
 			default:
 				recorder.systemEvent("Main: Broker undefined", SE_TYPE_ERROR);
