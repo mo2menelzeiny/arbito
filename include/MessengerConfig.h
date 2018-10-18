@@ -6,7 +6,7 @@
 struct MessengerConfig {
 	const char *pub_channel;
 	const char *sub_channel;
-	int market_data_stream_id;
+	int md_stream_id;
 };
 
 

@@ -46,15 +46,23 @@
 #include "ControlEvent.h"
 #include "lmax/Utilities.h"
 
+using namespace Disruptor;
+using namespace std;
+using namespace chrono;
+
 namespace LMAX {
 
 	class TradeOffice {
 
 	public:
-		TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-		            const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
-		            const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
-		            Recorder &recorder, BrokerConfig broker_config, double lot_size);
+		TradeOffice(
+				const shared_ptr<RingBuffer<ControlEvent>> &control_buffer,
+				const shared_ptr<RingBuffer<BusinessEvent>> &business_buffer,
+				const shared_ptr<RingBuffer<TradeEvent>> &trade_buffer,
+				Recorder &recorder,
+				BrokerConfig broker_config,
+				double lot_size
+		);
 
 		void start();
 
@@ -64,9 +72,9 @@ namespace LMAX {
 		void poll();
 
 	private:
-		const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
-		const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_buffer;
-		const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_buffer;
+		const shared_ptr<RingBuffer<ControlEvent>> m_control_buffer;
+		const shared_ptr<RingBuffer<BusinessEvent>> m_business_buffer;
+		const shared_ptr<RingBuffer<TradeEvent>> m_trade_buffer;
 		Recorder *m_recorder;
 		BrokerConfig m_broker_config;
 		double m_lot_size;

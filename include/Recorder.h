@@ -26,14 +26,23 @@
 #include "SystemEventType.h"
 #include "SystemEvent.h"
 
+using namespace date;
+using namespace Disruptor;
+using namespace std;
+using namespace chrono;
+
 class Recorder {
 public:
-	Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-		         const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
-		         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
-		         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
-		         const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-		         const char *uri_string, int broker_num, const char *db_name);
+	Recorder(
+			const shared_ptr<RingBuffer<MarketDataEvent>> &local_md_buffer,
+			const shared_ptr<RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+			const shared_ptr<RingBuffer<BusinessEvent>> &business_buffer,
+			const shared_ptr<RingBuffer<TradeEvent>> &trade_buffer,
+			const shared_ptr<RingBuffer<ControlEvent>> &control_buffer,
+			const char *uri_string,
+			int broker_num,
+			const char *db_name
+	);
 
 	void start();
 
@@ -46,19 +55,16 @@ private:
 	void poll();
 
 public:
-	std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_records_buffer;
-	std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_records_buffer;
-	std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_records_buffer;
-	std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_records_buffer;
-	std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_records_buffer;
-	std::shared_ptr<Disruptor::RingBuffer<SystemEvent>> m_system_records_buffer;
+	shared_ptr<RingBuffer<MarketDataEvent>> m_local_records_buffer;
+	shared_ptr<RingBuffer<RemoteMarketDataEvent>> m_remote_records_buffer;
+	shared_ptr<RingBuffer<SystemEvent>> m_system_records_buffer;
 
 private:
-	const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
-	const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_md_buffer;
-	const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
-	const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_buffer;
-	const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> m_trade_buffer;
+	const shared_ptr<RingBuffer<ControlEvent>> m_control_buffer;
+	const shared_ptr<RingBuffer<MarketDataEvent>> m_local_md_buffer;
+	const shared_ptr<RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
+	const shared_ptr<RingBuffer<BusinessEvent>> m_business_buffer;
+	const shared_ptr<RingBuffer<TradeEvent>> m_trade_buffer;
 	const char *m_uri;
 	const char *m_broker_name;
 	const char *m_db_name;

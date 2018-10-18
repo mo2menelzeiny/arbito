@@ -3,14 +3,19 @@
 
 namespace LMAX {
 
-	using namespace std::chrono;
-
-	TradeOffice::TradeOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-	                         const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
-	                         const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
-	                         Recorder &recorder, BrokerConfig broker_config, double lot_size)
-			: m_control_buffer(control_buffer), m_business_buffer(business_buffer), m_trade_buffer(trade_buffer),
-			  m_recorder(&recorder), m_broker_config(broker_config), m_lot_size(lot_size) {
+	TradeOffice::TradeOffice(
+			const shared_ptr<RingBuffer<ControlEvent>> &control_buffer,
+			const shared_ptr<RingBuffer<BusinessEvent>> &business_buffer,
+			const shared_ptr<RingBuffer<TradeEvent>> &trade_buffer,
+			Recorder &recorder,
+			BrokerConfig broker_config,
+			double lot_size
+	) : m_control_buffer(control_buffer),
+	    m_business_buffer(business_buffer),
+	    m_trade_buffer(trade_buffer),
+	    m_recorder(&recorder),
+	    m_broker_config(broker_config),
+	    m_lot_size(lot_size) {
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
 		m_cfg.heartbtint = broker_config.heartbeat;
@@ -27,10 +32,10 @@ namespace LMAX {
 			ERR_free_strings();
 			EVP_cleanup();
 			lmax_fix_session_free(m_session);
-			std::this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
+			this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
 		};
 
-		auto poller = std::thread(&TradeOffice::poll, this);
+		auto poller = thread(&TradeOffice::poll, this);
 		poller.detach();
 	}
 
@@ -88,9 +93,9 @@ namespace LMAX {
 		}
 
 		if (m_cfg.sockfd < 0) {
-			std::stringstream ss;
+			stringstream ss;
 			ss << "TradeOffice: Socket connection FAILED " << saved_errno;
-			const std::string& tmp = ss.str();
+			const string &tmp = ss.str();
 			const char *cstr = tmp.c_str();
 			m_recorder->systemEvent(cstr, SE_TYPE_ERROR);
 			return false;
@@ -129,7 +134,7 @@ namespace LMAX {
 
 		auto business_poller = m_business_buffer->newPoller();
 		m_business_buffer->addGatingSequences({business_poller->sequence()});
-		auto business_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+		auto business_handler = [&](BusinessEvent &data, int64_t sequence, bool endOfBatch) -> bool {
 			char id[16];
 			sprintf(id, "%i", data.clOrdId);
 			struct lmax_fix_field fields[] = {
@@ -197,16 +202,16 @@ namespace LMAX {
 						data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
 
 						try {
-							auto next_record = m_recorder->m_trade_records_buffer->tryNext();
-							(*m_recorder->m_trade_records_buffer)[next_record] = data;
-							m_recorder->m_trade_records_buffer->publish(next_record);
-						} catch (Disruptor::InsufficientCapacityException &e) {
+							auto next = m_trade_buffer->tryNext();
+							(*m_trade_buffer)[next] = data;
+							m_trade_buffer->publish(next);
+						} catch (InsufficientCapacityException &e) {
 							m_recorder->systemEvent(
 									"TradeOffice: Trade records buffer InsufficientCapacityException",
 									SE_TYPE_ERROR
 							);
 						}
-								
+
 					}
 
 					if (lmax_fix_get_field(msg, lmax_ExecType)->string_value[0] == '8') {
@@ -218,10 +223,10 @@ namespace LMAX {
 						data.timestamp_ms = (curr.tv_sec * 1000) + (curr.tv_nsec / 1000000);
 
 						try {
-							auto next_record = m_recorder->m_trade_records_buffer->tryNext();
-							(*m_recorder->m_trade_records_buffer)[next_record] = data;
-							m_recorder->m_trade_records_buffer->publish(next_record);
-						} catch (Disruptor::InsufficientCapacityException &e) {
+							auto next = m_trade_buffer->tryNext();
+							(*m_trade_buffer)[next] = data;
+							m_trade_buffer->publish(next);
+						} catch (InsufficientCapacityException &e) {
 							m_recorder->systemEvent(
 									"TradeOffice: Trade records buffer InsufficientCapacityException",
 									SE_TYPE_ERROR
@@ -230,9 +235,9 @@ namespace LMAX {
 
 						char text[64];
 						lmax_fix_get_string(lmax_fix_get_field(msg, lmax_Text), text, 64);
-						std::stringstream ss;
+						stringstream ss;
 						ss << "TradeOffice: Order rejected Text: " << text;
-						const std::string &tmp = ss.str();
+						const string &tmp = ss.str();
 						const char *cstr = tmp.c_str();
 						m_recorder->systemEvent(cstr, SE_TYPE_ERROR);
 					}
@@ -255,7 +260,7 @@ namespace LMAX {
 					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 			};
 			m_control_buffer->publish(next_pause);
-		} catch (Disruptor::InsufficientCapacityException &e) {
+		} catch (InsufficientCapacityException &e) {
 			m_recorder->systemEvent("TradeOffice: control buffer InsufficientCapacityException", SE_TYPE_ERROR);
 		}
 
@@ -267,10 +272,10 @@ namespace LMAX {
 			ERR_free_strings();
 			EVP_cleanup();
 			lmax_fix_session_free(m_session);
-			std::this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
+			this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
 		} while (!connectToBroker());
 
-		auto poller = std::thread(&TradeOffice::poll, this);
+		auto poller = thread(&TradeOffice::poll, this);
 		poller.detach();
 
 		try {
@@ -280,7 +285,7 @@ namespace LMAX {
 					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 			};
 			m_control_buffer->publish(next_resume);
-		} catch (Disruptor::InsufficientCapacityException &e) {
+		} catch (InsufficientCapacityException &e) {
 			m_recorder->systemEvent("TradeOffice: control buffer InsufficientCapacityException", SE_TYPE_ERROR);
 		}
 	}

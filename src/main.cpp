@@ -12,6 +12,10 @@
 #include "Disruptor/Disruptor.h"
 #include "Disruptor/BusySpinWaitStrategy.h"
 
+using namespace Disruptor;
+using namespace std;
+using namespace std::chrono;
+
 int main() {
 	try {
 		int broker = atoi(getenv("BROKER"));
@@ -23,8 +27,9 @@ int main() {
 		double lot_size = atof(getenv("LOT_SIZE"));
 		double diff_open = atof(getenv("DIFF_OPEN"));
 		double diff_close = atof(getenv("DIFF_CLOSE"));
+
 		int max_orders = atoi(getenv("MAX_ORDERS"));
-		int local_delay = atoi(getenv("LOCAL_DELAY"));
+		int md_delay = atoi(getenv("MD_DELAY"));
 
 		const char *main_account = getenv("ACCOUNT"); // swissquote only
 
@@ -34,7 +39,7 @@ int main() {
 		MessengerConfig messenger_config = (MessengerConfig) {
 				.pub_channel = getenv("PUB_CHANNEL"),
 				.sub_channel = getenv("SUB_CHANNEL"),
-				.market_data_stream_id = atoi(getenv("MD_STREAM_ID"))
+				.md_stream_id = atoi(getenv("MD_STREAM_ID"))
 		};
 
 		BrokerConfig mo_config = (BrokerConfig) {
@@ -57,20 +62,35 @@ int main() {
 				.heartbeat = heartbeat
 		};
 
-		auto remote_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-				[]() { return RemoteMarketDataEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		auto remote_buffer = RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
+				[] { return RemoteMarketDataEvent(); },
+				32,
+				make_shared<BusySpinWaitStrategy>()
+		);
 
-		auto local_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-				[]() { return MarketDataEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		auto local_buffer = RingBuffer<MarketDataEvent>::createSingleProducer(
+				[] { return MarketDataEvent(); },
+				32,
+				make_shared<BusySpinWaitStrategy>()
+		);
 
-		auto business_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-				[]() { return BusinessEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		auto business_buffer = RingBuffer<BusinessEvent>::createSingleProducer(
+				[] { return BusinessEvent(); },
+				16,
+				make_shared<BusySpinWaitStrategy>()
+		);
 
-		auto trade_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-				[]() { return TradeEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		auto trade_buffer = RingBuffer<TradeEvent>::createSingleProducer(
+				[] { return TradeEvent(); },
+				16,
+				make_shared<BusySpinWaitStrategy>()
+		);
 
-		auto control_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
-				[]() { return ControlEvent(); }, 16, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+		auto control_buffer = RingBuffer<ControlEvent>::createMultiProducer(
+				[] { return ControlEvent(); },
+				16,
+				make_shared<BusySpinWaitStrategy>()
+		);
 
 		pthread_setname_np(pthread_self(), "main");
 
@@ -107,7 +127,7 @@ int main() {
 				diff_close,
 				lot_size,
 				max_orders,
-				local_delay
+				md_delay
 		);
 		bo.start();
 
@@ -135,7 +155,7 @@ int main() {
 						to_config,
 						lot_size
 				);
-				lmax_to->start();
+//				lmax_to->start();
 				lmax_mo->start();
 				break;
 
@@ -157,7 +177,7 @@ int main() {
 						lot_size,
 						main_account
 				);
-				swissquote_to->start();
+//				swissquote_to->start();
 				swissquote_mo->start();
 				break;
 			default:
@@ -165,22 +185,22 @@ int main() {
 				return EXIT_FAILURE;
 		}
 
-		auto lower_bound = std::chrono::hours(20) + std::chrono::minutes(55);
-		auto upper_bound = std::chrono::hours(21) + std::chrono::minutes(5);
+		auto lower_bound = hours(20) + minutes(55);
+		auto upper_bound = hours(21) + minutes(5);
 
 		while (true) {
-			std::this_thread::sleep_for(std::chrono::minutes(1));
-			auto time_point = std::chrono::system_clock::now();
-			std::time_t t = std::chrono::system_clock::to_time_t(time_point);
-			auto gmt_time = std::gmtime(&t);
-			auto now = std::chrono::hours(gmt_time->tm_hour) + std::chrono::minutes(gmt_time->tm_min);
+			this_thread::sleep_for(minutes(1));
+			auto time_point = system_clock::now();
+			time_t t = system_clock::to_time_t(time_point);
+			auto gmt_time = gmtime(&t);
+			auto now = hours(gmt_time->tm_hour) + minutes(gmt_time->tm_min);
 			if (now >= lower_bound && now <= upper_bound) {
 				recorder.systemEvent("END OF DAY", SE_TYPE_SUCCESS);
 				return EXIT_SUCCESS;
 			}
 		}
 
-	} catch (const std::exception &exception) {
+	} catch (const exception &exception) {
 		fprintf(stderr, "EXCEPTION: %s\n", exception.what());
 	}
 

@@ -47,15 +47,23 @@
 #include "ControlEvent.h"
 #include "swissquote/Utilities.h"
 
+using namespace Disruptor;
+using namespace std;
+using namespace chrono;
+
 namespace SWISSQUOTE {
 
 	class MarketOffice {
 
 	public:
-		MarketOffice(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-		             const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-		             Recorder &recorder, BrokerConfig broker_config, double spread,
-		             double lot_size);
+		MarketOffice(
+				const shared_ptr<RingBuffer<ControlEvent>> &control_buffer,
+				const shared_ptr<RingBuffer<MarketDataEvent>> &local_md_buffer,
+				Recorder &recorder,
+				BrokerConfig broker_config,
+				double spread,
+				double lot_size
+		);
 
 		void start();
 
@@ -65,8 +73,8 @@ namespace SWISSQUOTE {
 		void poll();
 
 	private:
-		const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
-		const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_md_buffer;
+		const shared_ptr<RingBuffer<ControlEvent>> m_control_buffer;
+		const shared_ptr<RingBuffer<MarketDataEvent>> m_local_md_buffer;
 		Recorder *m_recorder;
 		BrokerConfig m_broker_config;
 		double m_lot_size;

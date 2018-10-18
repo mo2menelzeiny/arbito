@@ -21,13 +21,22 @@
 #include "Recorder.h"
 #include "MessengerConfig.h"
 
+using namespace Disruptor;
+using namespace aeron;
+using namespace sbe;
+using namespace std;
+using namespace std::chrono;
+
 class Messenger {
 
 public:
-	explicit Messenger(const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-	                   const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-	                   const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
-	                   Recorder &recorder, MessengerConfig config);
+	explicit Messenger(
+			const shared_ptr<RingBuffer<ControlEvent>> &control_buffer,
+			const shared_ptr<RingBuffer<MarketDataEvent>> &local_md_buffer,
+			const shared_ptr<RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+			Recorder &recorder,
+			MessengerConfig config
+	);
 
 	void start();
 
@@ -37,17 +46,17 @@ private:
 	void poll();
 
 private:
-	const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
-	const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_md_buffer;
-	const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
+	const shared_ptr<RingBuffer<ControlEvent>> m_control_buffer;
+	const shared_ptr<RingBuffer<MarketDataEvent>> m_local_md_buffer;
+	const shared_ptr<RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
 	Recorder *m_recorder;
 	MessengerConfig m_config;
-	aeron::Context m_aeron_context;
-	std::shared_ptr<aeron::Aeron> m_aeron_client;
-	std::shared_ptr<aeron::ExclusivePublication> m_market_data_ex_pub;
-	std::shared_ptr<aeron::Subscription> m_market_data_sub;
+	Context m_aeron_context;
+	shared_ptr<Aeron> m_aeron_client;
+	shared_ptr<ExclusivePublication> m_market_data_ex_pub;
+	shared_ptr<Subscription> m_market_data_sub;
 	uint8_t m_buffer[MESSENGER_BUFFER_SIZE];
-	aeron::concurrent::AtomicBuffer m_atomic_buffer;
+	concurrent::AtomicBuffer m_atomic_buffer;
 };
 
 
