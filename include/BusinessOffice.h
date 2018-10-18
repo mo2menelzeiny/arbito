@@ -14,21 +14,24 @@
 #include "ControlEvent.h"
 #include "BusinessState.h"
 
+using namespace Disruptor;
+using namespace std;
+using namespace chrono;
 
 class BusinessOffice {
 
 public:
 	BusinessOffice(
-			const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-			const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-			const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
-			const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
+			const shared_ptr<RingBuffer<ControlEvent>> &control_buffer,
+			const shared_ptr<RingBuffer<MarketDataEvent>> &local_md_buffer,
+			const shared_ptr<RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+			const shared_ptr<RingBuffer<BusinessEvent>> &business_buffer,
 			Recorder &recorder,
 			double diff_open,
 			double diff_close,
 			double lot_size,
 			int max_orders,
-			int local_delay
+			int md_delay
 	);
 
 	void start();
@@ -37,16 +40,16 @@ private:
 	void poll();
 
 private:
-	const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> m_control_buffer;
-	const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_local_md_buffer;
-	const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
-	const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_business_buffer;
+	const shared_ptr<RingBuffer<ControlEvent>> m_control_buffer;
+	const shared_ptr<RingBuffer<MarketDataEvent>> m_local_md_buffer;
+	const shared_ptr<RingBuffer<RemoteMarketDataEvent>> m_remote_md_buffer;
+	const shared_ptr<RingBuffer<BusinessEvent>> m_business_buffer;
 	Recorder *m_recorder;
 	double m_diff_open;
 	double m_diff_close;
 	double m_lot_size;
 	int m_max_orders;
-	int m_local_delay;
+	int m_md_delay;
 	BusinessState m_business_state;
 };
 

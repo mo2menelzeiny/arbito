@@ -3,14 +3,18 @@
 
 namespace LMAX {
 
-	using namespace std::chrono;
-
 	MarketOffice::MarketOffice(
-			const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-			const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-			Recorder &recorder, BrokerConfig broker_config, double spread, double lot_size)
-			: m_control_buffer(control_buffer), m_local_md_buffer(local_md_buffer), m_recorder(&recorder),
-			  m_broker_config(broker_config), m_spread(spread), m_lot_size(lot_size) {
+			const shared_ptr<RingBuffer<ControlEvent>> &control_buffer,
+			const shared_ptr<RingBuffer<MarketDataEvent>> &local_md_buffer,
+			Recorder &recorder,
+			BrokerConfig broker_config,
+			double spread,
+			double lot_size
+	) : m_control_buffer(control_buffer),
+	    m_local_md_buffer(local_md_buffer),
+	    m_recorder(&recorder),
+	    m_broker_config(broker_config),
+	    m_spread(spread), m_lot_size(lot_size) {
 		lmax_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &lmax_fix_dialects[LMAX_FIX_4_4];
 		m_cfg.heartbtint = broker_config.heartbeat;
@@ -27,10 +31,10 @@ namespace LMAX {
 			ERR_free_strings();
 			EVP_cleanup();
 			lmax_fix_session_free(m_session);
-			std::this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
+			this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
 		};
 
-		auto poller = std::thread(&MarketOffice::poll, this);
+		auto poller = thread(&MarketOffice::poll, this);
 		poller.detach();
 	}
 
@@ -88,9 +92,9 @@ namespace LMAX {
 		}
 
 		if (m_cfg.sockfd < 0) {
-			std::stringstream ss;
+			stringstream ss;
 			ss << "MarketOffice: Socket connection FAILED " << saved_errno;
-			const std::string& tmp = ss.str();
+			const string &tmp = ss.str();
 			const char *cstr = tmp.c_str();
 			m_recorder->systemEvent(cstr, SE_TYPE_ERROR);
 			return false;
@@ -186,7 +190,7 @@ namespace LMAX {
 						auto next = m_local_md_buffer->tryNext();
 						(*m_local_md_buffer)[next] = data;
 						m_local_md_buffer->publish(next);
-					} catch (Disruptor::InsufficientCapacityException &e) {
+					} catch (InsufficientCapacityException &e) {
 						m_recorder->systemEvent(
 								"MarketOffice: Market buffer InsufficientCapacityException",
 								SE_TYPE_ERROR
@@ -197,7 +201,7 @@ namespace LMAX {
 						auto next_record = m_recorder->m_local_records_buffer->tryNext();
 						(*m_recorder->m_local_records_buffer)[next_record] = data;
 						m_recorder->m_local_records_buffer->publish(next_record);
-					} catch (Disruptor::InsufficientCapacityException &e) {
+					} catch (InsufficientCapacityException &e) {
 						m_recorder->systemEvent(
 								"MarketOffice: Market records buffer InsufficientCapacityException",
 								SE_TYPE_ERROR
@@ -219,7 +223,7 @@ namespace LMAX {
 					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 			};
 			m_control_buffer->publish(next_pause);
-		} catch (Disruptor::InsufficientCapacityException &e) {
+		} catch (InsufficientCapacityException &e) {
 			m_recorder->systemEvent(
 					"MarketOffice: control buffer InsufficientCapacityException",
 					SE_TYPE_ERROR
@@ -234,10 +238,10 @@ namespace LMAX {
 			ERR_free_strings();
 			EVP_cleanup();
 			lmax_fix_session_free(m_session);
-			std::this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
+			this_thread::sleep_for(seconds(RECONNECT_DELAY_SEC));
 		} while (!connectToBroker());
 
-		auto poller = std::thread(&MarketOffice::poll, this);
+		auto poller = thread(&MarketOffice::poll, this);
 		poller.detach();
 
 		try {
@@ -247,7 +251,7 @@ namespace LMAX {
 					.timestamp_ms  = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
 			};
 			m_control_buffer->publish(next_resume);
-		} catch (Disruptor::InsufficientCapacityException &e) {
+		} catch (InsufficientCapacityException &e) {
 			m_recorder->systemEvent(
 					"MarketOffice: control buffer InsufficientCapacityException",
 					SE_TYPE_ERROR

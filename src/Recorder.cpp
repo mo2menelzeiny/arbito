@@ -1,35 +1,39 @@
 
 #include "Recorder.h"
 
-using namespace date;
-using namespace std::chrono;
+Recorder::Recorder(
+		const shared_ptr<RingBuffer<MarketDataEvent>> &local_md_buffer,
+		const shared_ptr<RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
+		const shared_ptr<RingBuffer<BusinessEvent>> &business_buffer,
+		const shared_ptr<RingBuffer<TradeEvent>> &trade_buffer,
+		const shared_ptr<RingBuffer<ControlEvent>> &control_buffer,
+		const char *uri_string,
+		int broker_number,
+		const char *db_name
+) : m_local_md_buffer(local_md_buffer),
+    m_remote_md_buffer(remote_md_buffer),
+    m_business_buffer(business_buffer),
+    m_trade_buffer(trade_buffer),
+    m_control_buffer(control_buffer),
+    m_uri(uri_string),
+    m_db_name(db_name) {
+	m_local_records_buffer = RingBuffer<MarketDataEvent>::createSingleProducer(
+			[] { return MarketDataEvent(); },
+			64,
+			make_shared<BusySpinWaitStrategy>()
+	);
 
-Recorder::Recorder(const std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &local_md_buffer,
-                   const std::shared_ptr<Disruptor::RingBuffer<RemoteMarketDataEvent>> &remote_md_buffer,
-                   const std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &business_buffer,
-                   const std::shared_ptr<Disruptor::RingBuffer<TradeEvent>> &trade_buffer,
-                   const std::shared_ptr<Disruptor::RingBuffer<ControlEvent>> &control_buffer,
-                   const char *uri_string, int broker_number, const char *db_name)
-		: m_local_md_buffer(local_md_buffer), m_remote_md_buffer(remote_md_buffer), m_business_buffer(business_buffer),
-		  m_trade_buffer(trade_buffer), m_control_buffer(control_buffer), m_uri(uri_string), m_db_name(db_name) {
+	m_remote_records_buffer = RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
+			[] { return RemoteMarketDataEvent(); },
+			64,
+			make_shared<BusySpinWaitStrategy>()
+	);
 
-	m_local_records_buffer = Disruptor::RingBuffer<MarketDataEvent>::createSingleProducer(
-			[]() { return MarketDataEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
-
-	m_remote_records_buffer = Disruptor::RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-			[]() { return RemoteMarketDataEvent(); }, 64, std::make_shared<Disruptor::BusySpinWaitStrategy>());
-
-	m_business_records_buffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-			[]() { return BusinessEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
-
-	m_trade_records_buffer = Disruptor::RingBuffer<TradeEvent>::createSingleProducer(
-			[]() { return TradeEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
-
-	m_control_records_buffer = Disruptor::RingBuffer<ControlEvent>::createMultiProducer(
-			[]() { return ControlEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
-
-	m_system_records_buffer = Disruptor::RingBuffer<SystemEvent>::createMultiProducer(
-			[]() { return SystemEvent(); }, 32, std::make_shared<Disruptor::BusySpinWaitStrategy>());
+	m_system_records_buffer = RingBuffer<SystemEvent>::createMultiProducer(
+			[] { return SystemEvent(); },
+			32,
+			make_shared<BusySpinWaitStrategy>()
+	);
 
 	switch (broker_number) {
 		case 1:
@@ -62,7 +66,7 @@ void Recorder::start() {
 	m_mongoc_client = mongoc_client_new(m_uri);
 	mongoc_coll_orders = mongoc_client_get_collection(m_mongoc_client, m_db_name, "coll_orders");
 
-	auto poller = std::thread(&Recorder::poll, this);
+	auto poller = thread(&Recorder::poll, this);
 	poller.detach();
 }
 
@@ -110,9 +114,9 @@ void Recorder::systemEvent(const char *message, SystemEventType type) {
 void Recorder::poll() {
 	pthread_setname_np(pthread_self(), "recorder");
 
-	auto business_records_poller = m_business_records_buffer->newPoller();
-	m_business_records_buffer->addGatingSequences({business_records_poller->sequence()});
-	auto business_records_handler = [&](BusinessEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto business_records_poller = m_business_buffer->newPoller();
+	m_business_buffer->addGatingSequences({business_records_poller->sequence()});
+	auto business_records_handler = [&](BusinessEvent &data, int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
 		OpenSide open_side = data.open_side;
 
@@ -178,9 +182,9 @@ void Recorder::poll() {
 		return false;
 	};
 
-	auto trade_records_poller = m_trade_records_buffer->newPoller();
-	m_trade_records_buffer->addGatingSequences({trade_records_poller->sequence()});
-	auto trade_records_handler = [&](TradeEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto trade_records_poller = m_trade_buffer->newPoller();
+	m_trade_buffer->addGatingSequences({trade_records_poller->sequence()});
+	auto trade_records_handler = [&](TradeEvent &data, int64_t sequence, bool endOfBatch) -> bool {
 		bson_error_t error;
 		bson_t *selector = BCON_NEW ("clOrdId", data.clOrdId);
 		bson_t *update_or_insert = BCON_NEW (
@@ -206,10 +210,10 @@ void Recorder::poll() {
 	auto remote_logger = spdlog::daily_logger_st("Remote", "remote_log");
 	auto remote_records_poller = m_remote_records_buffer->newPoller();
 	m_remote_records_buffer->addGatingSequences({remote_records_poller->sequence()});
-	auto remote_records_handler = [&](RemoteMarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto remote_records_handler = [&](RemoteMarketDataEvent &data, int64_t sequence, bool endOfBatch) -> bool {
 		milliseconds recv_duration(data.rec_timestamp_ms), ts_duration(data.timestamp_ms);
 		time_point<system_clock> recv_tp(recv_duration), ts_tp(ts_duration);
-		std::stringstream recv_ss, ts_ss;
+		stringstream recv_ss, ts_ss;
 		recv_ss << format("%T", time_point_cast<milliseconds>(recv_tp));
 		ts_ss << format("%T", time_point_cast<milliseconds>(ts_tp));
 		remote_logger->info(
@@ -225,10 +229,10 @@ void Recorder::poll() {
 	auto local_logger = spdlog::daily_logger_st("Local", "local_log");
 	auto local_records_poller = m_local_records_buffer->newPoller();
 	m_local_records_buffer->addGatingSequences({local_records_poller->sequence()});
-	auto local_records_handler = [&](MarketDataEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto local_records_handler = [&](MarketDataEvent &data, int64_t sequence, bool endOfBatch) -> bool {
 		milliseconds ts_duration(data.timestamp_ms);
 		time_point<system_clock> ts_tp(ts_duration);
-		std::stringstream ts_ss;
+		stringstream ts_ss;
 		ts_ss << format("%T", time_point_cast<milliseconds>(ts_tp));
 		local_logger->info(
 				"offer: {} bid: {} broker: {} timestamp: {}",
@@ -241,7 +245,7 @@ void Recorder::poll() {
 	auto system_logger = spdlog::stdout_logger_st("System");
 	auto system_records_poller = m_system_records_buffer->newPoller();
 	m_system_records_buffer->addGatingSequences({system_records_poller->sequence()});
-	auto system_records_handler = [&](SystemEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto system_records_handler = [&](SystemEvent &data, int64_t sequence, bool endOfBatch) -> bool {
 		switch (data.type) {
 			case SE_TYPE_ERROR:
 				system_logger->error("{}", data.message);
@@ -254,12 +258,12 @@ void Recorder::poll() {
 		return false;
 	};
 
-	auto control_records_poller = m_control_records_buffer->newPoller();
-	m_control_records_buffer->addGatingSequences({control_records_poller->sequence()});
-	auto control_records_handler = [&](ControlEvent &data, std::int64_t sequence, bool endOfBatch) -> bool {
+	auto control_records_poller = m_control_buffer->newPoller();
+	m_control_buffer->addGatingSequences({control_records_poller->sequence()});
+	auto control_records_handler = [&](ControlEvent &data, int64_t sequence, bool endOfBatch) -> bool {
 		milliseconds ts_duration(data.timestamp_ms);
 		time_point<system_clock> ts_tp(ts_duration);
-		std::stringstream ts_ss;
+		stringstream ts_ss;
 		ts_ss << format("%T", time_point_cast<milliseconds>(ts_tp));
 		system_logger->info("Control event: type: {} timestamp: {}", data.type, ts_ss.str());
 		system_logger->flush();
@@ -273,6 +277,6 @@ void Recorder::poll() {
 		trade_records_poller->poll(trade_records_handler);
 		system_records_poller->poll(system_records_handler);
 		control_records_poller->poll(control_records_handler);
-		std::this_thread::yield();
+		this_thread::yield();
 	}
 }
