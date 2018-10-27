@@ -55,8 +55,11 @@ void Messenger::start() {
 
 	m_aeron_client = make_shared<Aeron>(m_aeron_context);
 
-	int64_t md_pub_id = m_aeron_client->addExclusivePublication(m_config.pub_channel,
-	                                                                 m_config.md_stream_id);
+	int64_t md_pub_id = m_aeron_client->addExclusivePublication(
+			m_config.pub_channel,
+			m_config.md_stream_id
+	);
+
 	do {
 		this_thread::sleep_for(chrono::nanoseconds(1));
 		m_market_data_ex_pub = m_aeron_client->findExclusivePublication(md_pub_id);
@@ -74,12 +77,6 @@ void Messenger::start() {
 }
 
 void Messenger::mediaDriver() {
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(5, &cpuset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(pthread_self(), "media-driver");
-
 	aeron_driver_context_t *context = nullptr;
 	aeron_driver_t *driver = nullptr;
 
@@ -87,6 +84,29 @@ void Messenger::mediaDriver() {
 		m_recorder->systemEvent("Messenger: context init", SE_TYPE_ERROR);
 		goto cleanup;
 	}
+
+	context->agent_on_start_func = [](void *, const char *role_name) {
+		if (strcmp(role_name, "conductor") == 0) {
+			cpu_set_t cpuset;
+			CPU_ZERO(&cpuset);
+			CPU_SET(5, &cpuset);
+			pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+
+		} else if (strcmp(role_name, "sender") == 0) {
+			cpu_set_t cpuset;
+			CPU_ZERO(&cpuset);
+			CPU_SET(6, &cpuset);
+			pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+
+		} else if (strcmp(role_name, "receiver") == 0) {
+			cpu_set_t cpuset;
+			CPU_ZERO(&cpuset);
+			CPU_SET(7, &cpuset);
+			pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+		}
+
+		pthread_setname_np(pthread_self(), role_name);
+	};
 
 	if (aeron_driver_init(&driver, context) < 0) {
 		m_recorder->systemEvent("Messenger: Driver init", SE_TYPE_ERROR);
@@ -190,53 +210,54 @@ void Messenger::poll() {
 		return false;
 	};
 
+	auto fragmentAssemblerHandler = [&](AtomicBuffer &buffer, index_t offset, index_t length, const Header &header) {
+		if (is_paused) {
+			return;
+		}
+
+		sbe_header.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSENGER_BUFFER_SIZE);
+
+		sbe_market_data.wrapForDecode(
+				reinterpret_cast<char *>(buffer.buffer() + offset),
+				MessageHeader::encodedLength(),
+				sbe_header.blockLength(),
+				sbe_header.version(),
+				MESSENGER_BUFFER_SIZE
+		);
+
+		auto data = (RemoteMarketDataEvent) {
+				.bid = sbe_market_data.bid(),
+				.offer = sbe_market_data.offer(),
+				.timestamp_ms  = sbe_market_data.timestamp(),
+				.rec_timestamp_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
+		};
+
+		try {
+			auto next = m_remote_md_buffer->tryNext();
+			(*m_remote_md_buffer)[next] = data;
+			m_remote_md_buffer->publish(next);
+		} catch (InsufficientCapacityException &e) {
+			m_recorder->systemEvent("Messenger: remote buffer InsufficientCapacityException", SE_TYPE_ERROR);
+		}
+
+		try {
+			auto next_record = m_recorder->m_remote_records_buffer->tryNext();
+			(*m_recorder->m_remote_records_buffer)[next_record] = data;
+			m_recorder->m_remote_records_buffer->publish(next_record);
+		} catch (InsufficientCapacityException &e) {
+			m_recorder->systemEvent(
+					"Messenger: remote records buffer InsufficientCapacityException",
+					SE_TYPE_ERROR
+			);
+		}
+	};
+
+	FragmentAssembler fragmentAssembler(fragmentAssemblerHandler);
 	NoOpIdleStrategy noOpIdleStrategy;
-	FragmentAssembler assembler([&](AtomicBuffer &buffer, index_t offset, index_t length, const Header &header) {
-				if (is_paused) {
-					return;
-				}
-
-				sbe_header.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, MESSENGER_BUFFER_SIZE);
-
-				sbe_market_data.wrapForDecode(
-						reinterpret_cast<char *>(buffer.buffer() + offset),
-						MessageHeader::encodedLength(),
-						sbe_header.blockLength(),
-						sbe_header.version(),
-						MESSENGER_BUFFER_SIZE
-				);
-
-				auto data = (RemoteMarketDataEvent) {
-						.bid = sbe_market_data.bid(),
-						.offer = sbe_market_data.offer(),
-						.timestamp_ms  = sbe_market_data.timestamp(),
-						.rec_timestamp_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count()
-				};
-
-				try {
-					auto next = m_remote_md_buffer->tryNext();
-					(*m_remote_md_buffer)[next] = data;
-					m_remote_md_buffer->publish(next);
-				} catch (InsufficientCapacityException &e) {
-					m_recorder->systemEvent("Messenger: remote buffer InsufficientCapacityException", SE_TYPE_ERROR);
-				}
-
-				try {
-					auto next_record = m_recorder->m_remote_records_buffer->tryNext();
-					(*m_recorder->m_remote_records_buffer)[next_record] = data;
-					m_recorder->m_remote_records_buffer->publish(next_record);
-				} catch (InsufficientCapacityException &e) {
-					m_recorder->systemEvent(
-							"Messenger: remote records buffer InsufficientCapacityException",
-							SE_TYPE_ERROR
-					);
-				}
-			}
-	);
 
 	while (true) {
 		control_poller->poll(control_handler);
 		local_md_poller->poll(local_md_handler);
-		noOpIdleStrategy.idle(m_market_data_sub->poll(assembler.handler(), 10));
+		noOpIdleStrategy.idle(m_market_data_sub->poll(fragmentAssembler.handler(), 10));
 	}
 }

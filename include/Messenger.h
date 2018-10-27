@@ -11,6 +11,7 @@
 // Aeron media driver
 #include <aeronmd/aeronmd.h>
 #include <aeronmd/concurrent/aeron_atomic64_gcc_x86_64.h>
+#include <aeron_driver_context.h>
 
 // SBE
 #include "sbe/sbe.h"
