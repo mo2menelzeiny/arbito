@@ -50,7 +50,7 @@ void BusinessOffice::poll() {
 	pthread_setname_np(pthread_self(), "business");
 
 	deque<MarketDataEvent> local_md;
-	deque<RemoteMarketDataEvent> remote_md;
+	RemoteMarketDataEvent remote_md{.bid = -99.0, .offer = 99.0};
 
 	bool is_paused = false;
 	auto control_poller = m_control_buffer->newPoller();
@@ -60,7 +60,7 @@ void BusinessOffice::poll() {
 			case CET_PAUSE:
 				is_paused = true;
 				local_md.clear();
-				remote_md.clear();
+				remote_md = (RemoteMarketDataEvent) {.bid = -99.0, .offer = 99.0};
 				break;
 			case CET_RESUME:
 				is_paused = false;
@@ -92,202 +92,203 @@ void BusinessOffice::poll() {
 			m_business_state.open_side = NONE;
 		}
 
+		bool can_open = m_business_state.orders_count < m_max_orders;
+		
 		for (auto &local_idx : local_md) {
-			for (auto &remote_idx : remote_md) {
-				switch (m_business_state.open_side) {
-					case OPEN_BUY:
-						if (m_business_state.orders_count < m_max_orders &&
-						    (remote_idx.bid - local_idx.offer) >= m_diff_open) {
-							++m_business_state.orders_count;
-							auto data = (BusinessEvent) {
-									.side = '1',
-									.clOrdId = rand(),
-									.trigger_px = local_idx.offer,
-									.remote_px = remote_idx.bid,
-									.timestamp_ms = now_ms,
-									.open_side = m_business_state.open_side,
-									.orders_count = m_business_state.orders_count
-							};
+			double diff_1 = local_idx.bid - remote_md.offer;
+			double diff_2 = remote_md.bid - local_idx.offer;
 
-							try {
-								auto next = m_business_buffer->tryNext();
-								(*m_business_buffer)[next] = data;
-								m_business_buffer->publish(next);
-							} catch (InsufficientCapacityException &e) {
-								m_recorder->systemEvent(
-										"BusinessOffice: Business buffer InsufficientCapacityException",
-										SE_TYPE_ERROR
-								);
-							}
+			switch (m_business_state.open_side) {
+				case OPEN_BUY:
+					if (can_open && diff_2 >= m_diff_open) {
+						++m_business_state.orders_count;
+						auto data = (BusinessEvent) {
+								.side = '1',
+								.clOrdId = rand(),
+								.trigger_px = local_idx.offer,
+								.remote_px = remote_md.bid,
+								.timestamp_ms = now_ms,
+								.open_side = m_business_state.open_side,
+								.orders_count = m_business_state.orders_count
+						};
 
-							local_md.clear();
-							remote_md.clear();
-							order_delay_start = time(nullptr);
-							is_order_delayed = true;
-							return;
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (InsufficientCapacityException &e) {
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
-						if ((local_idx.bid - remote_idx.offer) >= m_diff_close) {
-							--m_business_state.orders_count;
-							auto data = (BusinessEvent) {
-									.side = '2',
-									.clOrdId = rand(),
-									.trigger_px = local_idx.bid,
-									.remote_px = remote_idx.offer,
-									.timestamp_ms = now_ms,
-									.open_side = m_business_state.open_side,
-									.orders_count = m_business_state.orders_count
-							};
+						local_md.clear();
+						remote_md = (RemoteMarketDataEvent) {.bid = -99.0, .offer = 99.0};
+						order_delay_start = time(nullptr);
+						is_order_delayed = true;
+						return;
+					}
 
-							try {
-								auto next = m_business_buffer->tryNext();
-								(*m_business_buffer)[next] = data;
-								m_business_buffer->publish(next);
-							} catch (InsufficientCapacityException &e) {
-								m_recorder->systemEvent(
-										"BusinessOffice: Business buffer InsufficientCapacityException",
-										SE_TYPE_ERROR
-								);
-							}
+					if (diff_1 >= m_diff_close) {
+						--m_business_state.orders_count;
+						auto data = (BusinessEvent) {
+								.side = '2',
+								.clOrdId = rand(),
+								.trigger_px = local_idx.bid,
+								.remote_px = remote_md.offer,
+								.timestamp_ms = now_ms,
+								.open_side = m_business_state.open_side,
+								.orders_count = m_business_state.orders_count
+						};
 
-							local_md.clear();
-							remote_md.clear();
-							order_delay_start = time(nullptr);
-							is_order_delayed = true;
-							return;
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (InsufficientCapacityException &e) {
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
-						break;
+						local_md.clear();
+						remote_md = (RemoteMarketDataEvent) {.bid = -99.0, .offer = 99.0};
+						order_delay_start = time(nullptr);
+						is_order_delayed = true;
+						return;
+					}
 
-					case OPEN_SELL:
-						if (m_business_state.orders_count < m_max_orders &&
-						    (local_idx.bid - remote_idx.offer) >= m_diff_open) {
-							++m_business_state.orders_count;
-							auto data = (BusinessEvent) {
-									.side = '2',
-									.clOrdId = rand(),
-									.trigger_px = local_idx.bid,
-									.remote_px = remote_idx.offer,
-									.timestamp_ms = now_ms,
-									.open_side = m_business_state.open_side,
-									.orders_count = m_business_state.orders_count
-							};
+					break;
 
-							try {
-								auto next = m_business_buffer->tryNext();
-								(*m_business_buffer)[next] = data;
-								m_business_buffer->publish(next);
-							} catch (InsufficientCapacityException &e) {
-								m_recorder->systemEvent(
-										"BusinessOffice: Business buffer InsufficientCapacityException",
-										SE_TYPE_ERROR
-								);
-							}
+				case OPEN_SELL:
+					if (can_open && diff_1 >= m_diff_open) {
+						++m_business_state.orders_count;
+						auto data = (BusinessEvent) {
+								.side = '2',
+								.clOrdId = rand(),
+								.trigger_px = local_idx.bid,
+								.remote_px = remote_md.offer,
+								.timestamp_ms = now_ms,
+								.open_side = m_business_state.open_side,
+								.orders_count = m_business_state.orders_count
+						};
 
-							local_md.clear();
-							remote_md.clear();
-							order_delay_start = time(nullptr);
-							is_order_delayed = true;
-							return;
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (InsufficientCapacityException &e) {
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
-						if (remote_idx.bid - local_idx.offer >= m_diff_close) {
-							--m_business_state.orders_count;
-							auto data = (BusinessEvent) {
-									.side = '1',
-									.clOrdId = rand(),
-									.trigger_px = local_idx.offer,
-									.remote_px = remote_idx.bid,
-									.timestamp_ms = now_ms,
-									.open_side = m_business_state.open_side,
-									.orders_count = m_business_state.orders_count
-							};
+						local_md.clear();
+						remote_md = (RemoteMarketDataEvent) {.bid = -99.0, .offer = 99.0};
+						order_delay_start = time(nullptr);
+						is_order_delayed = true;
+						return;
+					}
 
-							try {
-								auto next = m_business_buffer->tryNext();
-								(*m_business_buffer)[next] = data;
-								m_business_buffer->publish(next);
-							} catch (InsufficientCapacityException &e) {
-								m_recorder->systemEvent(
-										"BusinessOffice: Business buffer InsufficientCapacityException",
-										SE_TYPE_ERROR
-								);
-							}
+					if (diff_2 >= m_diff_close) {
+						--m_business_state.orders_count;
+						auto data = (BusinessEvent) {
+								.side = '1',
+								.clOrdId = rand(),
+								.trigger_px = local_idx.offer,
+								.remote_px = remote_md.bid,
+								.timestamp_ms = now_ms,
+								.open_side = m_business_state.open_side,
+								.orders_count = m_business_state.orders_count
+						};
 
-							local_md.clear();
-							remote_md.clear();
-							order_delay_start = time(nullptr);
-							is_order_delayed = true;
-							return;
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (InsufficientCapacityException &e) {
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
-						break;
+						local_md.clear();
+						remote_md = (RemoteMarketDataEvent) {.bid = -99.0, .offer = 99.0};
+						order_delay_start = time(nullptr);
+						is_order_delayed = true;
+						return;
+					}
 
-					case NONE:
-						if ((local_idx.bid - remote_idx.offer) >= m_diff_open) {
-							m_business_state.open_side = OPEN_SELL;
-							++m_business_state.orders_count;
-							auto data = (BusinessEvent) {
-									.side = '2',
-									.clOrdId = rand(),
-									.trigger_px = local_idx.bid,
-									.remote_px = remote_idx.offer,
-									.timestamp_ms = now_ms,
-									.open_side = m_business_state.open_side,
-									.orders_count = m_business_state.orders_count
-							};
+					break;
 
-							try {
-								auto next = m_business_buffer->tryNext();
-								(*m_business_buffer)[next] = data;
-								m_business_buffer->publish(next);
-							} catch (InsufficientCapacityException &e) {
-								m_recorder->systemEvent(
-										"BusinessOffice: Business buffer InsufficientCapacityException",
-										SE_TYPE_ERROR
-								);
-							}
+				case NONE:
+					if (diff_1 >= m_diff_open) {
+						m_business_state.open_side = OPEN_SELL;
+						++m_business_state.orders_count;
+						auto data = (BusinessEvent) {
+								.side = '2',
+								.clOrdId = rand(),
+								.trigger_px = local_idx.bid,
+								.remote_px = remote_md.offer,
+								.timestamp_ms = now_ms,
+								.open_side = m_business_state.open_side,
+								.orders_count = m_business_state.orders_count
+						};
 
-							local_md.clear();
-							remote_md.clear();
-							order_delay_start = time(nullptr);
-							is_order_delayed = true;
-							return;
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (InsufficientCapacityException &e) {
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
-						if ((remote_idx.bid - local_idx.offer) >= m_diff_open) {
-							m_business_state.open_side = OPEN_BUY;
-							++m_business_state.orders_count;
-							auto data = (BusinessEvent) {
-									.side = '1',
-									.clOrdId = rand(),
-									.trigger_px = local_idx.offer,
-									.remote_px = remote_idx.bid,
-									.timestamp_ms = now_ms,
-									.open_side = m_business_state.open_side,
-									.orders_count = m_business_state.orders_count
-							};
+						local_md.clear();
+						remote_md = (RemoteMarketDataEvent) {.bid = -99.0, .offer = 99.0};
+						order_delay_start = time(nullptr);
+						is_order_delayed = true;
+						return;
+					}
 
-							try {
-								auto next = m_business_buffer->tryNext();
-								(*m_business_buffer)[next] = data;
-								m_business_buffer->publish(next);
-							} catch (InsufficientCapacityException &e) {
-								m_recorder->systemEvent(
-										"BusinessOffice: Business buffer InsufficientCapacityException",
-										SE_TYPE_ERROR
-								);
-							}
+					if (diff_2 >= m_diff_open) {
+						m_business_state.open_side = OPEN_BUY;
+						++m_business_state.orders_count;
+						auto data = (BusinessEvent) {
+								.side = '1',
+								.clOrdId = rand(),
+								.trigger_px = local_idx.offer,
+								.remote_px = remote_md.bid,
+								.timestamp_ms = now_ms,
+								.open_side = m_business_state.open_side,
+								.orders_count = m_business_state.orders_count
+						};
 
-							local_md.clear();
-							remote_md.clear();
-							order_delay_start = time(nullptr);
-							is_order_delayed = true;
-							return;
+						try {
+							auto next = m_business_buffer->tryNext();
+							(*m_business_buffer)[next] = data;
+							m_business_buffer->publish(next);
+						} catch (InsufficientCapacityException &e) {
+							m_recorder->systemEvent(
+									"BusinessOffice: Business buffer InsufficientCapacityException",
+									SE_TYPE_ERROR
+							);
 						}
 
-						break;
-				}
+						local_md.clear();
+						remote_md = (RemoteMarketDataEvent) {.bid = -99.0, .offer = 99.0};
+						order_delay_start = time(nullptr);
+						is_order_delayed = true;
+						return;
+					}
+
+					break;
 			}
 		}
 	};
@@ -305,10 +306,7 @@ void BusinessOffice::poll() {
 	auto remote_md_poller = m_remote_md_buffer->newPoller();
 	m_remote_md_buffer->addGatingSequences({remote_md_poller->sequence()});
 	auto remote_md_handler = [&](RemoteMarketDataEvent &data, int64_t sequence, bool endOfBatch) -> bool {
-		if (remote_md.size() == 1 && (now_ms - remote_md.front().timestamp_ms > m_md_delay)) {
-			remote_md.front().timestamp_ms = now_ms;
-		}
-		remote_md.push_front(data);
+		remote_md = data;
 		return false;
 	};
 
@@ -317,10 +315,6 @@ void BusinessOffice::poll() {
 
 		if (local_md.size() > 1 && (now_ms - local_md.back().timestamp_ms > m_md_delay)) {
 			local_md.pop_back();
-		}
-
-		if (remote_md.size() > 1 && (now_ms - remote_md.back().timestamp_ms > m_md_delay)) {
-			remote_md.pop_back();
 		}
 
 		control_poller->poll(control_handler);
