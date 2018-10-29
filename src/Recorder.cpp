@@ -206,7 +206,6 @@ void Recorder::poll() {
 		return false;
 	};
 
-	auto latency_logger = spdlog::daily_logger_st("Latency", "latency_log");
 	auto remote_logger = spdlog::daily_logger_st("Remote", "remote_log");
 	auto remote_records_poller = m_remote_records_buffer->newPoller();
 	m_remote_records_buffer->addGatingSequences({remote_records_poller->sequence()});
@@ -221,8 +220,6 @@ void Recorder::poll() {
 				data.offer, data.bid, ts_ss.str(), recv_ss.str()
 		);
 		remote_logger->flush();
-		latency_logger->info("{}ms", data.rec_timestamp_ms - data.timestamp_ms);
-		latency_logger->flush();
 		return false;
 	};
 
