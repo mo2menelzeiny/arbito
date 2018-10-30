@@ -155,7 +155,7 @@ int main() {
 						to_config,
 						lot_size
 				);
-//				lmax_to->start();
+				lmax_to->start();
 				lmax_mo->start();
 				break;
 
@@ -177,7 +177,7 @@ int main() {
 						lot_size,
 						main_account
 				);
-//				swissquote_to->start();
+				swissquote_to->start();
 				swissquote_mo->start();
 				break;
 			default:
