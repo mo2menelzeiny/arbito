@@ -61,8 +61,7 @@ namespace SWISSQUOTE {
 				const shared_ptr<RingBuffer<TradeEvent>> &trade_buffer,
 				Recorder &recorder,
 				BrokerConfig broker_config,
-				double lot_size,
-				const char *main_account
+				double lot_size
 		);
 
 		void start();
@@ -79,7 +78,6 @@ namespace SWISSQUOTE {
 		Recorder *m_recorder;
 		BrokerConfig m_broker_config;
 		double m_lot_size;
-		const char *m_main_account;
 		SSL_CTX *m_ssl_ctx;
 		SSL *m_ssl;
 		struct swissquote_fix_session_cfg m_cfg;

@@ -9,15 +9,13 @@ namespace SWISSQUOTE {
 			const shared_ptr<RingBuffer<TradeEvent>> &trade_buffer,
 			Recorder &recorder,
 			BrokerConfig broker_config,
-			double lot_size,
-			const char *main_account
+			double lot_size
 	) : m_control_buffer(control_buffer),
 	    m_business_buffer(business_buffer),
 	    m_trade_buffer(trade_buffer),
 	    m_recorder(&recorder),
 	    m_broker_config(broker_config),
-	    m_lot_size(lot_size),
-	    m_main_account(main_account) {
+	    m_lot_size(lot_size) {
 		swissquote_fix_session_cfg_init(&m_cfg);
 		m_cfg.dialect = &swissquote_fix_dialects[SWISSQUOTE_FIX_4_4];
 		m_cfg.heartbtint = broker_config.heartbeat;
@@ -146,7 +144,6 @@ namespace SWISSQUOTE {
 					SWISSQUOTE_FIX_STRING_FIELD(swissquote_TransactTime, m_session->str_now),
 					SWISSQUOTE_FIX_FLOAT_FIELD(swissquote_OrderQty, m_lot_size),
 					SWISSQUOTE_FIX_CHAR_FIELD(swissquote_OrdType, '1'),
-					SWISSQUOTE_FIX_STRING_FIELD(swissquote_Account, m_main_account)
 			};
 
 			struct swissquote_fix_message order_msg{};

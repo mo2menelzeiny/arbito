@@ -31,8 +31,6 @@ int main() {
 		int max_orders = atoi(getenv("MAX_ORDERS"));
 		int md_delay = atoi(getenv("MD_DELAY"));
 
-		const char *main_account = getenv("ACCOUNT"); // swissquote only
-
 		const char *uri_string = getenv("MONGO_URI");
 		const char *db_name = getenv("MONGO_DB");
 
@@ -174,8 +172,7 @@ int main() {
 						trade_buffer,
 						recorder,
 						to_config,
-						lot_size,
-						main_account
+						lot_size
 				);
 				swissquote_to->start();
 				swissquote_mo->start();
