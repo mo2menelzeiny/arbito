@@ -291,15 +291,15 @@ void BusinessOffice::poll() {
 					break;
 			}
 		}
+
+		remote_md = (RemoteMarketDataEvent) {.bid = -99.0, .offer = 99.0};
+
 	};
 
 	auto local_md_poller = m_local_md_buffer->newPoller();
 	m_local_md_buffer->addGatingSequences({local_md_poller->sequence()});
 	auto local_md_handler = [&](MarketDataEvent &data, int64_t sequence, bool endOfBatch) -> bool {
-		if (local_md.size() == 1 && (now_ms - local_md.front().timestamp_ms > m_md_delay)) {
-			local_md.front().timestamp_ms = now_ms;
-		}
-		local_md.push_front(data);
+		local_md.push_back(data);
 		return false;
 	};
 
@@ -313,8 +313,8 @@ void BusinessOffice::poll() {
 	while (true) {
 		now_ms = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 
-		if (local_md.size() > 1 && (now_ms - local_md.back().timestamp_ms > m_md_delay)) {
-			local_md.pop_back();
+		if (!local_md.empty() && now_ms - local_md.front().timestamp_ms > m_md_delay) {
+			local_md.pop_front();
 		}
 
 		control_poller->poll(control_handler);
