@@ -11,21 +11,20 @@ cd Disruptor-cpp-master
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j 4
 make -j 4 install PREFIX=/usr/local
 
 #return to externals/
 cd ../..
 
 echo "Installing Aeron.."
-wget https://github.com/real-logic/aeron/archive/1.11.1.tar.gz
-tar zvxf 1.11.1.tar.gz
-rm 1.11.1.tar.gz
-cd aeron-1.11.1
+wget https://github.com/real-logic/aeron/archive/1.11.3.tar.gz
+tar zvxf 1.11.3.tar.gz
+rm 1.11.3.tar.gz
+cd aeron-1.11.3
 mkdir -p cppbuild/Debug
 cd cppbuild/Debug
-cmake -DBUILD_AERON_DRIVER=ON ../..
-make -j 4
+cmake -DBUILD_AERON_DRIVER=ON -DAERON_TESTS=OFF -DAERON_BUILD_SAMPLES=OFF -DCOVERAGE_BUILD=OFF\
+ -DAERON_BUILD_DOCUMENTATION=OFF ../..
 make -j 4 install PREFIX=/usr/local
 
 ##return to externals/
@@ -39,7 +38,6 @@ cd mongo-c-driver-1.12.0
 mkdir cmake-build
 cd cmake-build
 cmake .. -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DCMAKE_BUILD_TYPE=Release
-make -j 4
 make -j 4 install PREFIX=/usr/local
 
 #Leave to root
