@@ -1,13 +1,14 @@
-#include "libtrading/proto/fix_message.h"
 
-#include "libtrading/proto/fix_session.h"
-#include "libtrading/read-write.h"
-#include "libtrading/buffer.h"
-#include "libtrading/array.h"
-#include "libtrading/trace.h"
-#include "libtrading/itoa.h"
+#include <libtrading/proto/fix_message.h>
 
-#include "libtrading/modp_numtoa.h"
+#include <libtrading/proto/fix_session.h>
+#include <libtrading/read-write.h>
+#include <libtrading/buffer.h>
+#include <libtrading/array.h>
+#include <libtrading/trace.h>
+#include <libtrading/itoa.h>
+
+#include <libtrading/modp_numtoa.h>
 
 #include <sys/socket.h>
 #include <inttypes.h>
@@ -20,44 +21,53 @@
 #include <stdio.h>
 
 const char *fix_msg_types[FIX_MSG_TYPE_MAX] = {
-	[FIX_MSG_TYPE_HEARTBEAT]		    = "0",
-	[FIX_MSG_TYPE_TEST_REQUEST]		    = "1",
-	[FIX_MSG_TYPE_RESEND_REQUEST]		= "2",
-	[FIX_MSG_TYPE_REJECT]			    = "3",
-	[FIX_MSG_TYPE_SEQUENCE_RESET]		= "4",
-	[FIX_MSG_TYPE_LOGOUT]			    = "5",
-	[FIX_MSG_TYPE_EXECUTION_REPORT]		= "8",
-	[FIX_MSG_ORDER_CANCEL_REJECT]		= "9",
-	[FIX_MSG_TYPE_LOGON]			    = "A",
-	[FIX_MSG_TYPE_NEW_ORDER_SINGLE]		= "D",
-	[FIX_MSG_ORDER_CANCEL_REQUEST]		= "F",
-	[FIX_MSG_ORDER_CANCEL_REPLACE]		= "G",
-	[FIX_MSG_TYPE_SNAPSHOT_REFRESH]		= "W",
-	[FIX_MSG_TYPE_INCREMENT_REFRESH]	= "X",
-	[FIX_MSG_TYPE_SESSION_STATUS]		= "h",
-	[FIX_MSG_TYPE_SECURITY_STATUS]		= "f",
-	[FIX_MSG_ORDER_MASS_CANCEL_REQUEST]	= "q",
-	[FIX_MSG_ORDER_MASS_CANCEL_REPORT]	= "r",
-	[FIX_MSG_QUOTE_REQUEST]				= "R",
-	[FIX_MSG_SECURITY_DEFINITION_REQUEST]	= "c",
-	[FIX_MSG_NEW_ORDER_CROSS]	     	= "s",
-	[FIX_MSG_MASS_QUOTE]				= "i",
-	[FIX_MSG_QUOTE_CANCEL]				= "Z",
-	[FIX_MSG_SECURITY_DEFINITION]		= "d",
-	[FIX_MSG_QUOTE_ACKNOWLEDGEMENT]		= "b",
-	[FIX_MSG_ORDER_MASS_STATUS_REQUEST]	= "AF",
-	[FIX_MSG_ORDER_MASS_ACTION_REQUEST]	= "CA",
-	[FIX_MSG_ORDER_MASS_ACTION_REPORT]	= "BZ",
+		[FIX_MSG_TYPE_HEARTBEAT] = "0",
+		[FIX_MSG_TYPE_TEST_REQUEST] = "1",
+		[FIX_MSG_TYPE_RESEND_REQUEST] = "2",
+		[FIX_MSG_TYPE_REJECT] = "3",
+		[FIX_MSG_TYPE_SEQUENCE_RESET] = "4",
+		[FIX_MSG_TYPE_LOGOUT] = "5",
+		[FIX_MSG_TYPE_EXECUTION_REPORT] = "8",
+		[FIX_MSG_TYPE_ORDER_CANCEL_REJECT] = "9",
+		[FIX_MSG_TYPE_LOGON] = "A",
+		[FIX_MSG_TYPE_NEW_ORDER_SINGLE] = "D",
+		[FIX_MSG_TYPE_ORDER_CANCEL_REQUEST] = "F",
+		[FIX_MSG_TYPE_ORDER_CANCEL_REPLACE_REQUEST] = "G",
+		[FIX_MSG_TYPE_ORDER_STATUS_REQUEST] = "H",
+		[FIX_MSG_TYPE_MARKET_DATA_REQUEST] = "V",
+		[FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH] = "W",
+		[FIX_MSG_TYPE_MARKET_DATA_REQUEST_REJECT] = "Y",
+		[FIX_MSG_TYPE_TRADE_CAPTURE_REPORT_REQUEST] = "AD",
+		[FIX_MSG_TYPE_TRADE_CAPTURE_REPORT] = "AE",
+		[FIX_MSG_TYPE_TRADE_CAPTURE_REPORT_REQUEST_ACK] = "AQ",
+		[FIX_MSG_TYPE_QUOTE_REQUEST] = "R",
+		[FIX_MSG_TYPE_MASS_QUOTE] = "i",
+		[FIX_MSG_TYPE_MASS_QUOTE_ACK] = "b",
+		[FIX_MSG_TYPE_QUOTE_REQUEST_REJECT] = "AG",
+		[FIX_MSG_TYPE_QUOTE_CANCEL] = "Z",
+		[FIX_MSG_TYPE_QUOTE] = "S",
+		[FIX_MSG_TYPE_QUOTE_RESPONSE] = "AJ",
+		[FIX_MSG_TYPE_NEW_ORDER_LIST] = "E",
+		[FIX_MSG_TYPE_REQUEST_FOR_POSITIONS] = "AN",
+		[FIX_MSG_TYPE_REQUEST_FOR_POSITIONS_ACK] = "AO",
+		[FIX_MSG_TYPE_POSITION_REPORT] = "AP",
+		[FIX_MSG_TYPE_ORDER_MASS_STATUS_REQUEST] = "AF",
+
 };
 
-enum fix_msg_type fix_msg_type_parse(const char *s, const char delim)
-{
+enum fix_msg_type fix_msg_type_parse(const char *s, const char delim) {
 	if (s[1] != delim) {
 		if (s[2] != delim)
 			return FIX_MSG_TYPE_UNKNOWN;
-		if (s[0] == 'A' && s[1] == 'F') return FIX_MSG_ORDER_MASS_STATUS_REQUEST;
-		else if (s[0] == 'C' && s[1] == 'A') return FIX_MSG_ORDER_MASS_ACTION_REQUEST;
-		else if (s[0] == 'B' && s[1] == 'Z') return FIX_MSG_ORDER_MASS_ACTION_REPORT;
+		if (s[0] == 'A' && s[1] == 'J') return FIX_MSG_TYPE_QUOTE_RESPONSE;
+		else if (s[0] == 'A' && s[1] == 'D') return FIX_MSG_TYPE_TRADE_CAPTURE_REPORT_REQUEST;
+		else if (s[0] == 'A' && s[1] == 'G') return FIX_MSG_TYPE_QUOTE_REQUEST_REJECT;
+		else if (s[0] == 'A' && s[1] == 'N') return FIX_MSG_TYPE_REQUEST_FOR_POSITIONS;
+		else if (s[0] == 'A' && s[1] == 'O') return FIX_MSG_TYPE_REQUEST_FOR_POSITIONS_ACK;
+		else if (s[0] == 'A' && s[1] == 'P') return FIX_MSG_TYPE_POSITION_REPORT;
+		else if (s[0] == 'A' && s[1] == 'F') return FIX_MSG_TYPE_ORDER_MASS_STATUS_REQUEST;
+		else if (s[0] == 'C' && s[1] == 'E') return FIX_MSG_TYPE_TRADE_CAPTURE_REPORT;
+		else if (s[0] == 'B' && s[1] == 'Q') return FIX_MSG_TYPE_TRADE_CAPTURE_REPORT_REQUEST_ACK;
 		else return FIX_MSG_TYPE_UNKNOWN;
 	}
 
@@ -65,37 +75,56 @@ enum fix_msg_type fix_msg_type_parse(const char *s, const char delim)
 	 * Single-character message type:
 	 */
 	switch (s[0]) {
-	case '0': return FIX_MSG_TYPE_HEARTBEAT;
-	case '1': return FIX_MSG_TYPE_TEST_REQUEST;
-	case '2': return FIX_MSG_TYPE_RESEND_REQUEST;
-	case '3': return FIX_MSG_TYPE_REJECT;
-	case '4': return FIX_MSG_TYPE_SEQUENCE_RESET;
-	case '5': return FIX_MSG_TYPE_LOGOUT;
-	case '8': return FIX_MSG_TYPE_EXECUTION_REPORT;
-	case '9': return FIX_MSG_ORDER_CANCEL_REJECT;
-	case 'A': return FIX_MSG_TYPE_LOGON;
-	case 'D': return FIX_MSG_TYPE_NEW_ORDER_SINGLE;
-	case 'F': return FIX_MSG_ORDER_CANCEL_REQUEST;
-	case 'G': return FIX_MSG_ORDER_CANCEL_REPLACE;
-	case 'W': return FIX_MSG_TYPE_SNAPSHOT_REFRESH;
-	case 'X': return FIX_MSG_TYPE_INCREMENT_REFRESH;
-	case 'h': return FIX_MSG_TYPE_SESSION_STATUS;
-	case 'f': return FIX_MSG_TYPE_SECURITY_STATUS;
-	case 'q': return FIX_MSG_ORDER_MASS_CANCEL_REQUEST;
-	case 'r': return FIX_MSG_ORDER_MASS_CANCEL_REPORT;
-	case 'R': return FIX_MSG_QUOTE_REQUEST;
-	case 'c': return FIX_MSG_SECURITY_DEFINITION_REQUEST;
-	case 's': return FIX_MSG_NEW_ORDER_CROSS;
-	case 'i': return FIX_MSG_MASS_QUOTE;
-	case 'Z': return FIX_MSG_QUOTE_CANCEL;
-	case 'd': return FIX_MSG_SECURITY_DEFINITION;
-	case 'b': return FIX_MSG_QUOTE_ACKNOWLEDGEMENT;
-	default : return FIX_MSG_TYPE_UNKNOWN;
+		case '0':
+			return FIX_MSG_TYPE_HEARTBEAT;
+		case '1':
+			return FIX_MSG_TYPE_TEST_REQUEST;
+		case '2':
+			return FIX_MSG_TYPE_RESEND_REQUEST;
+		case '3':
+			return FIX_MSG_TYPE_REJECT;
+		case '4':
+			return FIX_MSG_TYPE_SEQUENCE_RESET;
+		case '5':
+			return FIX_MSG_TYPE_LOGOUT;
+		case '8':
+			return FIX_MSG_TYPE_EXECUTION_REPORT;
+		case '9':
+			return FIX_MSG_TYPE_ORDER_CANCEL_REJECT;
+		case 'A':
+			return FIX_MSG_TYPE_LOGON;
+		case 'D':
+			return FIX_MSG_TYPE_NEW_ORDER_SINGLE;
+		case 'F':
+			return FIX_MSG_TYPE_ORDER_CANCEL_REQUEST;
+		case 'G':
+			return FIX_MSG_TYPE_ORDER_CANCEL_REPLACE_REQUEST;
+		case 'H':
+			return FIX_MSG_TYPE_ORDER_STATUS_REQUEST;
+		case 'W':
+			return FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH;
+		case 'V':
+			return FIX_MSG_TYPE_MARKET_DATA_REQUEST;
+		case 'Y':
+			return FIX_MSG_TYPE_MARKET_DATA_REQUEST_REJECT;
+		case 'R':
+			return FIX_MSG_TYPE_QUOTE_REQUEST;
+		case 'i':
+			return FIX_MSG_TYPE_MASS_QUOTE;
+		case 'b':
+			return FIX_MSG_TYPE_MASS_QUOTE_ACK;
+		case 'Z':
+			return FIX_MSG_TYPE_QUOTE_CANCEL;
+		case 'S':
+			return FIX_MSG_TYPE_QUOTE;
+		case 'E':
+			return FIX_MSG_TYPE_NEW_ORDER_LIST;
+		default :
+			return FIX_MSG_TYPE_UNKNOWN;
 	}
 }
 
-int64_t fix_atoi64(const char *p, const char **end)
-{
+int64_t fix_atoi64(const char *p, const char **end) {
 	int64_t ret = 0;
 	bool neg = false;
 	if (*p == '-') {
@@ -103,7 +132,7 @@ int64_t fix_atoi64(const char *p, const char **end)
 		p++;
 	}
 	while (*p >= '0' && *p <= '9') {
-		ret = (ret*10) + (*p - '0');
+		ret = (ret * 10) + (*p - '0');
 		p++;
 	}
 	if (neg) {
@@ -115,11 +144,10 @@ int64_t fix_atoi64(const char *p, const char **end)
 	return ret;
 }
 
-inline int fix_uatoi(const char *p, const char **end)
-{
+inline int fix_uatoi(const char *p, const char **end) {
 	int ret = 0;
 	while (*p >= '0' && *p <= '9') {
-		ret = (ret*10) + (*p - '0');
+		ret = (ret * 10) + (*p - '0');
 		p++;
 	}
 	if (end) {
@@ -128,8 +156,7 @@ inline int fix_uatoi(const char *p, const char **end)
 	return ret;
 }
 
-static int parse_tag(struct buffer *self, int *tag)
-{
+static int parse_tag(struct buffer *self, int *tag) {
 	const char *delim;
 	const char *start;
 	const char *end;
@@ -151,8 +178,7 @@ static int parse_tag(struct buffer *self, int *tag)
 	return 0;
 }
 
-static int parse_value(struct buffer *self, const char **value)
-{
+static int parse_value(struct buffer *self, const char **value) {
 	char *start, *end;
 
 	start = buffer_start(self);
@@ -169,8 +195,7 @@ static int parse_value(struct buffer *self, const char **value)
 	return 0;
 }
 
-static void next_tag(struct buffer *self)
-{
+static void next_tag(struct buffer *self) {
 	char *delim;
 
 	delim = buffer_find(self, 0x01);
@@ -184,8 +209,7 @@ static void next_tag(struct buffer *self)
 	buffer_advance(self, 1);
 }
 
-static int match_field(struct buffer *self, int tag, const char **value)
-{
+static int match_field(struct buffer *self, int tag, const char **value) {
 	int ptag, ret;
 
 	ret = parse_tag(self, &ptag);
@@ -199,13 +223,12 @@ static int match_field(struct buffer *self, int tag, const char **value)
 
 	return parse_value(self, value);
 
-fail:
+	fail:
 	next_tag(self);
 	return ret;
 }
 
-static int parse_field(struct buffer *self, int *tag, const char **value)
-{
+static int parse_field(struct buffer *self, int *tag, const char **value) {
 	int ret;
 
 	ret = parse_tag(self, tag);
@@ -215,61 +238,312 @@ static int parse_field(struct buffer *self, int *tag, const char **value)
 
 	return parse_value(self, value);
 
-fail:
+	fail:
 	next_tag(self);
 	return ret;
 }
 
-static enum fix_type fix_tag_type(int tag)
-{
+static enum fix_type fix_tag_type(int tag) {
 	switch (tag) {
-	case CheckSum:			return FIX_TYPE_CHECKSUM;
-	case LastMsgSeqNumProcessed:	return FIX_TYPE_INT;
-	case MDPriceLevel:		return FIX_TYPE_INT;
-	case BeginSeqNo:		return FIX_TYPE_INT;
-	case RefSeqNum:			return FIX_TYPE_INT;
-	case EndSeqNo:			return FIX_TYPE_INT;
-	case NewSeqNo:			return FIX_TYPE_INT;
-	case RptSeq:			return FIX_TYPE_INT;
-	case GapFillFlag:		return FIX_TYPE_STRING;
-	case PossDupFlag:		return FIX_TYPE_STRING;
-	case SecurityID:		return FIX_TYPE_STRING;
-	case TestReqID:			return FIX_TYPE_STRING;
-	case MsgSeqNum:			return FIX_TYPE_MSGSEQNUM;
-	case MDEntrySize:		return FIX_TYPE_FLOAT;
-	case LastShares:		return FIX_TYPE_FLOAT;
-	case LeavesQty:			return FIX_TYPE_FLOAT;
-	case MDEntryPx:			return FIX_TYPE_FLOAT;
-	case OrderQty:			return FIX_TYPE_FLOAT;
-	case CumQty:			return FIX_TYPE_FLOAT;
-	case LastPx:			return FIX_TYPE_FLOAT;
-	case AvgPx:			return FIX_TYPE_FLOAT;
-	case Price:			return FIX_TYPE_FLOAT;
-	case TradingSessionID:		return FIX_TYPE_STRING;
-	case MDUpdateAction:		return FIX_TYPE_STRING;
-	case TransactTime:		return FIX_TYPE_STRING;
-	case ExecTransType:		return FIX_TYPE_STRING;
-	case OrigClOrdID:		return FIX_TYPE_STRING;
-	case MDEntryType:		return FIX_TYPE_STRING;
-	case OrdStatus:			return FIX_TYPE_STRING;
-	case ExecType:			return FIX_TYPE_STRING;
-	case Password:			return FIX_TYPE_STRING;
-	case Account:			return FIX_TYPE_STRING;
-	case ClOrdID:			return FIX_TYPE_STRING;
-	case OrderID:			return FIX_TYPE_STRING;
-	case OrdType:			return FIX_TYPE_STRING;
-	case ExecID:			return FIX_TYPE_STRING;
-	case Symbol:			return FIX_TYPE_STRING;
-	case Side:			return FIX_TYPE_STRING;
-	case Text:			return FIX_TYPE_STRING;
-	case OrdRejReason:		return FIX_TYPE_INT;
-	case MultiLegReportingType:	return FIX_TYPE_CHAR;
-	default:			return FIX_TYPE_STRING;	/* unrecognized tag */
+		case CheckSum:
+			return FIX_TYPE_CHECKSUM;
+		case LastMsgSeqNumProcessed:
+			return FIX_TYPE_INT;
+		case MDPriceLevel:
+			return FIX_TYPE_INT;
+		case BeginSeqNo:
+			return FIX_TYPE_INT;
+		case RefSeqNum:
+			return FIX_TYPE_INT;
+		case EndSeqNo:
+			return FIX_TYPE_INT;
+		case NewSeqNo:
+			return FIX_TYPE_INT;
+		case RptSeq:
+			return FIX_TYPE_INT;
+		case GapFillFlag:
+			return FIX_TYPE_STRING;
+		case PossDupFlag:
+			return FIX_TYPE_STRING;
+		case SecurityID:
+			return FIX_TYPE_STRING;
+		case TestReqID:
+			return FIX_TYPE_STRING;
+		case QuoteID:
+			return FIX_TYPE_STRING;
+		case SettlCurrAmt:
+			return FIX_TYPE_STRING;
+		case SettlCurrency:
+			return FIX_TYPE_STRING;
+		case QuoteReqID:
+			return FIX_TYPE_STRING;
+		case BidPx:
+			return FIX_TYPE_FLOAT;
+		case OfferPx:
+			return FIX_TYPE_FLOAT;
+		case BidSize:
+			return FIX_TYPE_FLOAT;
+		case OfferSize:
+			return FIX_TYPE_FLOAT;
+		case MsgSeqNum:
+			return FIX_TYPE_MSGSEQNUM;
+		case MDEntrySize:
+			return FIX_TYPE_FLOAT;
+		case LastQty:
+			return FIX_TYPE_FLOAT;
+		case LeavesQty:
+			return FIX_TYPE_FLOAT;
+		case SettlCurrFxRate:
+			return FIX_TYPE_STRING;
+		case SettlCurrFxRateCalc:
+			return FIX_TYPE_CHAR;
+		case SecondaryOrderID:
+			return FIX_TYPE_STRING;
+		case IssueDate:
+			return FIX_TYPE_STRING;
+		case MDEntryPx:
+			return FIX_TYPE_FLOAT;
+		case OrderQty:
+			return FIX_TYPE_FLOAT;
+		case CumQty:
+			return FIX_TYPE_FLOAT;
+		case LastPx:
+			return FIX_TYPE_FLOAT;
+		case AvgPx:
+			return FIX_TYPE_FLOAT;
+		case Price:
+			return FIX_TYPE_FLOAT;
+		case TradingSessionID:
+			return FIX_TYPE_STRING;
+		case MDUpdateAction:
+			return FIX_TYPE_STRING;
+		case TransactTime:
+			return FIX_TYPE_STRING;
+		case ExecTransType:
+			return FIX_TYPE_STRING;
+		case OrigClOrdID:
+			return FIX_TYPE_STRING;
+		case MDEntryType:
+			return FIX_TYPE_STRING;
+		case OrdStatus:
+			return FIX_TYPE_STRING;
+		case ExecType:
+			return FIX_TYPE_STRING;
+		case Password:
+			return FIX_TYPE_STRING;
+		case Account:
+			return FIX_TYPE_STRING;
+		case ClOrdID:
+			return FIX_TYPE_STRING;
+		case OrderID:
+			return FIX_TYPE_STRING;
+		case OrdType:
+			return FIX_TYPE_STRING;
+		case ExecID:
+			return FIX_TYPE_STRING;
+		case Symbol:
+			return FIX_TYPE_STRING;
+		case Side:
+			return FIX_TYPE_STRING;
+		case Text:
+			return FIX_TYPE_STRING;
+		case OrdRejReason:
+			return FIX_TYPE_INT;
+		case SecurityDesc:
+			return FIX_TYPE_STRING;
+		case MultiLegReportingType:
+			return FIX_TYPE_CHAR;
+		case NoPartyIDs:
+			return FIX_TYPE_STRING;
+		case Username:
+			return FIX_TYPE_STRING;
+		case ExecInst:
+			return FIX_TYPE_CHAR;
+		case SecurityIDSource:
+			return FIX_TYPE_STRING;
+		case TimeInForce:
+			return FIX_TYPE_CHAR;
+		case SettlDate:
+			return FIX_TYPE_STRING;
+		case ListID:
+			return FIX_TYPE_STRING;
+		case ListSeqNo:
+			return FIX_TYPE_INT;
+		case TotNoOrders:
+			return FIX_TYPE_INT;
+		case NoOrders:
+			return FIX_TYPE_INT;
+		case TradeDate:
+			return FIX_TYPE_STRING;
+		case Signature:
+			return FIX_TYPE_STRING;
+		case SignatureLength:
+			return FIX_TYPE_INT;
+		case RawDataLength:
+			return FIX_TYPE_INT;
+		case RawData:
+			return FIX_TYPE_STRING;
+		case PossResend:
+			return FIX_TYPE_INT;
+		case StopPx:
+			return FIX_TYPE_FLOAT;
+		case ExDestination:
+			return FIX_TYPE_STRING;
+		case CXlRejReason:
+			return FIX_TYPE_INT;
+		case NoRelatedSym:
+			return FIX_TYPE_INT;
+		case MDReqID:
+			return FIX_TYPE_STRING;
+		case SubscriptionRequestType:
+			return FIX_TYPE_CHAR;
+		case MarketDepth:
+			return FIX_TYPE_INT;
+		case MDUpdateType:
+			return FIX_TYPE_INT;
+		case NoMDEntryTypes:
+			return FIX_TYPE_INT;
+		case NoMDEntries:
+			return FIX_TYPE_INT;
+		case MDEntryDate:
+			return FIX_TYPE_STRING;
+		case MDEntryTime:
+			return FIX_TYPE_STRING;
+		case QuoteCondition:
+			return FIX_TYPE_CHAR;
+		case MDReqRejReason:
+			return FIX_TYPE_CHAR;
+		case NoQuoteEntries:
+			return FIX_TYPE_INT;
+		case NoQuoteSets:
+			return FIX_TYPE_INT;
+		case QuoteStatus:
+			return FIX_TYPE_CHAR;
+		case QuoteCancelType:
+			return FIX_TYPE_CHAR;
+		case QuoteEntryID:
+			return FIX_TYPE_STRING;
+		case QuoteRejectReason:
+			return FIX_TYPE_STRING;
+		case QuoteSetId:
+			return FIX_TYPE_INT;
+		case QuoteEntries:
+			return FIX_TYPE_INT;
+		case EncodedTextLen:
+			return FIX_TYPE_INT;
+		case EncodedText:
+			return FIX_TYPE_STRING;
+		case RefTagID:
+			return FIX_TYPE_INT;
+		case RefMsgType:
+			return FIX_TYPE_STRING;
+		case SessionRejectReason:
+			return FIX_TYPE_INT;
+		case MaxMessageSize:
+			return FIX_TYPE_INT;
+		case NoMsgTypes:
+			return FIX_TYPE_INT;
+		case MsgDirection:
+			return FIX_TYPE_CHAR;
+		case CxlRejResponseTo:
+			return FIX_TYPE_CHAR;
+		case TestMessageIndicator:
+			return FIX_TYPE_CHAR;
+		case SecondaryExecID:
+			return FIX_TYPE_STRING;
+		case QuoteType:
+			return FIX_TYPE_CHAR;
+		case NoSides:
+			return FIX_TYPE_INT;
+		case TradeRequestID:
+			return FIX_TYPE_STRING;
+		case TradeRequestType:
+			return FIX_TYPE_INT;
+		case NoDates:
+			return FIX_TYPE_INT;
+		case AccountType:
+			return FIX_TYPE_CHAR;
+		case ClOrdLinkID:
+			return FIX_TYPE_STRING;
+		case MassStatusReqID:
+			return FIX_TYPE_STRING;
+		case MassStatusReqType:
+			return FIX_TYPE_STRING;
+		case QuoteRequestRejectReason:
+			return FIX_TYPE_STRING;
+		case QuoteRespID:
+			return FIX_TYPE_STRING;
+		case QuoteRespType:
+			return FIX_TYPE_CHAR;
+		case NoPositions:
+			return FIX_TYPE_STRING;
+		case PosType:
+			return FIX_TYPE_STRING;
+		case LongQty:
+			return FIX_TYPE_FLOAT;
+		case ShortQty:
+			return FIX_TYPE_FLOAT;
+		case PosAmtType:
+			return FIX_TYPE_STRING;
+		case PosAmt:
+			return FIX_TYPE_CHAR;
+		case PosReqID:
+			return FIX_TYPE_STRING;
+		case ClearingBusinessDate:
+			return FIX_TYPE_STRING;
+		case PosMaintRptID:
+			return FIX_TYPE_STRING;
+		case TotalNumPosReports:
+			return FIX_TYPE_INT;
+		case PosReqResult:
+			return FIX_TYPE_CHAR;
+		case PosReqStatus:
+			return FIX_TYPE_CHAR;
+		case SettlPrice:
+			return FIX_TYPE_FLOAT;
+		case SettlPriceType:
+			return FIX_TYPE_CHAR;
+		case PriorSettlPrice:
+			return FIX_TYPE_CHAR;
+		case PosReqType:
+			return FIX_TYPE_CHAR;
+		case NoPosAmt:
+			return FIX_TYPE_INT;
+		case TotNumTradeReports:
+			return FIX_TYPE_INT;
+		case TradeRequestResult:
+			return FIX_TYPE_INT;
+		case TradeRequestStatus:
+			return FIX_TYPE_INT;
+		case NextExpectedMsgSeqNum:
+			return FIX_TYPE_MSGSEQNUM;
+		case OrdStatusReqID:
+			return FIX_TYPE_STRING;
+		case TotNumReports:
+			return FIX_TYPE_INT;
+		case LastRptRequested:
+			return FIX_TYPE_CHAR;
+		case ContingencyType:
+			return FIX_TYPE_CHAR;
+		case AccountBalance:
+			return FIX_TYPE_FLOAT;
+		case SendMissedMessages:
+			return FIX_TYPE_CHAR;
+		case LinkedPositions:
+			return FIX_TYPE_STRING;
+		case Equity:
+			return FIX_TYPE_STRING;
+		case UsedMargin:
+			return FIX_TYPE_STRING;
+		case MaintenanceMargin:
+			return FIX_TYPE_STRING;
+		default:
+			return FIX_TYPE_STRING;    /* unrecognized tag */
 	}
 }
 
-static void rest_of_message(struct fix_message *self, struct fix_dialect *dialect, struct buffer *buffer)
-{
+static void rest_of_message(struct fix_message *self, struct fix_dialect *dialect,
+                            struct buffer *buffer) {
 	int tag = 0;
 	const char *tag_ptr = NULL;
 	unsigned long nr_fields = 0;
@@ -277,44 +551,43 @@ static void rest_of_message(struct fix_message *self, struct fix_dialect *dialec
 
 	self->nr_fields = 0;
 
-retry:
+	retry:
 	if (parse_field(buffer, &tag, &tag_ptr))
 		return;
 
-	type = dialect->tag_type(tag);
+	type = fix_tag_type(tag);
 
 	switch (type) {
-	case FIX_TYPE_INT:
-		self->fields[nr_fields++] = FIX_INT_FIELD(tag, fix_atoi64(tag_ptr, NULL));
-		goto retry;
-	case FIX_TYPE_FLOAT:
-		self->fields[nr_fields++] = FIX_FLOAT_FIELD(tag, strtod(tag_ptr, NULL));
-		goto retry;
-	case FIX_TYPE_CHAR:
-		self->fields[nr_fields++] = FIX_CHAR_FIELD(tag, tag_ptr[0]);
-		goto retry;
-	case FIX_TYPE_STRING:
-		self->fields[nr_fields++] = FIX_STRING_FIELD(tag, tag_ptr);
-		goto retry;
-	case FIX_TYPE_CHECKSUM:
-		break;
-	case FIX_TYPE_MSGSEQNUM:
-		self->msg_seq_num = fix_uatoi(tag_ptr, NULL);
-		goto retry;
-	default:
-		goto retry;
+		case FIX_TYPE_INT:
+			self->fields[nr_fields++] = FIX_INT_FIELD(tag, fix_atoi64(tag_ptr, NULL));
+			goto retry;
+		case FIX_TYPE_FLOAT:
+			self->fields[nr_fields++] = FIX_FLOAT_FIELD(tag, strtod(tag_ptr, NULL));
+			goto retry;
+		case FIX_TYPE_CHAR:
+			self->fields[nr_fields++] = FIX_CHAR_FIELD(tag, tag_ptr[0]);
+			goto retry;
+		case FIX_TYPE_STRING:
+			self->fields[nr_fields++] = FIX_STRING_FIELD(tag, tag_ptr);
+			goto retry;
+		case FIX_TYPE_CHECKSUM:
+			break;
+		case FIX_TYPE_MSGSEQNUM:
+			self->msg_seq_num = (unsigned long) fix_uatoi(tag_ptr, NULL);
+			goto retry;
+		default:
+			goto retry;
 	}
 
 	self->nr_fields = nr_fields;
 }
 
-static bool verify_checksum(struct fix_message *self, struct buffer *buffer)
-{
+static bool verify_checksum(struct fix_message *self, struct buffer *buffer) {
 	int cksum, actual;
 
-	cksum	= fix_uatoi(self->check_sum, NULL);
+	cksum = fix_uatoi(self->check_sum, NULL);
 
-	actual	= buffer_sum_range(self->begin_string - 2, self->check_sum - 3);
+	actual = buffer_sum_range(self->begin_string - 2, self->check_sum - 3);
 
 	return actual == cksum;
 }
@@ -325,8 +598,7 @@ static bool verify_checksum(struct fix_message *self, struct buffer *buffer)
  * - "CheckSum=" ("10=") is 3 bytes long
  * - "MsgType=" ("35=") is 3 bytes long
  */
-static int checksum(struct fix_message *self, struct buffer *buffer, unsigned long flags)
-{
+static int checksum(struct fix_message *self, struct buffer *buffer, unsigned long flags) {
 	const char *start;
 	int offset;
 	int ret;
@@ -365,12 +637,11 @@ static int checksum(struct fix_message *self, struct buffer *buffer, unsigned lo
 	/* Go back to analyze other fields */
 	buffer_advance(buffer, start - buffer_start(buffer));
 
-exit:
+	exit:
 	return ret;
 }
 
-static int parse_msg_type(struct fix_message *self, unsigned long flags)
-{
+static int parse_msg_type(struct fix_message *self, unsigned long flags) {
 	int ret;
 
 	ret = match_field(self->head_buf, MsgType, &self->msg_type);
@@ -387,12 +658,11 @@ static int parse_msg_type(struct fix_message *self, unsigned long flags)
 	} else
 		self->type = FIX_MSG_TYPE_UNKNOWN;
 
-exit:
+	exit:
 	return ret;
 }
 
-static int parse_body_length(struct fix_message *self)
-{
+static int parse_body_length(struct fix_message *self) {
 	int len, ret;
 	const char *ptr;
 
@@ -407,20 +677,18 @@ static int parse_body_length(struct fix_message *self)
 	if (len <= 0 || len > FIX_MAX_MESSAGE_SIZE)
 		ret = FIX_MSG_STATE_GARBLED;
 
-exit:
+	exit:
 	return ret;
 }
 
-static int parse_begin_string(struct fix_message *self)
-{
+static int parse_begin_string(struct fix_message *self) {
 	// if first field is not BeginString -> garbled
 	// if BeginString is invalid or empty -> garbled
 
 	return match_field(self->head_buf, BeginString, &self->begin_string);
 }
 
-static int first_three_fields(struct fix_message *self, unsigned long flags)
-{
+static int first_three_fields(struct fix_message *self, unsigned long flags) {
 	int ret;
 
 	ret = parse_begin_string(self);
@@ -433,22 +701,23 @@ static int first_three_fields(struct fix_message *self, unsigned long flags)
 
 	return parse_msg_type(self, flags);
 
-exit:
+	exit:
 	return ret;
 }
 
-int fix_message_parse(struct fix_message *self, struct fix_dialect *dialect, struct buffer *buffer, unsigned long flags)
-{
+int fix_message_parse(struct fix_message *self, struct fix_dialect *dialect,
+                      struct buffer *buffer,
+                      unsigned long flags) {
 	const char *start;
 	int ret;
 
 	self->head_buf = buffer;
 
 	TRACE(LIBTRADING_FIX_MESSAGE_PARSE(self, dialect, buffer));
-retry:
+	retry:
 	ret = FIX_MSG_STATE_PARTIAL;
 
-	start	= buffer_start(buffer);
+	start = buffer_start(buffer);
 
 	if (!buffer_size(buffer))
 		goto fail;
@@ -463,14 +732,14 @@ retry:
 
 	rest_of_message(self, dialect, buffer);
 
-	self->iov[0].iov_base	= (void *)start;
-	self->iov[0].iov_len 	= buffer_start(buffer) - start;
+	self->iov[0].iov_base = (void *) start;
+	self->iov[0].iov_len = buffer_start(buffer) - start;
 
 	TRACE(LIBTRADING_FIX_MESSAGE_PARSE_RET());
 
 	return 0;
 
-fail:
+	fail:
 	if (ret != FIX_MSG_STATE_PARTIAL)
 		goto retry;
 
@@ -485,13 +754,11 @@ int fix_get_field_count(struct fix_message *self) {
 	return self->nr_fields;
 }
 
-struct fix_field *fix_get_field_at(struct fix_message *self, int i)
-{
+struct fix_field *fix_get_field_at(struct fix_message *self, int i) {
 	return i < self->nr_fields ? &self->fields[i] : NULL;
 }
 
-struct fix_field *fix_get_field(struct fix_message *self, int tag)
-{
+struct fix_field *fix_get_field(struct fix_message *self, int tag) {
 	unsigned long i;
 
 	for (i = 0; i < self->nr_fields; i++) {
@@ -502,24 +769,22 @@ struct fix_field *fix_get_field(struct fix_message *self, int tag)
 	return NULL;
 }
 
-void fix_message_validate(struct fix_message *self)
-{
+void fix_message_validate(struct fix_message *self) {
 	// if MsgSeqNum is missing -> logout, terminate
 }
 
-const char *fix_get_string(struct fix_field *field, char *buffer, unsigned long len)
-{
+const char *fix_get_string(struct fix_field *field, char *buffer, unsigned long len) {
 	unsigned long count;
 	const char *start, *end;
 
-	start	= field->string_value;
+	start = field->string_value;
 
-	end	= memchr(start, 0x01, len);
+	end = memchr(start, 0x01, len);
 
 	if (!end)
 		return NULL;
 
-	count	= end - start;
+	count = end - start;
 
 	if (len < count)
 		return NULL;
@@ -536,20 +801,17 @@ double fix_get_float(struct fix_message *self, int tag, double _default_) {
 	return field ? field->float_value : _default_;
 }
 
-int64_t fix_get_int(struct fix_message *self, int tag, int64_t _default_)
-{
+int64_t fix_get_int(struct fix_message *self, int tag, int64_t _default_) {
 	struct fix_field *field = fix_get_field(self, tag);
 	return field ? field->int_value : _default_;
 }
 
-char fix_get_char(struct fix_message *self, int tag, char _default_)
-{
+char fix_get_char(struct fix_message *self, int tag, char _default_) {
 	struct fix_field *field = fix_get_field(self, tag);
 	return field ? field->char_value : _default_;
 }
 
-struct fix_message *fix_message_new(void)
-{
+struct fix_message *fix_message_new(void) {
 	struct fix_message *self = calloc(1, sizeof *self);
 
 	if (!self)
@@ -564,8 +826,7 @@ struct fix_message *fix_message_new(void)
 	return self;
 }
 
-void fix_message_free(struct fix_message *self)
-{
+void fix_message_free(struct fix_message *self) {
 	if (!self)
 		return;
 
@@ -573,59 +834,56 @@ void fix_message_free(struct fix_message *self)
 	free(self);
 }
 
-void fix_message_add_field(struct fix_message *self, struct fix_field *field)
-{
+void fix_message_add_field(struct fix_message *self, struct fix_field *field) {
 	if (self->nr_fields < FIX_MAX_FIELD_NUMBER) {
 		self->fields[self->nr_fields] = *field;
 		self->nr_fields++;
 	}
 }
 
-bool fix_message_type_is(struct fix_message *self, enum fix_msg_type type)
-{
+bool fix_message_type_is(struct fix_message *self, enum fix_msg_type type) {
 	return self->type == type;
 }
 
-bool fix_field_unparse(struct fix_field *self, struct buffer *buffer)
-{
+bool fix_field_unparse(struct fix_field *self, struct buffer *buffer) {
 	buffer->end += uitoa(self->tag, buffer_end(buffer));
 
 	buffer_put(buffer, '=');
 
 	switch (self->type) {
-	case FIX_TYPE_STRING: {
-		const char *p = self->string_value;
+		case FIX_TYPE_STRING: {
+			const char *p = self->string_value;
 
-		while (*p) {
-			buffer_put(buffer, *p++);
+			while (*p) {
+				buffer_put(buffer, *p++);
+			}
+			break;
 		}
-		break;
-	}
-	case FIX_TYPE_STRING_8: {
-		for (int i = 0; i < sizeof(self->string_8_value) && self->string_8_value[i]; ++i) {
-			buffer_put(buffer, self->string_8_value[i]);
+		case FIX_TYPE_STRING_8: {
+			for (int i = 0; i < sizeof(self->string_8_value) && self->string_8_value[i]; ++i) {
+				buffer_put(buffer, self->string_8_value[i]);
+			}
+			break;
 		}
-		break;
-	}
-	case FIX_TYPE_CHAR: {
-		buffer_put(buffer, self->char_value);
-		break;
-	}
-	case FIX_TYPE_FLOAT: {
-		// dtoa2 do not print leading zeros or .0, 7 digits needed sometimes
-		buffer->end += modp_dtoa2(self->float_value, buffer_end(buffer), 7);
-		break;
-	}
-	case FIX_TYPE_INT: {
-		buffer->end += i64toa(self->int_value, buffer_end(buffer));
-		break;
-	}
-	case FIX_TYPE_CHECKSUM: {
-		buffer->end += checksumtoa(self->int_value, buffer_end(buffer));
-		break;
-	}
-	default:
-		break;
+		case FIX_TYPE_CHAR: {
+			buffer_put(buffer, self->char_value);
+			break;
+		}
+		case FIX_TYPE_FLOAT: {
+			// dtoa2 do not print leading zeros or .0, 7 digits needed sometimes
+			buffer->end += modp_dtoa2(self->float_value, buffer_end(buffer), 7);
+			break;
+		}
+		case FIX_TYPE_INT: {
+			buffer->end += i64toa(self->int_value, buffer_end(buffer));
+			break;
+		}
+		case FIX_TYPE_CHECKSUM: {
+			buffer->end += checksumtoa(self->int_value, buffer_end(buffer));
+			break;
+		}
+		default:
+			break;
 	};
 
 	buffer_put(buffer, 0x01);
@@ -633,8 +891,7 @@ bool fix_field_unparse(struct fix_field *self, struct buffer *buffer)
 	return true;
 }
 
-void fix_message_unparse(struct fix_message *self)
-{
+void fix_message_unparse(struct fix_message *self) {
 	struct fix_field sender_comp_id;
 	struct fix_field target_comp_id;
 	struct fix_field begin_string;
@@ -652,13 +909,13 @@ void fix_message_unparse(struct fix_message *self)
 	strncpy(buf, self->str_now, sizeof(buf));
 
 	/* standard header */
-	msg_type	= (self->type != FIX_MSG_TYPE_UNKNOWN) ?
-			FIX_STRING_FIELD(MsgType, fix_msg_types[self->type]) :
-			FIX_STRING_FIELD(MsgType, self->msg_type);
-	sender_comp_id	= FIX_STRING_FIELD(SenderCompID, self->sender_comp_id);
-	target_comp_id	= FIX_STRING_FIELD(TargetCompID, self->target_comp_id);
-	msg_seq_num	= FIX_INT_FIELD   (MsgSeqNum, self->msg_seq_num);
-	sending_time	= FIX_STRING_FIELD(SendingTime, buf);
+	msg_type = (self->type != FIX_MSG_TYPE_UNKNOWN) ?
+	           FIX_STRING_FIELD(MsgType, fix_msg_types[self->type]) :
+	           FIX_STRING_FIELD(MsgType, self->msg_type);
+	sender_comp_id = FIX_STRING_FIELD(SenderCompID, self->sender_comp_id);
+	target_comp_id = FIX_STRING_FIELD(TargetCompID, self->target_comp_id);
+	msg_seq_num = FIX_INT_FIELD   (MsgSeqNum, self->msg_seq_num);
+	sending_time = FIX_STRING_FIELD(SendingTime, buf);
 
 	/* body */
 	fix_field_unparse(&msg_type, self->body_buf);
@@ -671,22 +928,21 @@ void fix_message_unparse(struct fix_message *self)
 		fix_field_unparse(&self->fields[i], self->body_buf);
 
 	/* head */
-	begin_string	= FIX_STRING_FIELD(BeginString, self->begin_string);
-	body_length	= FIX_INT_FIELD(BodyLength, buffer_size(self->body_buf));
+	begin_string = FIX_STRING_FIELD(BeginString, self->begin_string);
+	body_length = FIX_INT_FIELD(BodyLength, buffer_size(self->body_buf));
 
 	fix_field_unparse(&begin_string, self->head_buf);
 	fix_field_unparse(&body_length, self->head_buf);
 
 	/* trailer */
-	cksum		= buffer_sum(self->head_buf) + buffer_sum(self->body_buf);
-	check_sum	= FIX_CHECKSUM_FIELD(CheckSum, cksum % 256);
+	cksum = buffer_sum(self->head_buf) + buffer_sum(self->body_buf);
+	check_sum = FIX_CHECKSUM_FIELD(CheckSum, cksum % 256);
 	fix_field_unparse(&check_sum, self->body_buf);
 
 	TRACE(LIBTRADING_FIX_MESSAGE_UNPARSE_RET());
 }
 
-int fix_message_send(struct fix_message *self, int sockfd, int flags)
-{
+int fix_message_send(struct fix_message *self, int sockfd, struct ssl_st *ssl, int flags) {
 	size_t msg_size;
 	int ret = 0;
 
@@ -698,7 +954,7 @@ int fix_message_send(struct fix_message *self, int sockfd, int flags)
 	buffer_to_iovec(self->head_buf, &self->iov[0]);
 	buffer_to_iovec(self->body_buf, &self->iov[1]);
 
-//	ret = io_sendmsg(sockfd, self->iov, 2, 0);
+	ret = io_sendmsg(sockfd, ssl, self->iov, 2, 0);
 
 	msg_size = fix_message_size(self);
 
@@ -715,29 +971,9 @@ int fix_message_send(struct fix_message *self, int sockfd, int flags)
 }
 
 struct fix_dialect fix_dialects[] = {
-	[FIXT_1_1] = {
-		.version	= FIXT_1_1,
-		.tag_type	= fix_tag_type,
-	},
-	[FIX_4_4] = {
-		.version	= FIX_4_4,
-		.tag_type	= fix_tag_type,
-	},
-	[FIX_4_3] = {
-		.version	= FIX_4_3,
-		.tag_type	= fix_tag_type,
-	},
-	[FIX_4_2] = {
-		.version	= FIX_4_2,
-		.tag_type	= fix_tag_type,
-	},
-	[FIX_4_1] = {
-		.version	= FIX_4_1,
-		.tag_type	= fix_tag_type,
-	},
-	[FIX_4_0] = {
-		.version	= FIX_4_0,
-		.tag_type	= fix_tag_type,
-	},
-
+		[FIX_4_4] = (struct fix_dialect) {
+				.version    = FIX_4_4,
+				.tag_type    = fix_tag_type,
+		}
 };
+

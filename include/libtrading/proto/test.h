@@ -1,6 +1,13 @@
 #define	FIX_MAX_ELEMENTS_NUMBER	32
 #define	FIX_MAX_LINE_LENGTH	256
 
+#include <libtrading/proto/fix_message.h>
+
+#include <inttypes.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 struct felem {
 	struct fix_message msg;
 	char buf[FIX_MAX_LINE_LENGTH];
