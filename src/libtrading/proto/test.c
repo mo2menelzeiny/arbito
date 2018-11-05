@@ -1,9 +1,3 @@
-#include <libtrading/proto/fix_message.h>
-
-#include <inttypes.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 
 #include "libtrading/proto/test.h"
 

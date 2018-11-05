@@ -2,7 +2,20 @@
 #include "FIXSocket.h"
 
 void FIXSocket::initiate() {
-	this->configureSSL();
+	SSL_load_error_strings();
+	SSL_library_init();
+	OpenSSL_add_all_algorithms();
+
+	m_ssl_ctx = SSL_CTX_new(TLSv1_client_method());
+
+	SSL_CTX_set_options(m_ssl_ctx, SSL_OP_NO_SSLv3);
+	SSL_CTX_set_options(m_ssl_ctx, SSL_OP_NO_SSLv2);
+	SSL_CTX_set_options(m_ssl_ctx, SSL_OP_SINGLE_DH_USE);
+
+	SSL_CTX_use_certificate_file(m_ssl_ctx, "./resources/cert.pem", SSL_FILETYPE_PEM);
+	SSL_CTX_use_PrivateKey_file(m_ssl_ctx, "./resources/key.pem", SSL_FILETYPE_PEM);
+
+	m_ssl = SSL_new(m_ssl_ctx);
 
 	struct hostent *host_ent = gethostbyname(m_host);
 
@@ -29,7 +42,6 @@ void FIXSocket::initiate() {
 
 		if (connect(m_socketFD, (const struct sockaddr *) &socket_address, sizeof(struct sockaddr_in)) < 0) {
 			saved_errno = errno;
-			this->terminate();
 			m_socketFD = -1;
 			continue;
 		}
@@ -38,7 +50,7 @@ void FIXSocket::initiate() {
 	}
 
 	if (m_socketFD < 0) {
-		throw std::runtime_error("Socket connection FAILED" + std::to_string(saved_errno));
+		throw std::runtime_error("Socket connection FAILED " + std::to_string(saved_errno));
 	}
 
 	int optval = 1;
@@ -57,24 +69,12 @@ void FIXSocket::initiate() {
 
 void FIXSocket::terminate() {
 	close(m_socketFD);
+
+	if (!m_ssl) {
+		return;
+	}
+
 	SSL_free(m_ssl);
 	ERR_free_strings();
 	EVP_cleanup();
-}
-
-void FIXSocket::configureSSL() {
-	SSL_load_error_strings();
-	SSL_library_init();
-	OpenSSL_add_all_algorithms();
-
-	m_ssl_ctx = SSL_CTX_new(TLSv1_client_method());
-
-	SSL_CTX_set_options(m_ssl_ctx, SSL_OP_NO_SSLv3);
-	SSL_CTX_set_options(m_ssl_ctx, SSL_OP_NO_SSLv2);
-	SSL_CTX_set_options(m_ssl_ctx, SSL_OP_SINGLE_DH_USE);
-
-	SSL_CTX_use_certificate_file(m_ssl_ctx, "./resources/cert.pem", SSL_FILETYPE_PEM);
-	SSL_CTX_use_PrivateKey_file(m_ssl_ctx, "./resources/key.pem", SSL_FILETYPE_PEM);
-
-	m_ssl = SSL_new(m_ssl_ctx);
 }

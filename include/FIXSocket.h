@@ -23,14 +23,15 @@ public:
 
 	inline int socketFD() const {
 		return m_socketFD;
-	};
+	}
+
+	inline SSL *ssl() const {
+		return m_ssl;
+	}
 
 	void initiate();
 
 	void terminate();
-
-private:
-	void configureSSL();
 
 private:
 	const char *m_host;
