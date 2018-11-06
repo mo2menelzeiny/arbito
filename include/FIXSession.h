@@ -12,10 +12,9 @@
 //Domain
 #include "FIXSocket.h"
 
-
 typedef std::function<void(const std::exception &ex)> OnErrorHandler;
 
-typedef std::function<void(const fix_session *session)> OnStartHandler;
+typedef std::function<void(struct fix_session *session)> OnStartHandler;
 
 typedef std::function<void(struct fix_message *msg)> OnMessageHandler;
 

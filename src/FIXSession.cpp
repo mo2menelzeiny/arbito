@@ -9,8 +9,8 @@ FIXSession::FIXSession(
 		const char *sender,
 		const char *target,
 		int heartbeat,
-		const std::function<void(const std::exception &e)> &onErrorHandler,
-		const std::function<void(const fix_session *session)> &onStartHandler
+		const OnErrorHandler &onErrorHandler,
+		const OnStartHandler &onStartHandler
 ) : m_username(username),
     m_password(password),
     m_sender(sender),
