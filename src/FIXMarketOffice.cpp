@@ -5,8 +5,8 @@ FIXMarketOffice::FIXMarketOffice(
 		const char *broker,
 		double spread,
 		double quantity,
-		const char *BOHost,
-		int BOPort,
+		const char *publicationHost,
+		int publicationPort,
 		const char *host,
 		int port,
 		const char *username,
@@ -17,8 +17,8 @@ FIXMarketOffice::FIXMarketOffice(
 ) : m_broker(broker),
     m_spread(spread),
     m_quantity(quantity),
-    m_BOHost(BOHost),
-    m_BOPort(BOPort) {
+    m_publicationHost(publicationHost),
+    m_publicationPort(publicationPort) {
 	if (!strcmp(broker, "LMAX")) {
 		struct fix_field fields[] = {
 				FIX_STRING_FIELD(MDReqID, "MARKET-DATA-REQUEST"),
@@ -83,6 +83,12 @@ void FIXMarketOffice::start() {
 }
 
 void FIXMarketOffice::work() {
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(1, &cpuset);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+	pthread_setname_np(pthread_self(), "market");
+
 	aeron::Context context;
 
 	context.availableImageHandler([&](aeron::Image &image) {
@@ -97,7 +103,7 @@ void FIXMarketOffice::work() {
 	auto client = std::make_shared<aeron::Aeron>(context);
 
 	char uri[64];
-	sprintf(uri, "aeron:udp?endpoint=%s:%i\n", m_BOHost, m_BOPort);
+	sprintf(uri, "aeron:udp?endpoint=%s:%i\n", m_publicationHost, m_publicationPort);
 
 	auto publicationId = client->addExclusivePublication(uri, 1);
 
