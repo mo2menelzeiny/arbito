@@ -1,6 +1,6 @@
 
-#ifndef ARBITO_FIXMARKETOFFICE_H
-#define ARBITO_FIXMARKETOFFICE_H
+#ifndef ARBITO_FIXTRADEOFFICE_H
+#define ARBITO_FIXTRADEOFFICE_H
 
 // Aeron client
 #include <Context.h>
@@ -15,14 +15,12 @@
 // Domain
 #include "FIXSession.h"
 
-class FIXMarketOffice {
+class FIXTradeOffice {
 public:
-	FIXMarketOffice(
+	FIXTradeOffice(
 			const char *broker,
-			double spread,
 			double quantity,
-			const char *publicationHost,
-			int publicationPort,
+			int subscriptionPort,
 			const char *host,
 			int port,
 			const char *username,
@@ -39,14 +37,14 @@ private:
 
 private:
 	const char *m_broker;
-	double m_spread;
 	double m_quantity;
-	const char *m_publicationHost;
-	int m_publicationPort;
-	struct fix_field *m_MDRFields;
-	struct fix_message m_MDRFixMessage{};
+	int m_subscriptionPort;
+	struct fix_field *m_NOSSFields;
+	struct fix_message m_NOSSFixMessage{};
+	struct fix_field *m_NOSBFields;
+	struct fix_message m_NOSBFixMessage{};
 	FIXSession *m_fixSession;
 };
 
 
-#endif //ARBITO_FIXMARKETOFFICE_H
+#endif //ARBITO_FIXTRADEOFFICE_H
