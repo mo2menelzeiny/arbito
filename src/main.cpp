@@ -1,5 +1,12 @@
 
 // Domain
+#include <FIXSocket.h>
+#include <FIXSession.h>
+#include <libtrading/proto/test.h>
+#include <FIXMarketOffice.h>
+#include <MediaDriver.h>
+#include <FIXTradeOffice.h>
+#include <CentralOffice.h>
 #include "lmax/MarketOffice.h"
 #include "lmax/TradeOffice.h"
 #include "swissquote/MarketOffice.h"
@@ -16,7 +23,7 @@ using namespace Disruptor;
 using namespace std;
 using namespace std::chrono;
 
-int main() {
+int oldMain() {
 	try {
 		int broker = atoi(getenv("BROKER"));
 		int mo_port = atoi(getenv("MO_PORT"));
@@ -202,4 +209,75 @@ int main() {
 	}
 
 	return EXIT_FAILURE;
+}
+
+int main() {
+
+	srand(static_cast<unsigned int>(time(nullptr)));
+
+	MediaDriver();
+
+	auto centralOffice = CentralOffice(
+			50501,
+			"127.0.0.1",
+			50502,
+			"127.0.0.1",
+			50503,
+			50504,
+			0,
+			5,
+			-999,
+			1
+			);
+
+	/*auto marketOffice = FIXMarketOffice(
+			getenv("BROKER"),
+			1,
+			11,
+			"127.0.0.1",
+			50501,
+			getenv("MO_HOST"),
+			atoi(getenv("MO_PORT")),
+			getenv("MO_USERNAME"),
+			getenv("MO_PASSWORD"),
+			getenv("MO_SENDER"),
+			getenv("MO_RECEIVER"),
+			30
+	);*/
+
+	centralOffice.start();
+
+	auto tradeOfficeA = FIXTradeOffice(
+			"LMAX",
+			1,
+			50501,
+			getenv("TO_HOST"),
+			atoi(getenv("MO_PORT")),
+			getenv("TO_USERNAME"),
+			getenv("TO_PASSWORD"),
+			getenv("TO_SENDER"),
+			getenv("TO_RECEIVER"),
+			30
+	);
+
+	tradeOfficeA.start();
+
+	auto tradeOfficeB = FIXTradeOffice(
+			"SWISSQUOTE",
+			1,
+			50502,
+			getenv("TO_HOST"),
+			atoi(getenv("MO_PORT")),
+			getenv("TO_USERNAME"),
+			getenv("TO_PASSWORD"),
+			getenv("TO_SENDER"),
+			getenv("TO_RECEIVER"),
+			30
+	);
+
+	tradeOfficeB.start();
+
+	while (true) {
+		this_thread::sleep_for(seconds(15));
+	}
 }

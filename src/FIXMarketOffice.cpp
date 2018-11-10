@@ -16,9 +16,9 @@ FIXMarketOffice::FIXMarketOffice(
 		int heartbeat
 ) : m_broker(broker),
     m_spread(spread),
-    m_quantity(quantity),
-    m_publicationHost(publicationHost),
-    m_publicationPort(publicationPort) {
+    m_quantity(quantity) {
+	sprintf(m_publicationURI, "aeron:udp?endpoint=%s:%i\n", publicationHost, publicationPort);
+
 	if (!strcmp(broker, "LMAX")) {
 		struct fix_field fields[] = {
 				FIX_STRING_FIELD(MDReqID, "MARKET-DATA-REQUEST"),
@@ -102,10 +102,7 @@ void FIXMarketOffice::work() {
 
 	auto client = std::make_shared<aeron::Aeron>(context);
 
-	char uri[64];
-	sprintf(uri, "aeron:udp?endpoint=%s:%i\n", m_publicationHost, m_publicationPort);
-
-	auto publicationId = client->addExclusivePublication(uri, 1);
+	auto publicationId = client->addExclusivePublication(m_publicationURI, 1);
 
 	auto publication = client->findExclusivePublication(publicationId);
 
@@ -117,13 +114,26 @@ void FIXMarketOffice::work() {
 	uint8_t buffer[64];
 	aeron::concurrent::AtomicBuffer atomicBuffer;
 	atomicBuffer.wrap(buffer, 64);
-	
+
+	auto messageBuffer = reinterpret_cast<char *>(buffer);
+
 	sbe::MessageHeader messageHeader;
 	sbe::MarketData marketData;
 
+	messageHeader
+			.wrap(messageBuffer, 0, 0, 64)
+			.blockLength(sbe::MarketData::sbeBlockLength())
+			.templateId(sbe::MarketData::sbeTemplateId())
+			.schemaId(sbe::MarketData::sbeSchemaId())
+			.version(sbe::MarketData::sbeSchemaVersion());
+
+	marketData.wrapForEncode(messageBuffer, sbe::MessageHeader::encodedLength(), 64);
+
+	auto encodedLength = static_cast<aeron::index_t>(sbe::MessageHeader::encodedLength() + marketData.encodedLength());
+
 	auto offerIdx = strcmp(m_broker, "LMAX") ? 4 : 2;
 	auto offerQtyIdx = offerIdx - 1;
-	
+
 	auto onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
 		if (msg->type != FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH) return;
 
@@ -133,22 +143,12 @@ void FIXMarketOffice::work() {
 		double offerQty = fix_get_field_at(msg, msg->nr_fields - offerQtyIdx)->float_value;
 
 		if (m_spread < offer - bid || m_quantity > offerQty || m_quantity > bidQty) return;
-		
-		messageHeader
-				.wrap(reinterpret_cast<char *>(buffer), 0, 0, 64)
-				.blockLength(sbe::MarketData::sbeBlockLength())
-				.templateId(sbe::MarketData::sbeTemplateId())
-				.schemaId(sbe::MarketData::sbeSchemaId())
-				.version(sbe::MarketData::sbeSchemaVersion());
 
 		marketData
-				.wrapForEncode(reinterpret_cast<char *>(buffer), sbe::MessageHeader::encodedLength(), 64)
 				.bid(bid)
 				.offer(offer);
 
-		aeron::index_t len = sbe::MessageHeader::encodedLength() + sbe::MessageHeader::encodedLength();
-
-		while (publication->offer(atomicBuffer, 0, len) < -1);
+		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
 
 	});
 

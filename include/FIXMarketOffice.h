@@ -41,8 +41,7 @@ private:
 	const char *m_broker;
 	double m_spread;
 	double m_quantity;
-	const char *m_publicationHost;
-	int m_publicationPort;
+	char m_publicationURI[64];
 	struct fix_field *m_MDRFields;
 	struct fix_message m_MDRFixMessage{};
 	FIXSession *m_fixSession;
