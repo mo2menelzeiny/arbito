@@ -38,7 +38,7 @@ private:
 private:
 	const char *m_broker;
 	double m_quantity;
-	int m_subscriptionPort;
+	char m_subscriptionURI[64];
 	struct fix_field *m_NOSSFields;
 	struct fix_message m_NOSSFixMessage{};
 	struct fix_field *m_NOSBFields;

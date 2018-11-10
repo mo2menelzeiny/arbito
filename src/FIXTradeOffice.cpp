@@ -14,8 +14,9 @@ FIXTradeOffice::FIXTradeOffice(
 		const char *target,
 		int heartbeat
 ) : m_broker(broker),
-    m_quantity(quantity),
-    m_subscriptionPort(subscriptionPort) {
+    m_quantity(quantity) {
+	sprintf(m_subscriptionURI, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPort);
+
 	if (!strcmp(broker, "LMAX")) {
 		struct fix_field NOSSFields[] = {
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-SELL"),
@@ -112,7 +113,6 @@ void FIXTradeOffice::work() {
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "trade");
 
-
 	aeron::Context context;
 
 	context.availableImageHandler([&](aeron::Image &image) {
@@ -126,10 +126,7 @@ void FIXTradeOffice::work() {
 
 	auto client = std::make_shared<aeron::Aeron>(context);
 
-	char uri[64];
-	sprintf(uri, "aeron:udp?endpoint=0.0.0.0:%i\n", m_subscriptionPort);
-
-	auto subscriptionId = client->addSubscription(uri, 1);
+	auto subscriptionId = client->addSubscription(m_subscriptionURI, 1);
 
 	auto subscription = client->findSubscription(subscriptionId);
 
@@ -144,32 +141,35 @@ void FIXTradeOffice::work() {
 
 	sbe::MessageHeader messageHeader;
 	sbe::TradeData tradeData;
-	
-	bool hasOrder = false;
-	
+
+	bool canOrder = false;
+
 	auto fragmentHandler = [&](
 			aeron::AtomicBuffer &buffer,
 			aeron::index_t offset,
 			aeron::index_t length,
 			const aeron::Header &header
 	) {
-		messageHeader.wrap(reinterpret_cast<char *>(buffer.buffer() + offset), 0, 0, 64);
+		auto bufferLength = static_cast<const uint64_t>(length);
+		auto messageBuffer = reinterpret_cast<char *>(buffer.buffer() + offset);
+
+		messageHeader.wrap(messageBuffer, 0, 0, bufferLength);
 		tradeData.wrapForDecode(
-				reinterpret_cast<char *>(buffer.buffer() + offset),
+				messageBuffer,
 				sbe::MessageHeader::encodedLength(),
 				messageHeader.blockLength(),
 				messageHeader.version(),
-				64
+				bufferLength
 		);
-		
-		hasOrder = true;
+
+		canOrder = true;
 	};
-	
+
 	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);
 
 	auto onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
 		switch (msg->type) {
-			case FIX_MSG_TYPE_EXECUTION_REPORT:
+			case FIX_MSG_TYPE_EXECUTION_REPORT: {
 				char execType = fix_get_field(msg, ExecType)->string_value[0];
 
 				if (execType == '2' || execType == 'F') {
@@ -180,10 +180,11 @@ void FIXTradeOffice::work() {
 					char side = fix_get_field(msg, Side)->string_value[0];
 					double avgPx = fix_get_field(msg, AvgPx)->float_value;
 				}
-				
-				if(execType == '8') {
+
+				if (execType == '8') {
 					// failed order
 				}
+			}
 
 				break;
 			default:
@@ -192,32 +193,32 @@ void FIXTradeOffice::work() {
 	});
 
 	auto doWorkHandler = DoWorkHandler([&](struct fix_session *session) {
-		if (!hasOrder) return;
-		
-		char id[64];
-		sprintf(id, "%li", tradeData.id());
-		
+		if (!canOrder) return;
+
+		char clOrdId[64];
+		sprintf(clOrdId, "%li", tradeData.id());
+
 		switch (tradeData.side()) {
-			case 2: // SELL
-				fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = id;
-				fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = session->str_now;
-				fix_session_send(session, &m_NOSSFixMessage, 0);
-				break;
-			case 1: // BUY
-				fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = id;
+			case '1': // SELL
+				fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = clOrdId;
 				fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = session->str_now;
 				fix_session_send(session, &m_NOSBFixMessage, 0);
+				break;
+			case '2': // BUY
+				fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdId;
+				fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = session->str_now;
+				fix_session_send(session, &m_NOSSFixMessage, 0);
 				break;
 			default:
 				// exception
 				break;
 		}
-		
-		hasOrder = false;
+
+		canOrder = false;
 	});
-	
+
 	while (true) {
-		subscription->poll(fragmentAssembler.handler(), 10);
+		subscription->poll(fragmentAssembler.handler(), 1);
 		m_fixSession->poll(doWorkHandler, onMessageHandler);
 	}
 }
