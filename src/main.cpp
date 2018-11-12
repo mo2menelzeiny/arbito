@@ -22,7 +22,7 @@ int main() {
 		FIXTradeOffice *fixTradeOffice;
 		IBOffice *ibOffice;
 
-		auto nodeType = getenv("NODE_TYPE");
+		auto nodeType = getenv("ARBITO");
 
 		if (!strcmp(nodeType, "CENTRAL")) {
 			centralOffice = new CentralOffice(
