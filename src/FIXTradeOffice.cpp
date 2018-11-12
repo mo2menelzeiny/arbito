@@ -1,5 +1,4 @@
 
-#include <sbe/TradeData.h>
 #include "FIXTradeOffice.h"
 
 FIXTradeOffice::FIXTradeOffice(
@@ -14,7 +13,19 @@ FIXTradeOffice::FIXTradeOffice(
 		const char *target,
 		int heartbeat
 ) : m_broker(broker),
-    m_quantity(quantity) {
+    m_quantity(quantity),
+    m_fixSession(
+		    host,
+		    port,
+		    username,
+		    password,
+		    sender,
+		    target,
+		    heartbeat,
+		    m_onErrorHandler,
+		    m_onStartHandler
+
+    ) {
 	sprintf(m_subscriptionURI, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPort);
 
 	if (!strcmp(broker, "LMAX")) {
@@ -82,26 +93,9 @@ FIXTradeOffice::FIXTradeOffice(
 
 	m_NOSBFixMessage.type = FIX_MSG_TYPE_NEW_ORDER_SINGLE;
 	m_NOSBFixMessage.fields = m_NOSBFields;
-
-	m_fixSession = new FIXSession(
-			host,
-			port,
-			username,
-			password,
-			sender,
-			target,
-			heartbeat,
-			[&](const std::exception &ex) {
-				printf("%s\n", ex.what());
-			},
-			[&](struct fix_session *session) {
-				// do nothing on start
-			}
-	);
 }
 
 void FIXTradeOffice::start() {
-	m_fixSession->initiate();
 	auto worker = std::thread(&FIXTradeOffice::work, this);
 	worker.detach();
 }
@@ -112,6 +106,16 @@ void FIXTradeOffice::work() {
 	CPU_SET(2, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "trade");
+
+	m_onStartHandler = OnStartHandler([&](struct fix_session *session) {
+		// do nothing on start
+	});
+
+	m_onErrorHandler = OnErrorHandler([&](const std::exception &ex) {
+		printf("%s\n", ex.what());
+	});
+
+	m_fixSession.initiate();
 
 	aeron::Context context;
 
@@ -210,7 +214,6 @@ void FIXTradeOffice::work() {
 				fix_session_send(session, &m_NOSSFixMessage, 0);
 				break;
 			default:
-				// exception
 				break;
 		}
 
@@ -219,6 +222,6 @@ void FIXTradeOffice::work() {
 
 	while (true) {
 		subscription->poll(fragmentAssembler.handler(), 1);
-		m_fixSession->poll(doWorkHandler, onMessageHandler);
+		m_fixSession.poll(doWorkHandler, onMessageHandler);
 	}
 }

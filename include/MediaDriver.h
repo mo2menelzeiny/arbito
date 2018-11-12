@@ -17,6 +17,8 @@ class MediaDriver {
 public:
 	MediaDriver();
 
+	void start();
+
 private:
 	void work();
 };

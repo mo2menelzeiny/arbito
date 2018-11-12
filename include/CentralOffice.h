@@ -31,7 +31,7 @@ public:
 			const char *publicationHostB,
 			int subscriptionPortA,
 			int subscriptionPortB,
-			int windowDelay,
+			int windowMs,
 			int maxOrders,
 			double diffOpen,
 			double diffClose
@@ -43,7 +43,7 @@ private:
 	void work();
 
 private:
-	int m_windowDelay;
+	int m_windowMs;
 	int m_maxOrders;
 	double m_diffOpen;
 	double m_diffClose;

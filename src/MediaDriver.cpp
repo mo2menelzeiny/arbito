@@ -1,7 +1,9 @@
 
 #include "MediaDriver.h"
 
-MediaDriver::MediaDriver() {
+MediaDriver::MediaDriver() = default;
+
+void MediaDriver::start() {
 	auto worker = std::thread(&MediaDriver::work, this);
 	worker.detach();
 }
