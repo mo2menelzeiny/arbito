@@ -10,7 +10,7 @@
 
 // SBE
 #include "sbe/sbe.h"
-#include "sbe/MarketData.h"
+#include "sbe/TradeData.h"
 
 // Domain
 #include "FIXSession.h"
@@ -43,7 +43,9 @@ private:
 	struct fix_message m_NOSSFixMessage{};
 	struct fix_field *m_NOSBFields;
 	struct fix_message m_NOSBFixMessage{};
-	FIXSession *m_fixSession;
+	FIXSession m_fixSession;
+	OnStartHandler m_onStartHandler;
+	OnErrorHandler m_onErrorHandler;
 };
 
 

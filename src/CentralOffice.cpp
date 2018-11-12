@@ -8,11 +8,11 @@ CentralOffice::CentralOffice(
 		const char *publicationHostB,
 		int subscriptionPortA,
 		int subscriptionPortB,
-		int windowDelay,
+		int windowMs,
 		int maxOrders,
 		double diffOpen,
 		double diffClose
-) : m_windowDelay(windowDelay),
+) : m_windowMs(windowMs),
     m_maxOrders(maxOrders),
     m_diffOpen(diffOpen),
     m_diffClose(diffClose) {
@@ -261,16 +261,17 @@ void CentralOffice::work() {
 		handleTriggers();
 		handleOrders();
 
-		if (!isExpiredA && duration_cast<milliseconds>(timestampNow - timestampA).count() > m_windowDelay) {
+		// TODO: uncomment when you're ready for the feature
+		/*if (!isExpiredA && duration_cast<milliseconds>(timestampNow - timestampA).count() > m_windowMs) {
 			bidA = -99;
 			offerA = 99;
 			isExpiredA = true;
 		}
 
-		if (!isExpiredB && duration_cast<milliseconds>(timestampNow - timestampB).count() > m_windowDelay) {
+		if (!isExpiredB && duration_cast<milliseconds>(timestampNow - timestampB).count() > m_windowMs) {
 			bidB = -99;
 			offerB = 99;
 			isExpiredB = true;
-		}
+		}*/
 	}
 }

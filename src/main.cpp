@@ -1,283 +1,97 @@
 
 // Domain
-#include <FIXSocket.h>
-#include <FIXSession.h>
-#include <libtrading/proto/test.h>
-#include <FIXMarketOffice.h>
 #include <MediaDriver.h>
-#include <FIXTradeOffice.h>
 #include <CentralOffice.h>
-#include "lmax/MarketOffice.h"
-#include "lmax/TradeOffice.h"
-#include "swissquote/MarketOffice.h"
-#include "swissquote/TradeOffice.h"
-#include "BusinessOffice.h"
-#include "Messenger.h"
-#include "Recorder.h"
+#include <FIXMarketOffice.h>
+#include <FIXTradeOffice.h>
+#include <IBOffice.h>
 
-// Disruptor
-#include "Disruptor/Disruptor.h"
-#include "Disruptor/BusySpinWaitStrategy.h"
-
-using namespace Disruptor;
-using namespace std;
-using namespace std::chrono;
-
-int oldMain() {
+int main() {
 	try {
-		int broker = atoi(getenv("BROKER"));
-		int mo_port = atoi(getenv("MO_PORT"));
-		int to_port = atoi(getenv("TO_PORT"));
-		int heartbeat = atoi(getenv("HEARTBEAT"));
-
-		double spread = atof(getenv("SPREAD"));
-		double lot_size = atof(getenv("LOT_SIZE"));
-		double diff_open = atof(getenv("DIFF_OPEN"));
-		double diff_close = atof(getenv("DIFF_CLOSE"));
-
-		int max_orders = atoi(getenv("MAX_ORDERS"));
-		int md_delay = atoi(getenv("MD_DELAY"));
+		pthread_setname_np(pthread_self(), "main");
+		srand(static_cast<unsigned int>(time(nullptr)));
 
 		const char *uri_string = getenv("MONGO_URI");
 		const char *db_name = getenv("MONGO_DB");
 
-		MessengerConfig messenger_config = (MessengerConfig) {
-				.pub_channel = getenv("PUB_CHANNEL"),
-				.sub_channel = getenv("SUB_CHANNEL"),
-				.md_stream_id = atoi(getenv("MD_STREAM_ID"))
-		};
+		auto mediaDriver = MediaDriver();
+		mediaDriver.start();
 
-		BrokerConfig mo_config = (BrokerConfig) {
-				.host =  getenv("MO_HOST"),
-				.username = getenv("MO_USERNAME"),
-				.password = getenv("MO_PASSWORD"),
-				.sender = getenv("MO_SENDER"),
-				.receiver = getenv("MO_RECEIVER"),
-				.port = mo_port,
-				.heartbeat = heartbeat
-		};
+		CentralOffice *centralOffice;
+		FIXMarketOffice *fixMarketOffice;
+		FIXTradeOffice *fixTradeOffice;
+		IBOffice *ibOffice;
 
-		BrokerConfig to_config = (BrokerConfig) {
-				.host =  getenv("TO_HOST"),
-				.username = getenv("TO_USERNAME"),
-				.password = getenv("TO_PASSWORD"),
-				.sender = getenv("TO_SENDER"),
-				.receiver = getenv("TO_RECEIVER"),
-				.port = to_port,
-				.heartbeat = heartbeat
-		};
+		auto nodeType = getenv("NODE_TYPE");
 
-		auto remote_buffer = RingBuffer<RemoteMarketDataEvent>::createSingleProducer(
-				[] { return RemoteMarketDataEvent(); },
-				32,
-				make_shared<BusySpinWaitStrategy>()
-		);
-
-		auto local_buffer = RingBuffer<MarketDataEvent>::createSingleProducer(
-				[] { return MarketDataEvent(); },
-				32,
-				make_shared<BusySpinWaitStrategy>()
-		);
-
-		auto business_buffer = RingBuffer<BusinessEvent>::createSingleProducer(
-				[] { return BusinessEvent(); },
-				16,
-				make_shared<BusySpinWaitStrategy>()
-		);
-
-		auto trade_buffer = RingBuffer<TradeEvent>::createSingleProducer(
-				[] { return TradeEvent(); },
-				16,
-				make_shared<BusySpinWaitStrategy>()
-		);
-
-		auto control_buffer = RingBuffer<ControlEvent>::createMultiProducer(
-				[] { return ControlEvent(); },
-				16,
-				make_shared<BusySpinWaitStrategy>()
-		);
-
-		pthread_setname_np(pthread_self(), "main");
-
-		srand(static_cast<unsigned int>(time(nullptr)));
-
-		Recorder recorder(
-				local_buffer,
-				remote_buffer,
-				business_buffer,
-				trade_buffer,
-				control_buffer,
-				uri_string,
-				broker,
-				db_name
-		);
-		recorder.start();
-
-		Messenger messenger(
-				control_buffer,
-				local_buffer,
-				remote_buffer,
-				recorder,
-				messenger_config
-		);
-		messenger.start();
-
-		BusinessOffice bo(
-				control_buffer,
-				local_buffer,
-				remote_buffer,
-				business_buffer,
-				recorder,
-				diff_open,
-				diff_close,
-				lot_size,
-				max_orders,
-				md_delay
-		);
-		bo.start();
-
-		LMAX::TradeOffice *lmax_to;
-		LMAX::MarketOffice *lmax_mo;
-
-		SWISSQUOTE::TradeOffice *swissquote_to;
-		SWISSQUOTE::MarketOffice *swissquote_mo;
-
-		switch (broker) {
-			case 1:
-				lmax_mo = new LMAX::MarketOffice(
-						control_buffer,
-						local_buffer,
-						recorder,
-						mo_config,
-						spread,
-						lot_size
-				);
-				lmax_to = new LMAX::TradeOffice(
-						control_buffer,
-						business_buffer,
-						trade_buffer,
-						recorder,
-						to_config,
-						lot_size
-				);
-				lmax_to->start();
-				lmax_mo->start();
-				break;
-
-			case 2:
-				swissquote_mo = new SWISSQUOTE::MarketOffice(
-						control_buffer,
-						local_buffer,
-						recorder,
-						mo_config,
-						spread,
-						lot_size
-				);
-				swissquote_to = new SWISSQUOTE::TradeOffice(
-						control_buffer,
-						business_buffer,
-						trade_buffer,
-						recorder,
-						to_config,
-						lot_size
-				);
-				swissquote_to->start();
-				swissquote_mo->start();
-				break;
-			default:
-				recorder.systemEvent("Main: Broker undefined", SE_TYPE_ERROR);
-				return EXIT_FAILURE;
+		if (!strcmp(nodeType, "CENTRAL")) {
+			centralOffice = new CentralOffice(
+					stoi(getenv("TO_A_PORT")),
+					getenv("TO_A_HOST"),
+					stoi(getenv("TO_B_PORT")),
+					getenv("TO_B_HOST"),
+					stoi(getenv("MO_A_PORT")),
+					stoi(getenv("MO_B_PORT")),
+					stoi(getenv("WINDOW_MS")),
+					stoi(getenv("MAX_ORDERS")),
+					stoi(getenv("DIFF_OPEN")),
+					stoi(getenv("DIFF_CLOSE"))
+			);
+			centralOffice->start();
 		}
 
-		auto lower_bound = hours(20) + minutes(55);
-		auto upper_bound = hours(21) + minutes(5);
-
-		while (true) {
-			this_thread::sleep_for(minutes(1));
-			auto time_point = system_clock::now();
-			time_t t = system_clock::to_time_t(time_point);
-			auto gmt_time = gmtime(&t);
-			auto now = hours(gmt_time->tm_hour) + minutes(gmt_time->tm_min);
-			if (now >= lower_bound && now <= upper_bound) {
-				recorder.systemEvent("END OF DAY", SE_TYPE_SUCCESS);
-				return EXIT_SUCCESS;
-			}
-		}
-
-	} catch (const exception &exception) {
-		fprintf(stderr, "EXCEPTION: %s\n", exception.what());
-	}
-
-	return EXIT_FAILURE;
-}
-
-int main() {
-
-	srand(static_cast<unsigned int>(time(nullptr)));
-
-	MediaDriver();
-
-	auto centralOffice = CentralOffice(
-			50501,
-			"127.0.0.1",
-			50502,
-			"127.0.0.1",
-			50503,
-			50504,
-			0,
-			5,
-			-999,
-			1
+		if (!strcmp(nodeType, "FIX")) {
+			fixMarketOffice = new FIXMarketOffice(
+					getenv("BROKER"),
+					stof(getenv("SPREAD")),
+					stof(getenv("QTY")),
+					stoi(getenv("MO_CO_PORT")),
+					getenv("CO_HOST"),
+					getenv("MO_HOST"),
+					stoi(getenv("MO_PORT")),
+					getenv("MO_USERNAME"),
+					getenv("MO_PASSWORD"),
+					getenv("MO_SENDER"),
+					getenv("MO_RECEIVER"),
+					stoi(getenv("HEARTBEAT"))
 			);
 
-	/*auto marketOffice = FIXMarketOffice(
-			getenv("BROKER"),
-			1,
-			11,
-			"127.0.0.1",
-			50501,
-			getenv("MO_HOST"),
-			atoi(getenv("MO_PORT")),
-			getenv("MO_USERNAME"),
-			getenv("MO_PASSWORD"),
-			getenv("MO_SENDER"),
-			getenv("MO_RECEIVER"),
-			30
-	);*/
+			fixTradeOffice = new FIXTradeOffice(
+					getenv("BROKER"),
+					stoi(getenv("QTY")),
+					stoi(getenv("TO_CO_PORT")),
+					getenv("TO_HOST"),
+					stoi(getenv("TO_PORT")),
+					getenv("TO_USERNAME"),
+					getenv("TO_PASSWORD"),
+					getenv("TO_SENDER"),
+					getenv("TO_TARGET"),
+					stoi(getenv("HEARTBEAT"))
+			);
 
-	centralOffice.start();
+			// TODO: disable trade office
+			fixMarketOffice->start();
+			// fixTradeOffice->start();
+		}
 
-	auto tradeOfficeA = FIXTradeOffice(
-			"LMAX",
-			1,
-			50501,
-			getenv("TO_HOST"),
-			atoi(getenv("MO_PORT")),
-			getenv("TO_USERNAME"),
-			getenv("TO_PASSWORD"),
-			getenv("TO_SENDER"),
-			getenv("TO_RECEIVER"),
-			30
-	);
 
-	tradeOfficeA.start();
+		if (!strcmp(nodeType, "IB")) {
+			ibOffice = new IBOffice(
+					getenv("BROKER"),
+					stof(getenv("SPREAD")),
+					stof(getenv("QTY")),
+					stoi(getenv("MO_CO_PORT")),
+					getenv("CO_HOST"),
+					stoi(getenv("TO_CO_PORT"))
+			);
 
-	auto tradeOfficeB = FIXTradeOffice(
-			"SWISSQUOTE",
-			1,
-			50502,
-			getenv("TO_HOST"),
-			atoi(getenv("MO_PORT")),
-			getenv("TO_USERNAME"),
-			getenv("TO_PASSWORD"),
-			getenv("TO_SENDER"),
-			getenv("TO_RECEIVER"),
-			30
-	);
+			ibOffice->start();
+		}
 
-	tradeOfficeB.start();
-
-	while (true) {
-		this_thread::sleep_for(seconds(15));
+		while (true) {
+			std::this_thread::sleep_for(std::chrono::minutes(1));
+		}
+	} catch (std::exception &ex) {
+		printf("EXCEPTION: %s\n", ex.what());
 	}
 }

@@ -21,8 +21,8 @@ public:
 			const char *broker,
 			double spread,
 			double quantity,
-			const char *publicationHost,
 			int publicationPort,
+			const char *publicationHost,
 			const char *host,
 			int port,
 			const char *username,
@@ -44,7 +44,9 @@ private:
 	char m_publicationURI[64];
 	struct fix_field *m_MDRFields;
 	struct fix_message m_MDRFixMessage{};
-	FIXSession *m_fixSession;
+	FIXSession m_fixSession;
+	OnStartHandler m_onStartHandler;
+	OnErrorHandler m_onErrorHandler;
 };
 
 
