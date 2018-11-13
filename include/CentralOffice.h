@@ -24,18 +24,9 @@ enum TriggerDifference {
 
 class CentralOffice {
 public:
-	CentralOffice(
-			int publicationPortA,
-			const char *publicationHostA,
-			int publicationPortB,
-			const char *publicationHostB,
-			int subscriptionPortA,
-			int subscriptionPortB,
-			int windowMs,
-			int maxOrders,
-			double diffOpen,
-			double diffClose
-	);
+	CentralOffice(const char *publicationHostA, int publicationPortB, const char *publicationHostB,
+		              int subscriptionPortA, int subscriptionPortB, int publicationPortA, int windowMs,
+		              int orderDelayMs, int maxOrders, double diffOpen, double diffClose);
 
 	void start();
 
@@ -44,6 +35,7 @@ private:
 
 private:
 	int m_windowMs;
+	int m_orderDelayMs;
 	int m_maxOrders;
 	double m_diffOpen;
 	double m_diffClose;

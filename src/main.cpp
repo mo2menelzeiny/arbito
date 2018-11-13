@@ -26,13 +26,14 @@ int main() {
 
 		if (!strcmp(nodeType, "CENTRAL")) {
 			centralOffice = new CentralOffice(
-					stoi(getenv("TO_A_PORT")),
 					getenv("TO_A_HOST"),
 					stoi(getenv("TO_B_PORT")),
 					getenv("TO_B_HOST"),
 					stoi(getenv("MO_A_PORT")),
 					stoi(getenv("MO_B_PORT")),
+					stoi(getenv("TO_A_PORT")),
 					stoi(getenv("WINDOW_MS")),
+					stoi(getenv("ORDER_DELAY_MS")),
 					stoi(getenv("MAX_ORDERS")),
 					stoi(getenv("DIFF_OPEN")),
 					stoi(getenv("DIFF_CLOSE"))
@@ -69,7 +70,7 @@ int main() {
 					stoi(getenv("HEARTBEAT"))
 			);
 
-			// TODO: disable trade office
+			// TODO: uncomment to enable trade office
 			fixMarketOffice->start();
 			// fixTradeOffice->start();
 		}
