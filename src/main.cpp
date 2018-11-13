@@ -26,18 +26,19 @@ int main() {
 
 		if (!strcmp(nodeType, "CENTRAL")) {
 			centralOffice = new CentralOffice(
+					stoi(getenv("TO_A_PORT")),
 					getenv("TO_A_HOST"),
 					stoi(getenv("TO_B_PORT")),
 					getenv("TO_B_HOST"),
 					stoi(getenv("MO_A_PORT")),
 					stoi(getenv("MO_B_PORT")),
-					stoi(getenv("TO_A_PORT")),
 					stoi(getenv("WINDOW_MS")),
-					stoi(getenv("ORDER_DELAY_MS")),
+					stoi(getenv("ORDER_DELAY_SEC")),
 					stoi(getenv("MAX_ORDERS")),
-					stoi(getenv("DIFF_OPEN")),
-					stoi(getenv("DIFF_CLOSE"))
+					stof(getenv("DIFF_OPEN")),
+					stof(getenv("DIFF_CLOSE"))
 			);
+
 			centralOffice->start();
 		}
 
@@ -59,7 +60,7 @@ int main() {
 
 			fixTradeOffice = new FIXTradeOffice(
 					getenv("BROKER"),
-					stoi(getenv("QTY")),
+					stof(getenv("QTY")),
 					stoi(getenv("TO_CO_PORT")),
 					getenv("TO_HOST"),
 					stoi(getenv("TO_PORT")),
