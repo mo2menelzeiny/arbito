@@ -2,19 +2,19 @@
 #include "CentralOffice.h"
 
 CentralOffice::CentralOffice(
+		int publicationPortA,
 		const char *publicationHostA,
 		int publicationPortB,
 		const char *publicationHostB,
 		int subscriptionPortA,
 		int subscriptionPortB,
-		int publicationPortA,
 		int windowMs,
-		int orderDelayMs,
+		int orderDelaySec,
 		int maxOrders,
 		double diffOpen,
 		double diffClose
 ) : m_windowMs(windowMs),
-    m_orderDelayMs(orderDelayMs),
+    m_orderDelaySec(orderDelaySec),
     m_maxOrders(maxOrders),
     m_diffOpen(diffOpen),
     m_diffClose(diffClose) {
@@ -89,7 +89,7 @@ void CentralOffice::work() {
 	TriggerDifference currentOrder = DIFF_NONE;
 
 	bool isOrderDelayed = false;
-	time_t orderDelay = m_orderDelayMs;
+	time_t orderDelay = m_orderDelaySec;
 	time_t orderDelayStart = time(nullptr);
 
 	auto handleTriggers = [&] {
