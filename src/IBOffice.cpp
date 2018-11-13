@@ -25,7 +25,7 @@ void IBOffice::work() {
 	CPU_ZERO(&cpuset);
 	CPU_SET(1, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(pthread_self(), "ib-office");
+	pthread_setname_np(pthread_self(), "ibapi");
 
 	double bid = 0, offer = 0;
 	double bidQty = 0, offerQty = 0;
@@ -158,9 +158,11 @@ void IBOffice::work() {
 		ibClient.connect("127.0.0.1", 4001);
 
 		while (ibClient.isConnected()) {
-			ibClient.processMessages();
 			subscription->poll(fragmentAssembler.handler(), 1);
+			ibClient.processMessages();
 		}
+
+		std::this_thread::sleep_for(std::chrono::seconds(30));
 	}
 
 }
