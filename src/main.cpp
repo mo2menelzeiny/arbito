@@ -77,7 +77,7 @@ int main() {
 		}
 
 
-		if (!strcmp(nodeType, "IB")) {
+		if (!strcmp(nodeType, "IBAPI")) {
 			ibOffice = new IBOffice(
 					getenv("BROKER"),
 					stof(getenv("SPREAD")),
