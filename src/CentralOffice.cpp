@@ -2,17 +2,19 @@
 #include "CentralOffice.h"
 
 CentralOffice::CentralOffice(
-		int publicationPortA,
 		const char *publicationHostA,
 		int publicationPortB,
 		const char *publicationHostB,
 		int subscriptionPortA,
 		int subscriptionPortB,
+		int publicationPortA,
 		int windowMs,
+		int orderDelayMs,
 		int maxOrders,
 		double diffOpen,
 		double diffClose
 ) : m_windowMs(windowMs),
+    m_orderDelayMs(orderDelayMs),
     m_maxOrders(maxOrders),
     m_diffOpen(diffOpen),
     m_diffClose(diffClose) {
@@ -87,7 +89,7 @@ void CentralOffice::work() {
 	TriggerDifference currentOrder = DIFF_NONE;
 
 	bool isOrderDelayed = false;
-	time_t orderDelay = 60;
+	time_t orderDelay = m_orderDelayMs;
 	time_t orderDelayStart = time(nullptr);
 
 	auto handleTriggers = [&] {
@@ -259,9 +261,10 @@ void CentralOffice::work() {
 		subscriptionA->poll(fragmentAssemblerA.handler(), 1);
 		subscriptionB->poll(fragmentAssemblerB.handler(), 1);
 		handleTriggers();
-		handleOrders();
+		// TODO: uncomment to enable order handling
+		// handleOrders();
 
-		// TODO: uncomment when you're ready for the feature
+		// TODO: Price expired feature under development
 		/*if (!isExpiredA && duration_cast<milliseconds>(timestampNow - timestampA).count() > m_windowMs) {
 			bidA = -99;
 			offerA = 99;
