@@ -94,6 +94,8 @@ int main() {
 			std::this_thread::sleep_for(std::chrono::minutes(1));
 		}
 	} catch (std::exception &ex) {
-		printf("EXCEPTION: %s\n", ex.what());
+		fprintf(stderr, "EXCEPTION: %s\n", ex.what());
 	}
+
+	return EXIT_FAILURE;
 }
