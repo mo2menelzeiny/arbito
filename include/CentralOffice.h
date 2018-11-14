@@ -13,6 +13,9 @@
 #include "sbe/MarketData.h"
 #include "sbe/TradeData.h"
 
+// SPDLOG
+#include <spdlog/sinks/daily_file_sink.h>
+
 using namespace std;
 using namespace std::chrono;
 

@@ -92,6 +92,8 @@ void CentralOffice::work() {
 	time_t orderDelay = m_orderDelaySec;
 	time_t orderDelayStart = time(nullptr);
 
+	auto centralLogger = spdlog::daily_logger_st("Central", "central_log");
+
 	auto handleTriggers = [&] {
 		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) return;
 
@@ -144,6 +146,19 @@ void CentralOffice::work() {
 					break;
 				}
 
+		}
+
+		switch (currentOrder) {
+			case DIFF_A:
+				centralLogger->info("BidA: {} OfferB: {}", bidA, offerB);
+				centralLogger->flush();
+				break;
+			case DIFF_B:
+				centralLogger->info("BidB: {} OfferA: {}", bidB, offerA);
+				centralLogger->flush();
+				break;
+			case DIFF_NONE:
+				break;
 		}
 
 		if (ordersCount == 0) {
