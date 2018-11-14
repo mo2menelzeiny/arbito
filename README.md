@@ -8,7 +8,6 @@
 ##### Dokku configurations
 <p>Disable proxy <code>dokku proxy:disable arbito</code>
 <p>Disable zero checks <code>dokku checks:disable arbito</code>
-<p>Set deploy branch <code>dokku git:set arbtio deploy-branch development</code>
 <p>Set network to host <code>dokku docker-options:add arbito deploy --network=host</code>
 <p>Set shm size <code>dokku docker-options:add arbito deploy --shm-size="1g"</code>
 
@@ -27,13 +26,3 @@
 <p>Then <code>update-grub</code>
 <p>Alternative is directly edeting the kernel entry in <code>/boot/grub/grub.conf</code>
 <code>transparent_hugepage=madvise</code>
-
-##### CPUSet Shield
-<p>Using cpuset tool $cset
-<p>create a shield under the name of docker <code>cset shield -k on --userset=docker -c 1-4</code>
-
-##### IRQ Balance
-<p> stop <code>service irqbalance stop</code>
-<p> remove from boot set <code>enabled="0"</code> in <code>/etc/default/irqbalance</code>
-<p> or <code>update-rc.d -f irqbalance remove</code>
-
