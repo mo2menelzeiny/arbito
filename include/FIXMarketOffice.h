@@ -45,8 +45,6 @@ private:
 	struct fix_field *m_MDRFields;
 	struct fix_message m_MDRFixMessage{};
 	FIXSession m_fixSession;
-	OnStartHandler m_onStartHandler;
-	OnErrorHandler m_onErrorHandler;
 };
 
 
