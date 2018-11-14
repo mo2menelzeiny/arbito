@@ -120,9 +120,11 @@ void FIXTradeOffice::work() {
 	aeron::Context context;
 
 	context.availableImageHandler([&](aeron::Image &image) {
+		printf("Central office available\n");
 	});
 
 	context.unavailableImageHandler([&](aeron::Image &image) {
+		printf("Central office unavailable\n");
 	});
 
 	context.errorHandler([&](const std::exception &ex) {
