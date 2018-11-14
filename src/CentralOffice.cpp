@@ -39,9 +39,11 @@ void CentralOffice::work() {
 	aeron::Context context;
 
 	context.availableImageHandler([&](aeron::Image &image) {
+		printf("Node available\n");
 	});
 
 	context.unavailableImageHandler([&](aeron::Image &image) {
+		printf("Node unavailable\n");
 	});
 
 	context.errorHandler([&](const std::exception &ex) {
