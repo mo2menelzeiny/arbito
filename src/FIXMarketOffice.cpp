@@ -25,8 +25,12 @@ FIXMarketOffice::FIXMarketOffice(
 		    sender,
 		    target,
 		    heartbeat,
-		    m_onErrorHandler,
-		    m_onStartHandler
+		    OnErrorHandler([&](const std::exception &ex) {
+			    printf("%s\n", ex.what());
+		    }),
+		    OnStartHandler([&](struct fix_session *session) {
+			    fix_session_send(session, &m_MDRFixMessage, 0);
+		    })
 
     ) {
 	sprintf(m_publicationURI, "aeron:udp?endpoint=%s:%i\n", publicationHost, publicationPort);
@@ -83,14 +87,6 @@ void FIXMarketOffice::work() {
 	CPU_SET(1, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "market");
-
-	m_onStartHandler = OnStartHandler([&](struct fix_session *session) {
-		fix_session_send(session, &m_MDRFixMessage, 0);
-	});
-
-	m_onErrorHandler = OnErrorHandler([&](const std::exception &ex) {
-		printf("%s\n", ex.what());
-	});
 
 	m_fixSession.initiate();
 
