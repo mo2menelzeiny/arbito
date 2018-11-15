@@ -38,6 +38,7 @@ void CentralOffice::work() {
 
 	auto systemLogger = spdlog::get("system");
 	auto triggerLogger = spdlog::daily_logger_st("trigger", "trigger_log");
+	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
 
 	aeron::Context context;
 
@@ -211,6 +212,10 @@ void CentralOffice::work() {
 				break;
 		}*/
 
+		bidA = -99;
+		offerA = 99;
+		bidB = -99;
+		offerB = 99;
 		currentOrder = DIFF_NONE;
 		orderDelayStart = time(nullptr);
 		isOrderDelayed = true;
@@ -240,8 +245,9 @@ void CentralOffice::work() {
 
 		bidA = marketData.bid();
 		offerA = marketData.offer();
-		timestampB = timestampNow;
-		isExpiredA = false;
+		marketLogger->info("[LMAX] bid: {} offer: {}", bidA, offerA);
+		// timestampB = timestampNow;
+		// isExpiredA = false;
 	};
 
 	auto fragmentHandlerB = [&](
@@ -267,8 +273,11 @@ void CentralOffice::work() {
 
 		bidB = marketData.bid();
 		offerB = marketData.offer();
-		timestampB = timestampNow;
-		isExpiredB = false;
+
+		marketLogger->info("[IDEALPRO] bid: {} offer: {}", bidB, offerB);
+		// timestampB = timestampNow;
+		// isExpiredB = false;
+
 	};
 
 	auto fragmentAssemblerA = aeron::FragmentAssembler(fragmentHandlerA);
