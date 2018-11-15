@@ -27,20 +27,23 @@ void IBOffice::work() {
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "ibapi");
 
+	auto systemLogger = spdlog::get("system");
+
 	double bid = 0, offer = 0;
 	double bidQty = 0, offerQty = 0;
 
 	aeron::Context context;
 
 	context.availableImageHandler([&](aeron::Image &image) {
-		printf("Central office available\n");
+		systemLogger->info("Central {} available", image.sourceIdentity());
 	});
 
 	context.unavailableImageHandler([&](aeron::Image &image) {
-		printf("Central office unavailable\n");
+		systemLogger->error("Central {} unavailable", image.sourceIdentity());
 	});
 
 	context.errorHandler([&](const std::exception &ex) {
+		systemLogger->error("{}", ex.what());
 	});
 
 	auto client = std::make_shared<aeron::Aeron>(context);
@@ -96,7 +99,7 @@ void IBOffice::work() {
 				break;
 		}
 
-		if (m_spread < offer - bid || m_quantity > offerQty || m_quantity > bidQty) return;
+		if (m_spread < (offer - bid) || m_quantity > offerQty || m_quantity > bidQty) return;
 
 		marketData
 				.bid(bid)
@@ -158,12 +161,14 @@ void IBOffice::work() {
 
 	while (true) {
 		ibClient.connect("127.0.0.1", 4001);
+		systemLogger->error("IBClient OK");
 
 		while (ibClient.isConnected()) {
 			subscription->poll(fragmentAssembler.handler(), 1);
 			ibClient.processMessages();
 		}
 
+		systemLogger->error("IBClient FAILED");
 		std::this_thread::sleep_for(std::chrono::seconds(30));
 	}
 

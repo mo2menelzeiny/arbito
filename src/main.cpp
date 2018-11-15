@@ -5,11 +5,19 @@
 #include <FIXMarketOffice.h>
 #include <FIXTradeOffice.h>
 #include <IBOffice.h>
+#include <spdlog/async.h>
+#include "spdlog/sinks/daily_file_sink.h"
+#include "spdlog/sinks/stdout_sinks.h"
 
 int main() {
+
+	auto systemLogger = spdlog::create_async_nb<spdlog::sinks::stdout_sink_mt>("system");
+
 	try {
+
 		pthread_setname_np(pthread_self(), "main");
 		srand(static_cast<unsigned int>(time(nullptr)));
+
 
 		const char *uri_string = getenv("MONGO_URI");
 		const char *db_name = getenv("MONGO_DB");
@@ -90,11 +98,13 @@ int main() {
 			ibOffice->start();
 		}
 
+		systemLogger->info("Main OK");
+
 		while (true) {
 			std::this_thread::sleep_for(std::chrono::minutes(1));
 		}
 	} catch (std::exception &ex) {
-		fprintf(stderr, "EXCEPTION: %s\n", ex.what());
+		systemLogger->error("{}", ex.what());
 	}
 
 	return EXIT_FAILURE;

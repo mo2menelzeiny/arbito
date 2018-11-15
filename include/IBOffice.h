@@ -16,6 +16,9 @@
 // IB
 #include "IBAPI/IBClient/IBClient.h"
 
+//SPDLOG
+#include <spdlog/spdlog.h>
+
 
 class IBOffice {
 public:
