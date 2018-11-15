@@ -26,7 +26,8 @@ FIXMarketOffice::FIXMarketOffice(
 		    target,
 		    heartbeat,
 		    OnErrorHandler([&](const std::exception &ex) {
-			    printf("%s\n", ex.what());
+			    auto systemLogger = spdlog::get("system");
+			    systemLogger->error("{}", ex.what());
 		    }),
 		    OnStartHandler([&](struct fix_session *session) {
 			    fix_session_send(session, &m_MDRFixMessage, 0);
@@ -88,19 +89,25 @@ void FIXMarketOffice::work() {
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "market");
 
+	auto systemLogger = spdlog::get("system");
+
 	m_fixSession.initiate();
+
+	systemLogger->info("Market Office OK");
 
 	aeron::Context context;
 
 	context.availableImageHandler([&](aeron::Image &image) {
-		printf("Central office available\n");
+		systemLogger->info("Central {} available", image.sourceIdentity());
 	});
 
 	context.unavailableImageHandler([&](aeron::Image &image) {
-		printf("Central office unavailable\n");
+		systemLogger->error("Central {} unavailable", image.sourceIdentity());
+
 	});
 
 	context.errorHandler([&](const std::exception &ex) {
+		systemLogger->error("{}", ex.what());
 	});
 
 	auto client = std::make_shared<aeron::Aeron>(context);

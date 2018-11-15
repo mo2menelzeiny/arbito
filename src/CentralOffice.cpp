@@ -36,17 +36,21 @@ void CentralOffice::work() {
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "central");
 
+	auto systemLogger = spdlog::get("system");
+	auto triggerLogger = spdlog::daily_logger_st("trigger", "trigger_log");
+
 	aeron::Context context;
 
 	context.availableImageHandler([&](aeron::Image &image) {
-		printf("Node available\n");
+		systemLogger->info("Leg {} available", image.sourceIdentity());
 	});
 
 	context.unavailableImageHandler([&](aeron::Image &image) {
-		printf("Node unavailable\n");
+		systemLogger->error("Leg {} unavailable", image.sourceIdentity());
 	});
 
 	context.errorHandler([&](const std::exception &ex) {
+		systemLogger->error("{}", ex.what());
 	});
 
 	auto client = std::make_shared<aeron::Aeron>(context);
@@ -93,8 +97,6 @@ void CentralOffice::work() {
 	bool isOrderDelayed = false;
 	time_t orderDelay = m_orderDelaySec;
 	time_t orderDelayStart = time(nullptr);
-
-	auto centralLogger = spdlog::daily_logger_st("Central", "central_log");
 
 	auto handleTriggers = [&] {
 		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) return;
@@ -150,19 +152,6 @@ void CentralOffice::work() {
 
 		}
 
-		switch (currentOrder) {
-			case DIFF_A:
-				centralLogger->info("BidA: {} OfferB: {}", bidA, offerB);
-				centralLogger->flush();
-				break;
-			case DIFF_B:
-				centralLogger->info("BidB: {} OfferA: {}", bidB, offerA);
-				centralLogger->flush();
-				break;
-			case DIFF_NONE:
-				break;
-		}
-
 		if (ordersCount == 0) {
 			currentDiff = DIFF_NONE;
 		}
@@ -195,6 +184,18 @@ void CentralOffice::work() {
 
 		switch (currentOrder) {
 			case DIFF_A:
+				triggerLogger->info("BidA: {} OfferB: {} Difference: {}", bidA, offerB, bidA - offerB);
+				break;
+			case DIFF_B:
+				triggerLogger->info("BidB: {} OfferA: {} Difference: {}", bidB, offerA, bidB - offerA);
+				break;
+			case DIFF_NONE:
+				break;
+		}
+
+		// TODO: uncomment to enable order handling
+		/*switch (currentOrder) {
+			case DIFF_A:
 				tradeData.side('2');
 				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
 
@@ -208,7 +209,7 @@ void CentralOffice::work() {
 				tradeData.side('2');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 				break;
-		}
+		}*/
 
 		currentOrder = DIFF_NONE;
 		orderDelayStart = time(nullptr);
@@ -278,8 +279,7 @@ void CentralOffice::work() {
 		subscriptionA->poll(fragmentAssemblerA.handler(), 1);
 		subscriptionB->poll(fragmentAssemblerB.handler(), 1);
 		handleTriggers();
-		// TODO: uncomment to enable order handling
-		// handleOrders();
+		handleOrders();
 
 		// TODO: Price expired feature under development
 		/*if (!isExpiredA && duration_cast<milliseconds>(timestampNow - timestampA).count() > m_windowMs) {

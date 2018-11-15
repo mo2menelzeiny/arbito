@@ -15,6 +15,9 @@
 // Domain
 #include "FIXSession.h"
 
+// SPDLOG
+#include <spdlog/spdlog.h>
+
 class FIXMarketOffice {
 public:
 	FIXMarketOffice(
