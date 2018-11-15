@@ -10,7 +10,7 @@ rm master.zip
 cd Disruptor-cpp-master
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DDISRUPTOR_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
 make -j 4 install PREFIX=/usr/local
 
 #return to externals/
