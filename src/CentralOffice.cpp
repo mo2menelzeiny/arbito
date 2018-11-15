@@ -194,6 +194,8 @@ void CentralOffice::work() {
 				break;
 		}
 
+		triggerLogger->flush();
+
 		// TODO: uncomment to enable order handling
 		/*switch (currentOrder) {
 			case DIFF_A:
