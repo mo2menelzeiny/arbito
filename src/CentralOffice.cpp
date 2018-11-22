@@ -12,12 +12,20 @@ CentralOffice::CentralOffice(
 		int orderDelaySec,
 		int maxOrders,
 		double diffOpen,
-		double diffClose
+		double diffClose,
+		const char *DBUri,
+		const char *DBName
 ) : m_windowMs(windowMs),
     m_orderDelaySec(orderDelaySec),
     m_maxOrders(maxOrders),
     m_diffOpen(diffOpen),
-    m_diffClose(diffClose) {
+    m_diffClose(diffClose),
+    m_mongoDriver(
+		    "IB",
+		    DBUri,
+		    DBName,
+		    "coll_orders"
+    ) {
 	sprintf(m_subscriptionURIA, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPortA);
 	sprintf(m_subscriptionURIB, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPortB);
 	sprintf(m_publicationURIA, "aeron:udp?endpoint=%s:%i\n", publicationHostA, publicationPortA);
@@ -43,6 +51,8 @@ void CentralOffice::work() {
 
 	auto systemLogger = spdlog::get("system");
 	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
+
+	std::mt19937_64 randomGenerator(std::random_device{}());
 
 	aeron::Context aeronContext;
 
@@ -115,8 +125,6 @@ void CentralOffice::work() {
 	time_point<system_clock> timestampA, timestampB, timestampNow;
 	timestampA = timestampB = timestampNow = system_clock::now();*/
 
-	std::mt19937_64 randomGenerator(std::random_device{}());
-
 	int ordersCount = 0;
 	TriggerDifference currentDiff = DIFF_NONE;
 	TriggerDifference currentOrder = DIFF_NONE;
@@ -185,23 +193,46 @@ void CentralOffice::work() {
 
 		if (currentOrder == DIFF_NONE) return;
 
-		auto randomId = randomGenerator();
-		tradeData.id(randomId);
+		auto randomIdA = randomGenerator();
+		auto randomIdB = randomGenerator();
+
+		char randIdAStr[64];
+		char randIdBStr[64];
+
+		const char *orderType = currentOrder == currentDiff ? "OPEN" : "CLOSE";
 
 		switch (currentOrder) {
 			case DIFF_A:
+				tradeData.id(randomIdA);
 				tradeData.side('2');
 				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
 
+				tradeData.id(randomIdB);
 				tradeData.side('1');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
+
+				sprintf(randIdAStr, "%li", randomIdA);
+				m_mongoDriver.recordTrigger(randIdAStr, bidA, orderType);
+
+				sprintf(randIdBStr, "%li", randomIdB);
+				m_mongoDriver.recordTrigger(randIdBStr, offerB, orderType);
+
 				break;
 			case DIFF_B:
+				tradeData.id(randomIdA);
 				tradeData.side('1');
 				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
 
+				tradeData.id(randomIdB);
 				tradeData.side('2');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
+
+				sprintf(randIdAStr, "%li", randomIdA);
+				m_mongoDriver.recordTrigger(randIdAStr, offerA, orderType);
+
+				sprintf(randIdBStr, "%li", randomIdB);
+				m_mongoDriver.recordTrigger(randIdBStr, bidB, orderType);
+
 				break;
 		}
 

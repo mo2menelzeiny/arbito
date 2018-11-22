@@ -14,8 +14,8 @@
 int main() {
 	auto systemLogger = spdlog::create_async_nb<spdlog::sinks::stdout_sink_mt>("system");
 
-	const char *uri_string = getenv("MONGO_URI");
-	const char *db_name = getenv("MONGO_DB");
+	const char *dbUri = getenv("MONGO_URI");
+	const char *dbName = getenv("MONGO_DB");
 
 	try {
 		auto mediaDriver = MediaDriver();
@@ -40,7 +40,9 @@ int main() {
 					stoi(getenv("ORDER_DELAY_SEC")),
 					stoi(getenv("MAX_ORDERS")),
 					stof(getenv("DIFF_OPEN")),
-					stof(getenv("DIFF_CLOSE"))
+					stof(getenv("DIFF_CLOSE")),
+					dbUri,
+					dbName
 			);
 
 			centralOffice->start();
@@ -71,7 +73,9 @@ int main() {
 					getenv("TO_PASSWORD"),
 					getenv("TO_SENDER"),
 					getenv("TO_TARGET"),
-					stoi(getenv("HEARTBEAT"))
+					stoi(getenv("HEARTBEAT")),
+					dbUri,
+					dbName
 			);
 
 			fixMarketOffice->start();
@@ -85,7 +89,9 @@ int main() {
 					stof(getenv("QTY")),
 					stoi(getenv("MO_CO_PORT")),
 					getenv("CO_HOST"),
-					stoi(getenv("TO_CO_PORT"))
+					stoi(getenv("TO_CO_PORT")),
+					dbUri,
+					dbName
 			);
 
 			ibOffice->start();
@@ -94,7 +100,7 @@ int main() {
 		systemLogger->info("Main OK");
 
 		while (true) {
-			std::this_thread::sleep_for(std::chrono::minutes(30));
+			std::this_thread::sleep_for(std::chrono::minutes(1));
 		}
 
 	} catch (std::exception &ex) {
