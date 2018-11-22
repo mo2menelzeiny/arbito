@@ -24,7 +24,6 @@ class IBOffice {
 public:
 	IBOffice(
 			const char *broker,
-			double spread,
 			double quantity,
 			int publicationPort,
 			const char *publicationHost,
@@ -33,15 +32,18 @@ public:
 
 	void start();
 
+	void stop();
+
 private:
 	void work();
 
 private:
 	const char *m_broker;
-	double m_spread;
 	double m_quantity;
 	char m_publicationURI[64];
 	char m_subscriptionURI[64];
+	std::thread m_worker;
+	std::atomic_bool m_running;
 };
 
 

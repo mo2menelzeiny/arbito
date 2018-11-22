@@ -21,10 +21,7 @@ FIXTradeOffice::FIXTradeOffice(
 		    password,
 		    sender,
 		    target,
-		    heartbeat,
-		    m_onErrorHandler,
-		    m_onStartHandler
-
+		    heartbeat
     ) {
 	sprintf(m_subscriptionURI, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPort);
 
@@ -96,8 +93,13 @@ FIXTradeOffice::FIXTradeOffice(
 }
 
 void FIXTradeOffice::start() {
-	auto worker = std::thread(&FIXTradeOffice::work, this);
-	worker.detach();
+	m_running = true;
+	m_worker = std::thread(&FIXTradeOffice::work, this);
+}
+
+void FIXTradeOffice::stop() {
+	m_running = false;
+	m_worker.join();
 }
 
 void FIXTradeOffice::work() {
@@ -105,50 +107,32 @@ void FIXTradeOffice::work() {
 	CPU_ZERO(&cpuset);
 	CPU_SET(2, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(pthread_self(), "trade");
+	pthread_setname_np(pthread_self(), "trade-office");
 
-	m_onStartHandler = OnStartHandler([&](struct fix_session *session) {
-		// do nothing on start
-	});
+	auto systemLogger = spdlog::get("system");
 
-	m_onErrorHandler = OnErrorHandler([&](const std::exception &ex) {
-		printf("%s\n", ex.what());
-	});
+	aeron::Context aeronContext;
 
-	m_fixSession.initiate();
+	aeronContext
+			.availableImageHandler([&](aeron::Image &image) {
+				systemLogger->info("{} available", image.sourceIdentity());
+			})
+			.unavailableImageHandler([&](aeron::Image &image) {
+				systemLogger->error("{} unavailable", image.sourceIdentity());
+			})
+			.errorHandler([&](const std::exception &ex) {
+				systemLogger->error("{}", ex.what());
+			});
 
-	aeron::Context context;
+	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
 
-	context.availableImageHandler([&](aeron::Image &image) {
-		printf("Central office available\n");
-	});
+	auto subscriptionId = aeronClient->addSubscription(m_subscriptionURI, 1);
 
-	context.unavailableImageHandler([&](aeron::Image &image) {
-		printf("Central office unavailable\n");
-	});
-
-	context.errorHandler([&](const std::exception &ex) {
-	});
-
-	auto client = std::make_shared<aeron::Aeron>(context);
-
-	auto subscriptionId = client->addSubscription(m_subscriptionURI, 1);
-
-	auto subscription = client->findSubscription(subscriptionId);
-
+	auto subscription = aeronClient->findSubscription(subscriptionId);
 	while (!subscription) {
 		std::this_thread::yield();
-		subscription = client->findSubscription(subscriptionId);
+		subscription = aeronClient->findSubscription(subscriptionId);
 	}
-
-	uint8_t buffer[64];
-	aeron::concurrent::AtomicBuffer atomicBuffer;
-	atomicBuffer.wrap(buffer, 64);
-
-	sbe::MessageHeader messageHeader;
-	sbe::TradeData tradeData;
-
-	bool canOrder = false;
 
 	auto fragmentHandler = [&](
 			aeron::AtomicBuffer &buffer,
@@ -159,6 +143,9 @@ void FIXTradeOffice::work() {
 		auto bufferLength = static_cast<const uint64_t>(length);
 		auto messageBuffer = reinterpret_cast<char *>(buffer.buffer() + offset);
 
+		sbe::MessageHeader messageHeader;
+		sbe::TradeData tradeData;
+
 		messageHeader.wrap(messageBuffer, 0, 0, bufferLength);
 		tradeData.wrapForDecode(
 				messageBuffer,
@@ -168,7 +155,21 @@ void FIXTradeOffice::work() {
 				bufferLength
 		);
 
-		canOrder = true;
+		char clOrdId[64];
+		sprintf(clOrdId, "%li", tradeData.id());
+
+		switch (tradeData.side()) {
+			case '1':
+				fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = clOrdId;
+				m_fixSession.send(&m_NOSBFixMessage);
+				break;
+			case '2':
+				fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdId;
+				m_fixSession.send(&m_NOSSFixMessage);
+				break;
+			default:
+				break;
+		}
 	};
 
 	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);
@@ -198,32 +199,22 @@ void FIXTradeOffice::work() {
 		}
 	});
 
-	auto doWorkHandler = DoWorkHandler([&](struct fix_session *session) {
-		if (!canOrder) return;
+	while (m_running) {
+		if (!m_fixSession.isActive()) {
 
-		char clOrdId[64];
-		sprintf(clOrdId, "%li", tradeData.id());
+			try {
+				m_fixSession.initiate();
+				systemLogger->info("Trade Office OK");
+			} catch (std::exception &ex) {
+				m_fixSession.terminate();
+				systemLogger->error("Trade office {}", ex.what());
+			}
 
-		switch (tradeData.side()) {
-			case '1': // SELL
-				fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = clOrdId;
-				fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = session->str_now;
-				fix_session_send(session, &m_NOSBFixMessage, 0);
-				break;
-			case '2': // BUY
-				fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdId;
-				fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = session->str_now;
-				fix_session_send(session, &m_NOSSFixMessage, 0);
-				break;
-			default:
-				break;
+			std::this_thread::sleep_for(std::chrono::seconds(30));
+			continue;
 		}
 
-		canOrder = false;
-	});
-
-	while (true) {
 		subscription->poll(fragmentAssembler.handler(), 1);
-		m_fixSession.poll(doWorkHandler, onMessageHandler);
+		m_fixSession.poll(onMessageHandler);
 	}
 }

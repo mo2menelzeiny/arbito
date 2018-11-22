@@ -1,23 +1,29 @@
 
+#include <IBOffice.h>
+
 #include "IBOffice.h"
 
 IBOffice::IBOffice(
 		const char *broker,
-		double spread,
 		double quantity,
 		int publicationPort,
 		const char *publicationHost,
 		int subscriptionPort
 ) : m_broker(broker),
-    m_spread(spread),
     m_quantity(quantity) {
 	sprintf(m_publicationURI, "aeron:udp?endpoint=%s:%i\n", publicationHost, publicationPort);
 	sprintf(m_subscriptionURI, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPort);
 }
 
 void IBOffice::start() {
-	auto worker = std::thread(&IBOffice::work, this);
-	worker.detach();
+	m_running = true;
+	m_worker = std::thread(&IBOffice::work, this);
+}
+
+
+void IBOffice::stop() {
+	m_running = false;
+	m_worker.join();
 }
 
 void IBOffice::work() {
@@ -32,34 +38,33 @@ void IBOffice::work() {
 	double bid = 0, offer = 0;
 	double bidQty = 0, offerQty = 0;
 
-	aeron::Context context;
+	aeron::Context aeronContext;
 
-	context.availableImageHandler([&](aeron::Image &image) {
-		systemLogger->info("Central {} available", image.sourceIdentity());
-	});
+	aeronContext
+			.availableImageHandler([&](aeron::Image &image) {
+				systemLogger->info("{} available", image.sourceIdentity());
+			})
+			.unavailableImageHandler([&](aeron::Image &image) {
+				systemLogger->error("{} unavailable", image.sourceIdentity());
+			})
+			.errorHandler([&](const std::exception &ex) {
+				systemLogger->error("{}", ex.what());
+			});
 
-	context.unavailableImageHandler([&](aeron::Image &image) {
-		systemLogger->error("Central {} unavailable", image.sourceIdentity());
-	});
+	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
 
-	context.errorHandler([&](const std::exception &ex) {
-		systemLogger->error("{}", ex.what());
-	});
-
-	auto client = std::make_shared<aeron::Aeron>(context);
-
-	auto publicationId = client->addExclusivePublication(m_publicationURI, 1);
-	auto publication = client->findExclusivePublication(publicationId);
+	auto publicationId = aeronClient->addExclusivePublication(m_publicationURI, 1);
+	auto publication = aeronClient->findExclusivePublication(publicationId);
 	while (!publication) {
 		std::this_thread::yield();
-		publication = client->findExclusivePublication(publicationId);
+		publication = aeronClient->findExclusivePublication(publicationId);
 	}
 
-	auto subscriptionId = client->addSubscription(m_subscriptionURI, 1);
-	auto subscription = client->findSubscription(subscriptionId);
+	auto subscriptionId = aeronClient->addSubscription(m_subscriptionURI, 1);
+	auto subscription = aeronClient->findSubscription(subscriptionId);
 	while (!subscription) {
 		std::this_thread::yield();
-		subscription = client->findSubscription(subscriptionId);
+		subscription = aeronClient->findSubscription(subscriptionId);
 	}
 
 	uint8_t buffer[64];
@@ -99,7 +104,7 @@ void IBOffice::work() {
 				break;
 		}
 
-		if (m_spread < (offer - bid) || m_quantity > offerQty || m_quantity > bidQty) return;
+		if (m_quantity > offerQty || m_quantity > bidQty) return;
 
 		marketData
 				.bid(bid)
@@ -108,10 +113,12 @@ void IBOffice::work() {
 		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
 	});
 
-	sbe::MessageHeader tradeDataHeader;
-	sbe::TradeData tradeData;
+	OrderId lastOrderId = 0;
+	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
+		if (status != "Filled") return;
+	});
 
-	bool canOrder = false;
+	IBClient ibClient(onTickHandler, onOrderStatus);
 
 	auto fragmentHandler = [&](
 			aeron::AtomicBuffer &buffer,
@@ -122,6 +129,9 @@ void IBOffice::work() {
 		auto bufferLength = static_cast<const uint64_t>(length);
 		auto messageBuffer = reinterpret_cast<char *>(buffer.buffer() + offset);
 
+		sbe::MessageHeader tradeDataHeader;
+		sbe::TradeData tradeData;
+
 		tradeDataHeader.wrap(messageBuffer, 0, 0, bufferLength);
 		tradeData.wrapForDecode(
 				messageBuffer,
@@ -131,45 +141,42 @@ void IBOffice::work() {
 				bufferLength
 		);
 
-		canOrder = true;
-	};
-
-	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);
-
-	auto stateHandler = StateHandler([&](State *state) {
-		if (!canOrder) return;
-
 		char clOrdId[64];
 		sprintf(clOrdId, "%li", tradeData.id());
 
-		// TODO: handle IB orders
+		// TODO: handle order recording
 		switch (tradeData.side()) {
-			case '1': // SELL
-
+			case '1':
+				ibClient.placeMarketOrder("BUY", m_quantity);
 				break;
-			case '2': // BUY
-
+			case '2':
+				ibClient.placeMarketOrder("SELL", m_quantity);
 				break;
 			default:
 				break;
 		}
 
-		canOrder = false;
-	});
+	};
 
-	IBClient ibClient(onTickHandler, stateHandler);
+	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);
 
-	while (true) {
-		ibClient.connect("127.0.0.1", 4001);
-		systemLogger->error("IBClient OK");
+	while (m_running) {
+		if (!ibClient.isConnected()) {
+			bool result = ibClient.connect("127.0.0.1", 4001);
 
-		while (ibClient.isConnected()) {
-			subscription->poll(fragmentAssembler.handler(), 1);
-			ibClient.processMessages();
+			if (!result) {
+				systemLogger->info("IB Office: Client FAILED");
+				std::this_thread::sleep_for(std::chrono::seconds(30));
+				continue;
+			}
+
+			ibClient.subscribeToFeed();
+			systemLogger->info("IB Office OK");
 		}
 
-		systemLogger->error("IBClient FAILED");
-		std::this_thread::sleep_for(std::chrono::seconds(30));
+		subscription->poll(fragmentAssembler.handler(), 1);
+		ibClient.processMessages();
 	}
 
+	ibClient.disconnect();
 }

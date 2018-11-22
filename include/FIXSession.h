@@ -4,21 +4,15 @@
 
 // C
 #include <thread>
+#include <functional>
 
 // FIX
 #include <libtrading/proto/fix_common.h>
-#include <functional>
 
 //Domain
 #include "FIXSocket.h"
 
-typedef std::function<void(const std::exception &ex)> OnErrorHandler;
-
-typedef std::function<void(struct fix_session *session)> OnStartHandler;
-
 typedef std::function<void(struct fix_message *msg)> OnMessageHandler;
-
-typedef std::function<void(struct fix_session *session)> DoWorkHandler;
 
 class FIXSession {
 public:
@@ -29,31 +23,28 @@ public:
 			const char *password,
 			const char *sender,
 			const char *target,
-			int heartbeat,
-			const OnErrorHandler &onErrorHandler,
-			const OnStartHandler &onStartHandler
+			int heartbeat
 	);
 
-	inline fix_session *session() const {
-		return m_session;
+	inline bool isActive() const {
+		return m_session == nullptr ? false : m_session->active;
 	}
 
 	void initiate();
 
 	void terminate();
 
-	template<typename A, typename B>
-	inline void poll(A &&doWorkHandler, B &&onMessageHandler) {
-		if (!m_session->active) {
-			this->m_onErrorHandler(std::runtime_error("Session FAILED"));
-			this->initiate();
-			return;
-		}
+	inline void send(struct fix_message *msg) {
+		fix_session_send(m_session, msg, 0);
+	}
 
+	template<typename F>
+	inline void poll(F &&onMessageHandler) {
+		struct timespec currentTimespec{};
 		clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
 
-		if ((currentTimespec.tv_sec - previousTimespec.tv_sec) > 0.1 * m_session->heartbtint) {
-			previousTimespec = currentTimespec;
+		if ((currentTimespec.tv_sec - m_lastTimespec.tv_sec) > 0.1 * m_session->heartbtint) {
+			m_lastTimespec = currentTimespec;
 
 			if (!fix_session_keepalive(m_session, &currentTimespec)) {
 				m_session->active = false;
@@ -65,8 +56,6 @@ public:
 			m_session->active = false;
 			return;
 		}
-
-		doWorkHandler(m_session);
 
 		struct fix_message *msg = nullptr;
 		if (fix_session_recv(m_session, &msg, FIX_RECV_FLAG_MSG_DONTWAIT) <= 0) {
@@ -101,13 +90,10 @@ private:
 	const char *m_sender;
 	const char *m_target;
 	int m_heartbeat;
-	OnErrorHandler m_onErrorHandler;
-	OnStartHandler m_onStartHandler;
 	FIXSocket m_fixSocket;
 	struct fix_session_cfg m_cfg;
 	struct fix_session *m_session;
-	struct timespec currentTimespec{};
-	struct timespec previousTimespec{};
+	struct timespec m_lastTimespec{};
 };
 
 

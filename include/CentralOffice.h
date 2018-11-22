@@ -44,6 +44,8 @@ public:
 
 	void start();
 
+	void stop();
+
 private:
 	void work();
 
@@ -57,6 +59,8 @@ private:
 	char m_publicationURIB[64];
 	char m_subscriptionURIA[64];
 	char m_subscriptionURIB[64];
+	std::thread m_worker;
+	std::atomic_bool m_running;
 };
 
 

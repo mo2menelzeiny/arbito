@@ -25,8 +25,13 @@ CentralOffice::CentralOffice(
 }
 
 void CentralOffice::start() {
-	auto worker = std::thread(&CentralOffice::work, this);
-	worker.detach();
+	m_running = true;
+	m_worker = std::thread(&CentralOffice::work, this);
+}
+
+void CentralOffice::stop() {
+	m_running = false;
+	m_worker.join();
 }
 
 void CentralOffice::work() {
@@ -34,62 +39,83 @@ void CentralOffice::work() {
 	CPU_ZERO(&cpuset);
 	CPU_SET(1, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(pthread_self(), "central");
+	pthread_setname_np(pthread_self(), "central-office");
 
 	auto systemLogger = spdlog::get("system");
-	auto triggerLogger = spdlog::daily_logger_st("trigger", "trigger_log");
 	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
 
-	aeron::Context context;
+	aeron::Context aeronContext;
 
-	context.availableImageHandler([&](aeron::Image &image) {
-		systemLogger->info("Leg {} available", image.sourceIdentity());
-	});
+	aeronContext
+			.availableImageHandler([&](aeron::Image &image) {
+				systemLogger->info("{} available", image.sourceIdentity());
+			})
 
-	context.unavailableImageHandler([&](aeron::Image &image) {
-		systemLogger->error("Leg {} unavailable", image.sourceIdentity());
-	});
+			.unavailableImageHandler([&](aeron::Image &image) {
+				systemLogger->error("{} unavailable", image.sourceIdentity());
+			})
 
-	context.errorHandler([&](const std::exception &ex) {
-		systemLogger->error("{}", ex.what());
-	});
+			.errorHandler([&](const std::exception &ex) {
+				systemLogger->error("{}", ex.what());
+			});
 
-	auto client = std::make_shared<aeron::Aeron>(context);
+	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
 
-	auto publicationIdA = client->addExclusivePublication(m_publicationURIA, 1);
-	auto publicationA = client->findExclusivePublication(publicationIdA);
+	auto publicationIdA = aeronClient->addExclusivePublication(m_publicationURIA, 1);
+	auto publicationA = aeronClient->findExclusivePublication(publicationIdA);
 	while (!publicationA) {
 		std::this_thread::yield();
-		publicationA = client->findExclusivePublication(publicationIdA);
+		publicationA = aeronClient->findExclusivePublication(publicationIdA);
 	}
 
-	auto publicationIdB = client->addExclusivePublication(m_publicationURIB, 1);
-	auto publicationB = client->findExclusivePublication(publicationIdB);
+	auto publicationIdB = aeronClient->addExclusivePublication(m_publicationURIB, 1);
+	auto publicationB = aeronClient->findExclusivePublication(publicationIdB);
 	while (!publicationB) {
 		std::this_thread::yield();
-		publicationB = client->findExclusivePublication(publicationIdB);
+		publicationB = aeronClient->findExclusivePublication(publicationIdB);
 	}
 
-	auto subscriptionIdA = client->addSubscription(m_subscriptionURIA, 1);
-	auto subscriptionA = client->findSubscription(subscriptionIdA);
+	auto subscriptionIdA = aeronClient->addSubscription(m_subscriptionURIA, 1);
+	auto subscriptionA = aeronClient->findSubscription(subscriptionIdA);
 	while (!subscriptionA) {
 		std::this_thread::yield();
-		subscriptionA = client->findSubscription(subscriptionIdA);
+		subscriptionA = aeronClient->findSubscription(subscriptionIdA);
 	}
 
-	auto subscriptionIdB = client->addSubscription(m_subscriptionURIB, 1);
-	auto subscriptionB = client->findSubscription(subscriptionIdB);
+	auto subscriptionIdB = aeronClient->addSubscription(m_subscriptionURIB, 1);
+	auto subscriptionB = aeronClient->findSubscription(subscriptionIdB);
 	while (!subscriptionB) {
 		std::this_thread::yield();
-		subscriptionB = client->findSubscription(subscriptionIdB);
+		subscriptionB = aeronClient->findSubscription(subscriptionIdB);
 	}
 
-	bool isExpiredA = true, isExpiredB = true;
-	time_point<system_clock> timestampA, timestampB, timestampNow;
-	timestampA = timestampB = timestampNow = system_clock::now();
+	uint8_t buffer[64];
+	aeron::concurrent::AtomicBuffer atomicBuffer;
+	atomicBuffer.wrap(buffer, 64);
+	auto tradeDataBuffer = reinterpret_cast<char *>(buffer);
+
+	sbe::MessageHeader tradeDataHeader;
+	sbe::TradeData tradeData;
+
+	tradeDataHeader
+			.wrap(tradeDataBuffer, 0, 0, 64)
+			.blockLength(sbe::TradeData::sbeBlockLength())
+			.templateId(sbe::TradeData::sbeTemplateId())
+			.schemaId(sbe::TradeData::sbeSchemaId())
+			.version(sbe::TradeData::sbeSchemaVersion());
+
+	tradeData.wrapForEncode(tradeDataBuffer, sbe::MessageHeader::encodedLength(), 64);
+
+	auto encodedLength = static_cast<aeron::index_t>(sbe::MessageHeader::encodedLength() + tradeData.encodedLength());
 
 	double bidA = -99, offerA = 99;
 	double bidB = -99, offerB = 99;
+
+	/*bool isExpiredA = true, isExpiredB = true;
+	time_point<system_clock> timestampA, timestampB, timestampNow;
+	timestampA = timestampB = timestampNow = system_clock::now();*/
+
+	std::mt19937_64 randomGenerator(std::random_device{}());
 
 	int ordersCount = 0;
 	TriggerDifference currentDiff = DIFF_NONE;
@@ -156,63 +182,28 @@ void CentralOffice::work() {
 		if (ordersCount == 0) {
 			currentDiff = DIFF_NONE;
 		}
-	};
 
-	uint8_t buffer[64];
-	aeron::concurrent::AtomicBuffer atomicBuffer;
-	atomicBuffer.wrap(buffer, 64);
-	auto tradeDataBuffer = reinterpret_cast<char *>(buffer);
-
-	sbe::MessageHeader tradeDataHeader;
-	sbe::TradeData tradeData;
-
-	tradeDataHeader
-			.wrap(tradeDataBuffer, 0, 0, 64)
-			.blockLength(sbe::TradeData::sbeBlockLength())
-			.templateId(sbe::TradeData::sbeTemplateId())
-			.schemaId(sbe::TradeData::sbeSchemaId())
-			.version(sbe::TradeData::sbeSchemaVersion());
-
-	tradeData.wrapForEncode(tradeDataBuffer, sbe::MessageHeader::encodedLength(), 64);
-
-	auto encodedLength = static_cast<aeron::index_t>(sbe::MessageHeader::encodedLength() + tradeData.encodedLength());
-
-	auto handleOrders = [&] {
 		if (currentOrder == DIFF_NONE) return;
 
-		int randomId = rand();
+		auto randomId = randomGenerator();
 		tradeData.id(randomId);
 
 		switch (currentOrder) {
 			case DIFF_A:
-				triggerLogger->info("BidA: {} OfferB: {} Difference: {}", bidA, offerB, bidA - offerB);
+				tradeData.side('2');
+				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
+
+				tradeData.side('1');
+				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 				break;
 			case DIFF_B:
-				triggerLogger->info("BidB: {} OfferA: {} Difference: {}", bidB, offerA, bidB - offerA);
-				break;
-			case DIFF_NONE:
+				tradeData.side('1');
+				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
+
+				tradeData.side('2');
+				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 				break;
 		}
-
-		triggerLogger->flush();
-
-		// TODO: uncomment to enable order handling
-		/*switch (currentOrder) {
-			case DIFF_A:
-				tradeData.side('2');
-				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
-
-				tradeData.side('1');
-				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
-				break;
-			case DIFF_B:
-				tradeData.side('1');
-				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
-
-				tradeData.side('2');
-				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
-				break;
-		}*/
 
 		bidA = -99;
 		offerA = 99;
@@ -247,7 +238,9 @@ void CentralOffice::work() {
 
 		bidA = marketData.bid();
 		offerA = marketData.offer();
-		marketLogger->info("[LMAX] bid: {} offer: {}", bidA, offerA);
+
+		marketLogger->info("[A] bid: {} offer: {}", bidA, offerA);
+
 		// timestampB = timestampNow;
 		// isExpiredA = false;
 	};
@@ -276,21 +269,22 @@ void CentralOffice::work() {
 		bidB = marketData.bid();
 		offerB = marketData.offer();
 
-		marketLogger->info("[IDEALPRO] bid: {} offer: {}", bidB, offerB);
+		marketLogger->info("[A] bid: {} offer: {}", bidB, offerB);
+
 		// timestampB = timestampNow;
 		// isExpiredB = false;
-
 	};
 
 	auto fragmentAssemblerA = aeron::FragmentAssembler(fragmentHandlerA);
 	auto fragmentAssemblerB = aeron::FragmentAssembler(fragmentHandlerB);
 
-	while (true) {
-		timestampNow = system_clock::now();
+	while (m_running) {
+		/*timestampNow = system_clock::now();*/
+
 		subscriptionA->poll(fragmentAssemblerA.handler(), 1);
 		subscriptionB->poll(fragmentAssemblerB.handler(), 1);
+
 		handleTriggers();
-		handleOrders();
 
 		// TODO: Price expired feature under development
 		/*if (!isExpiredA && duration_cast<milliseconds>(timestampNow - timestampA).count() > m_windowMs) {

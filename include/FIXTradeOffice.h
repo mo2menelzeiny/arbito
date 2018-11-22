@@ -15,6 +15,9 @@
 // Domain
 #include "FIXSession.h"
 
+// SPDLOG
+#include "spdlog/spdlog.h"
+
 class FIXTradeOffice {
 public:
 	FIXTradeOffice(
@@ -32,6 +35,8 @@ public:
 
 	void start();
 
+	void stop();
+
 private:
 	void work();
 
@@ -44,8 +49,8 @@ private:
 	struct fix_field *m_NOSBFields;
 	struct fix_message m_NOSBFixMessage{};
 	FIXSession m_fixSession;
-	OnStartHandler m_onStartHandler;
-	OnErrorHandler m_onErrorHandler;
+	std::thread m_worker;
+	std::atomic_bool m_running;
 };
 
 

@@ -1,9 +1,10 @@
 
+#include <FIXMarketOffice.h>
+
 #include "FIXMarketOffice.h"
 
 FIXMarketOffice::FIXMarketOffice(
 		const char *broker,
-		double spread,
 		double quantity,
 		int publicationPort,
 		const char *publicationHost,
@@ -15,7 +16,6 @@ FIXMarketOffice::FIXMarketOffice(
 		const char *target,
 		int heartbeat
 ) : m_broker(broker),
-    m_spread(spread),
     m_quantity(quantity),
     m_fixSession(
 		    host,
@@ -24,15 +24,7 @@ FIXMarketOffice::FIXMarketOffice(
 		    password,
 		    sender,
 		    target,
-		    heartbeat,
-		    OnErrorHandler([&](const std::exception &ex) {
-			    auto systemLogger = spdlog::get("system");
-			    systemLogger->error("{}", ex.what());
-		    }),
-		    OnStartHandler([&](struct fix_session *session) {
-			    fix_session_send(session, &m_MDRFixMessage, 0);
-		    })
-
+		    heartbeat
     ) {
 	sprintf(m_publicationURI, "aeron:udp?endpoint=%s:%i\n", publicationHost, publicationPort);
 
@@ -78,8 +70,13 @@ FIXMarketOffice::FIXMarketOffice(
 }
 
 void FIXMarketOffice::start() {
-	auto worker = std::thread(&FIXMarketOffice::work, this);
-	worker.detach();
+	m_running = true;
+	m_worker = std::thread(&FIXMarketOffice::work, this);
+}
+
+void FIXMarketOffice::stop() {
+	m_running = false;
+	m_worker.join();
 }
 
 void FIXMarketOffice::work() {
@@ -87,38 +84,31 @@ void FIXMarketOffice::work() {
 	CPU_ZERO(&cpuset);
 	CPU_SET(1, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(pthread_self(), "market");
+	pthread_setname_np(pthread_self(), "market-office");
 
 	auto systemLogger = spdlog::get("system");
 
-	m_fixSession.initiate();
+	aeron::Context aeronContext;
 
-	systemLogger->info("Market Office OK");
+	aeronContext
+			.availableImageHandler([&](aeron::Image &image) {
+				systemLogger->info("{} available", image.sourceIdentity());
+			})
+			.unavailableImageHandler([&](aeron::Image &image) {
+				systemLogger->error("{} unavailable", image.sourceIdentity());
+			})
+			.errorHandler([&](const std::exception &ex) {
+				systemLogger->error("{}", ex.what());
+			});
 
-	aeron::Context context;
+	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
 
-	context.availableImageHandler([&](aeron::Image &image) {
-		systemLogger->info("Central {} available", image.sourceIdentity());
-	});
+	auto publicationId = aeronClient->addExclusivePublication(m_publicationURI, 1);
 
-	context.unavailableImageHandler([&](aeron::Image &image) {
-		systemLogger->error("Central {} unavailable", image.sourceIdentity());
-
-	});
-
-	context.errorHandler([&](const std::exception &ex) {
-		systemLogger->error("{}", ex.what());
-	});
-
-	auto client = std::make_shared<aeron::Aeron>(context);
-
-	auto publicationId = client->addExclusivePublication(m_publicationURI, 1);
-
-	auto publication = client->findExclusivePublication(publicationId);
-
+	auto publication = aeronClient->findExclusivePublication(publicationId);
 	while (!publication) {
 		std::this_thread::yield();
-		publication = client->findExclusivePublication(publicationId);
+		publication = aeronClient->findExclusivePublication(publicationId);
 	}
 
 	uint8_t buffer[64];
@@ -152,7 +142,7 @@ void FIXMarketOffice::work() {
 		double offer = fix_get_field_at(msg, msg->nr_fields - offerIdx)->float_value;
 		double offerQty = fix_get_field_at(msg, msg->nr_fields - offerQtyIdx)->float_value;
 
-		if (m_spread < offer - bid || m_quantity > offerQty || m_quantity > bidQty) return;
+		if (m_quantity > offerQty || m_quantity > bidQty) return;
 
 		marketData
 				.bid(bid)
@@ -162,11 +152,24 @@ void FIXMarketOffice::work() {
 
 	});
 
-	auto doWorkHandler = DoWorkHandler([&](struct fix_session *session) {
-		// no work needed in market session
-	});
+	while (m_running) {
+		if (!m_fixSession.isActive()) {
 
-	while (true) {
-		m_fixSession.poll(doWorkHandler, onMessageHandler);
+			try {
+				m_fixSession.initiate();
+				m_fixSession.send(&m_MDRFixMessage);
+				systemLogger->info("Market Office OK");
+			} catch (std::exception &ex) {
+				m_fixSession.terminate();
+				systemLogger->error("Market Office {}", ex.what());
+				std::this_thread::sleep_for(std::chrono::seconds(30));
+			}
+
+			continue;
+		}
+
+		m_fixSession.poll(onMessageHandler);
 	}
+
+	m_fixSession.terminate();
 }

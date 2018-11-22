@@ -10,18 +10,12 @@
 #include "spdlog/sinks/stdout_sinks.h"
 
 int main() {
-
 	auto systemLogger = spdlog::create_async_nb<spdlog::sinks::stdout_sink_mt>("system");
 
+	const char *uri_string = getenv("MONGO_URI");
+	const char *db_name = getenv("MONGO_DB");
+
 	try {
-
-		pthread_setname_np(pthread_self(), "main");
-		srand(static_cast<unsigned int>(time(nullptr)));
-
-
-		const char *uri_string = getenv("MONGO_URI");
-		const char *db_name = getenv("MONGO_DB");
-
 		auto mediaDriver = MediaDriver();
 		mediaDriver.start();
 
@@ -30,9 +24,9 @@ int main() {
 		FIXTradeOffice *fixTradeOffice;
 		IBOffice *ibOffice;
 
-		auto nodeType = getenv("ARBITO");
+		auto arbito = getenv("ARBITO");
 
-		if (!strcmp(nodeType, "CENTRAL")) {
+		if (!strcmp(arbito, "CENTRAL")) {
 			centralOffice = new CentralOffice(
 					stoi(getenv("TO_A_PORT")),
 					getenv("TO_A_HOST"),
@@ -50,10 +44,9 @@ int main() {
 			centralOffice->start();
 		}
 
-		if (!strcmp(nodeType, "FIX")) {
+		if (!strcmp(arbito, "FIX")) {
 			fixMarketOffice = new FIXMarketOffice(
 					getenv("BROKER"),
-					stof(getenv("SPREAD")),
 					stof(getenv("QTY")),
 					stoi(getenv("MO_CO_PORT")),
 					getenv("CO_HOST"),
@@ -79,16 +72,14 @@ int main() {
 					stoi(getenv("HEARTBEAT"))
 			);
 
-			// TODO: uncomment to enable trade office
 			fixMarketOffice->start();
-			// fixTradeOffice->start();
+			fixTradeOffice->start();
 		}
 
 
-		if (!strcmp(nodeType, "IBAPI")) {
+		if (!strcmp(arbito, "IBAPI")) {
 			ibOffice = new IBOffice(
 					getenv("BROKER"),
-					stof(getenv("SPREAD")),
 					stof(getenv("QTY")),
 					stoi(getenv("MO_CO_PORT")),
 					getenv("CO_HOST"),
@@ -101,10 +92,11 @@ int main() {
 		systemLogger->info("Main OK");
 
 		while (true) {
-			std::this_thread::sleep_for(std::chrono::minutes(1));
+			std::this_thread::sleep_for(std::chrono::seconds(30));
 		}
+
 	} catch (std::exception &ex) {
-		systemLogger->error("{}", ex.what());
+		systemLogger->error("Main {}", ex.what());
 	}
 
 	return EXIT_FAILURE;

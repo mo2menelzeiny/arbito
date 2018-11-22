@@ -43,10 +43,10 @@ const int SLEEP_BETWEEN_PINGS = 30; // seconds
 ///////////////////////////////////////////////////////////
 // member funcs
 //! [socket_init]
-IBClient::IBClient(OnTickHandler &onTickHandler, StateHandler &stateHandler) :
+IBClient::IBClient(OnTickHandler &onTickHandler, OnOrderStatus &onOrderStatus) :
 		m_onTickHandler(onTickHandler),
-		m_stateHandler(stateHandler),
-		m_osSignal(2000),
+		m_onOrderStatus(onOrderStatus),
+		m_osSignal(0),
 		m_pClient(new EClientSocket(this, &m_osSignal)),
 		m_state(ST_CONNECT),
 		m_sleepDeadline(0),
@@ -57,28 +57,26 @@ IBClient::IBClient(OnTickHandler &onTickHandler, StateHandler &stateHandler) :
 
 //! [socket_init]
 IBClient::~IBClient() {
-	if (m_pReader)
-		delete m_pReader;
-
+	delete m_pReader;
 	delete m_pClient;
 }
 
 bool IBClient::connect(const char *host, unsigned int port, int clientId) {
 	// trying to connect
-	printf("Connecting to %s:%d clientId:%d\n", !(host && *host) ? "127.0.0.1" : host, port, clientId);
+	// printf("Connecting to %s:%d clientId:%d\n", !(host && *host) ? "127.0.0.1" : host, port, clientId);
 
 	//! [connect]
 	bool bRes = m_pClient->eConnect(host, port, clientId, m_extraAuth);
 	//! [connect]
 
 	if (bRes) {
-		printf("Connected to %s:%d clientId:%d\n", m_pClient->host().c_str(), m_pClient->port(), clientId);
+		// printf("Connected to %s:%d clientId:%d\n", m_pClient->host().c_str(), m_pClient->port(), clientId);
 		//! [ereader]
 		m_pReader = new EReader(m_pClient, &m_osSignal);
 		m_pReader->start();
 		//! [ereader]
-	} else
-		printf("Cannot connect to %s:%d clientId:%d\n", m_pClient->host().c_str(), m_pClient->port(), clientId);
+	}
+	// printf("Cannot connect to %s:%d clientId:%d\n", m_pClient->host().c_str(), m_pClient->port(), clientId);
 
 	return bRes;
 }
@@ -86,7 +84,7 @@ bool IBClient::connect(const char *host, unsigned int port, int clientId) {
 void IBClient::disconnect() const {
 	m_pClient->eDisconnect();
 
-	printf("Disconnected\n");
+	// printf("Disconnected\n");
 }
 
 bool IBClient::isConnected() const {
@@ -98,14 +96,12 @@ void IBClient::setConnectOptions(const std::string &connectOptions) {
 }
 
 void IBClient::processMessages() {
-	time_t now = time(NULL);
-
-	m_stateHandler(&m_state);
+	// time_t now = time(NULL);
 
 	/*****************************************************************/
 	/* Below are few quick-to-test examples on the IB API functions grouped by functionality. Uncomment the relevant methods. */
 	/*****************************************************************/
-	switch (m_state) {
+	/*switch (m_state) {
 		case ST_PNLSINGLE:
 			pnlSingleOperation();
 			break;
@@ -316,7 +312,7 @@ void IBClient::processMessages() {
 				return;
 			}
 			break;
-	}
+	}*/
 
 	m_osSignal.waitForSignal();
 	errno = 0;
@@ -373,15 +369,6 @@ void IBClient::pnlSingleOperation() {
 
 void IBClient::tickDataOperation() {
 	/*** Requesting real time market data ***/
-	std::this_thread::sleep_for(std::chrono::seconds(1));
-	Contract contract;
-	contract.symbol = "EUR";
-	contract.secType = "CASH";
-	contract.currency = "USD";
-	contract.exchange = "IDEALPRO";
-
-	m_pClient->reqMktData(1001, contract, "", false, false, TagValueListSPtr());
-
 
 	//! [reqmktdata]
 //	m_pClient->reqMktData(1001, ContractSamples::StockComboContract(), "", false, false, TagValueListSPtr());
@@ -1310,12 +1297,12 @@ void IBClient::whatIfSamples() {
 
 //! [nextvalidid]
 void IBClient::nextValidId(OrderId orderId) {
-	printf("Next Valid Id: %ld\n", orderId);
+	// printf("Next Valid Id: %ld\n", orderId);
 	m_orderId = orderId;
 	//! [nextvalidid]
 
 	//m_state = ST_TICKOPTIONCOMPUTATIONOPERATION;
-	m_state = ST_TICKDATAOPERATION;
+	//m_state = ST_TICKDATAOPERATION;
 	//m_state = ST_REQTICKBYTICKDATA;
 	//m_state = ST_REQHISTORICALTICKS;
 	//m_state = ST_CONTFUT;
@@ -1401,7 +1388,7 @@ void IBClient::tickOptionComputation(TickerId tickerId, TickType tickType, doubl
 
 //! [tickgeneric]
 void IBClient::tickGeneric(TickerId tickerId, TickType tickType, double value) {
-	printf("Tick Generic. Ticker Id: %ld, Type: %d, Value: %g\n", tickerId, (int) tickType, value);
+	// printf("Tick Generic. Ticker Id: %ld, Type: %d, Value: %g\n", tickerId, (int) tickType, value);
 }
 //! [tickgeneric]
 
@@ -1424,9 +1411,10 @@ IBClient::tickEFP(TickerId tickerId, TickType tickType, double basisPoints, cons
 void IBClient::orderStatus(OrderId orderId, const std::string &status, double filled,
                            double remaining, double avgFillPrice, int permId, int parentId,
                            double lastFillPrice, int clientId, const std::string &whyHeld, double mktCapPrice) {
-	printf("OrderStatus. Id: %ld, Status: %s, Filled: %g, Remaining: %g, AvgFillPrice: %g, PermId: %d, LastFillPrice: %g, ClientId: %d, WhyHeld: %s, MktCapPrice: %g\n",
+	/*printf("OrderStatus. Id: %ld, Status: %s, Filled: %g, Remaining: %g, AvgFillPrice: %g, PermId: %d, LastFillPrice: %g, ClientId: %d, WhyHeld: %s, MktCapPrice: %g\n",
 	       orderId, status.c_str(), filled, remaining, avgFillPrice, permId, lastFillPrice, clientId, whyHeld.c_str(),
-	       mktCapPrice);
+	       mktCapPrice);*/
+	m_onOrderStatus(orderId, status, avgFillPrice);
 }
 //! [orderstatus]
 
@@ -1453,14 +1441,14 @@ void IBClient::openOrder(OrderId orderId, const Contract &contract, const Order 
 
 //! [openorderend]
 void IBClient::openOrderEnd() {
-	printf("OpenOrderEnd\n");
+	// printf("OpenOrderEnd\n");
 }
 //! [openorderend]
 
 void IBClient::winError(const std::string &str, int lastError) {}
 
 void IBClient::connectionClosed() {
-	printf("Connection Closed\n");
+	// printf("Connection Closed\n");
 }
 
 //! [updateaccountvalue]
@@ -1638,8 +1626,8 @@ void IBClient::updateMktDepthL2(TickerId id, int position, const std::string &ma
 //! [updatemktdepthl2]
 
 //! [updatenewsbulletin]
-void
-IBClient::updateNewsBulletin(int msgId, int msgType, const std::string &newsMessage, const std::string &originExch) {
+void IBClient::updateNewsBulletin(int msgId, int msgType, const std::string &newsMessage,
+                                  const std::string &originExch) {
 	printf("News Bulletins. %d - Type: %d, Message: %s, Exchange of Origin: %s\n", msgId, msgType, newsMessage.c_str(),
 	       originExch.c_str());
 }
@@ -1790,9 +1778,8 @@ void IBClient::displayGroupUpdated(int reqId, const std::string &contractInfo) {
 //! [displaygroupupdated]
 
 //! [positionmulti]
-void
-IBClient::positionMulti(int reqId, const std::string &account, const std::string &modelCode, const Contract &contract,
-                        double pos, double avgCost) {
+void IBClient::positionMulti(int reqId, const std::string &account, const std::string &modelCode,
+                             const Contract &contract, double pos, double avgCost) {
 	printf("Position Multi. Request: %d, Account: %s, ModelCode: %s, Symbol: %s, SecType: %s, Currency: %s, Position: %g, Avg Cost: %g\n",
 	       reqId, account.c_str(), modelCode.c_str(), contract.symbol.c_str(), contract.secType.c_str(),
 	       contract.currency.c_str(), pos, avgCost);
@@ -2067,9 +2054,9 @@ void IBClient::historicalTicksLast(int reqId, const std::vector<HistoricalTickLa
 //! [historicaltickslast]
 
 //! [tickbytickalllast]
-void
-IBClient::tickByTickAllLast(int reqId, int tickType, time_t time, double price, int size, const TickAttrib &attribs,
-                            const std::string &exchange, const std::string &specialConditions) {
+void IBClient::tickByTickAllLast(int reqId, int tickType, time_t time, double price, int size,
+                                 const TickAttrib &attribs, const std::string &exchange,
+                                 const std::string &specialConditions) {
 	printf("Tick-By-Tick. ReqId: %d, TickType: %s, Time: %s, Price: %g, Size: %d, PastLimit: %d, Unreported: %d, Exchange: %s, SpecialConditions:%s\n",
 	       reqId, (tickType == 1 ? "Last" : "AllLast"), ctime(&time), price, size, attribs.pastLimit,
 	       attribs.unreported, exchange.c_str(), specialConditions.c_str());
@@ -2089,3 +2076,28 @@ void IBClient::tickByTickMidPoint(int reqId, time_t time, double midPoint) {
 	printf("Tick-By-Tick. ReqId: %d, TickType: MidPoint, Time: %s, MidPoint: %g\n", reqId, ctime(&time), midPoint);
 }
 //! [tickbytickmidpoint]
+
+void IBClient::placeMarketOrder(const char *action, double quantity) {
+	Contract contract;
+	contract.symbol = "EUR";
+	contract.secType = "CASH";
+	contract.currency = "USD";
+	contract.exchange = "IDEALPRO";
+
+	Order order;
+	order.action = action;
+	order.orderType = "MKT";
+	order.totalQuantity = quantity;
+
+	m_pClient->placeOrder(m_orderId++, contract, order);
+}
+
+void IBClient::subscribeToFeed() {
+	Contract contract;
+	contract.symbol = "EUR";
+	contract.secType = "CASH";
+	contract.currency = "USD";
+	contract.exchange = "IDEALPRO";
+
+	m_pClient->reqMktData(1001, contract, "", false, false, TagValueListSPtr());
+}

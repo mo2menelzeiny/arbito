@@ -22,7 +22,6 @@ class FIXMarketOffice {
 public:
 	FIXMarketOffice(
 			const char *broker,
-			double spread,
 			double quantity,
 			int publicationPort,
 			const char *publicationHost,
@@ -37,17 +36,20 @@ public:
 
 	void start();
 
+	void stop();
+
 private:
 	void work();
 
 private:
 	const char *m_broker;
-	double m_spread;
 	double m_quantity;
 	char m_publicationURI[64];
 	struct fix_field *m_MDRFields;
 	struct fix_message m_MDRFixMessage{};
 	FIXSession m_fixSession;
+	std::thread m_worker;
+	std::atomic_bool m_running;
 };
 
 
