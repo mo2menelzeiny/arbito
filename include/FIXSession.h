@@ -30,6 +30,10 @@ public:
 		return m_session == nullptr ? false : m_session->active;
 	}
 
+	inline char *strNow() const {
+		return m_session->str_now;
+	}
+
 	void initiate();
 
 	void terminate();
