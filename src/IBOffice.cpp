@@ -28,7 +28,6 @@ void IBOffice::start() {
 	m_worker = std::thread(&IBOffice::work, this);
 }
 
-
 void IBOffice::stop() {
 	m_running = false;
 	m_worker.join();
@@ -172,6 +171,7 @@ void IBOffice::work() {
 				break;
 		}
 
+		systemLogger->info("{}", tradeData.side() == '1' ? "BUY" : "SELL");
 	};
 
 	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);

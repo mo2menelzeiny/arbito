@@ -243,6 +243,8 @@ void CentralOffice::work() {
 		currentOrder = DIFF_NONE;
 		orderDelayStart = time(nullptr);
 		isOrderDelayed = true;
+
+		systemLogger->info("Central Office placed an {} order", orderType);
 	};
 
 
@@ -308,6 +310,8 @@ void CentralOffice::work() {
 
 	auto fragmentAssemblerA = aeron::FragmentAssembler(fragmentHandlerA);
 	auto fragmentAssemblerB = aeron::FragmentAssembler(fragmentHandlerB);
+
+	systemLogger->info("Central Office OK");
 
 	while (m_running) {
 		/*timestampNow = system_clock::now();*/
