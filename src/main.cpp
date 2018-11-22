@@ -59,7 +59,7 @@ int main() {
 					getenv("MO_USERNAME"),
 					getenv("MO_PASSWORD"),
 					getenv("MO_SENDER"),
-					getenv("MO_RECEIVER"),
+					getenv("MO_TARGET"),
 					stoi(getenv("HEARTBEAT"))
 			);
 
