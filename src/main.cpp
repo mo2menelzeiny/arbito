@@ -1,13 +1,15 @@
 
-// Domain
-#include <MediaDriver.h>
-#include <CentralOffice.h>
-#include <FIXMarketOffice.h>
-#include <FIXTradeOffice.h>
-#include <IBOffice.h>
-#include <spdlog/async.h>
+//SPDLOG
+#include "spdlog/async.h"
 #include "spdlog/sinks/daily_file_sink.h"
 #include "spdlog/sinks/stdout_sinks.h"
+
+// Domain
+#include "MediaDriver.h"
+#include "CentralOffice.h"
+#include "FIXMarketOffice.h"
+#include "FIXTradeOffice.h"
+#include "IBOffice.h"
 
 int main() {
 	auto systemLogger = spdlog::create_async_nb<spdlog::sinks::stdout_sink_mt>("system");
@@ -92,7 +94,7 @@ int main() {
 		systemLogger->info("Main OK");
 
 		while (true) {
-			std::this_thread::sleep_for(std::chrono::seconds(30));
+			std::this_thread::sleep_for(std::chrono::minutes(30));
 		}
 
 	} catch (std::exception &ex) {
