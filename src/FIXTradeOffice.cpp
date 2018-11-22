@@ -1,4 +1,6 @@
 
+#include <FIXTradeOffice.h>
+
 #include "FIXTradeOffice.h"
 
 FIXTradeOffice::FIXTradeOffice(
@@ -11,7 +13,9 @@ FIXTradeOffice::FIXTradeOffice(
 		const char *password,
 		const char *sender,
 		const char *target,
-		int heartbeat
+		int heartbeat,
+		const char *DBUri,
+		const char *DBName
 ) : m_broker(broker),
     m_quantity(quantity),
     m_fixSession(
@@ -22,6 +26,12 @@ FIXTradeOffice::FIXTradeOffice(
 		    sender,
 		    target,
 		    heartbeat
+    ),
+    m_mongoDriver(
+		    broker,
+		    DBUri,
+		    DBName,
+		    "coll_orders"
     ) {
 	sprintf(m_subscriptionURI, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPort);
 
@@ -134,6 +144,9 @@ void FIXTradeOffice::work() {
 		subscription = aeronClient->findSubscription(subscriptionId);
 	}
 
+	sbe::MessageHeader tradeDataHeader;
+	sbe::TradeData tradeData;
+
 	auto fragmentHandler = [&](
 			aeron::AtomicBuffer &buffer,
 			aeron::index_t offset,
@@ -143,15 +156,12 @@ void FIXTradeOffice::work() {
 		auto bufferLength = static_cast<const uint64_t>(length);
 		auto messageBuffer = reinterpret_cast<char *>(buffer.buffer() + offset);
 
-		sbe::MessageHeader messageHeader;
-		sbe::TradeData tradeData;
-
-		messageHeader.wrap(messageBuffer, 0, 0, bufferLength);
+		tradeDataHeader.wrap(messageBuffer, 0, 0, bufferLength);
 		tradeData.wrapForDecode(
 				messageBuffer,
 				sbe::MessageHeader::encodedLength(),
-				messageHeader.blockLength(),
-				messageHeader.version(),
+				tradeDataHeader.blockLength(),
+				tradeDataHeader.version(),
 				bufferLength
 		);
 
@@ -185,11 +195,14 @@ void FIXTradeOffice::work() {
 					fix_get_string(fix_get_field(msg, OrderID), orderId, 64);
 					fix_get_string(fix_get_field(msg, ClOrdID), clOrdId, 64);
 					char side = fix_get_field(msg, Side)->string_value[0];
-					double avgPx = fix_get_field(msg, AvgPx)->float_value;
+					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
+
+					m_mongoDriver.recordExecution(clOrdId, orderId, side, fillPrice);
 				}
 
 				if (execType == '8') {
-					// failed order
+					// TODO: Handle failed order execution
+					systemLogger->error("Trade Office Order Failed {} {}", tradeData.id());
 				}
 			}
 

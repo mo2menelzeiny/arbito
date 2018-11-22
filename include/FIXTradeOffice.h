@@ -14,6 +14,7 @@
 
 // Domain
 #include "FIXSession.h"
+#include "MongoDBDriver.h"
 
 // SPDLOG
 #include "spdlog/spdlog.h"
@@ -30,7 +31,9 @@ public:
 			const char *password,
 			const char *sender,
 			const char *target,
-			int heartbeat
+			int heartbeat,
+			const char *DBUri,
+			const char *DBName
 	);
 
 	void start();
@@ -49,6 +52,7 @@ private:
 	struct fix_field *m_NOSBFields;
 	struct fix_message m_NOSBFixMessage{};
 	FIXSession m_fixSession;
+	MongoDBDriver m_mongoDriver;
 	std::thread m_worker;
 	std::atomic_bool m_running;
 };

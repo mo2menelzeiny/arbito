@@ -14,8 +14,10 @@
 #include "sbe/TradeData.h"
 
 // SPDLOG
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/daily_file_sink.h>
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/daily_file_sink.h"
+
+#include "MongoDBDriver.h"
 
 using namespace std;
 using namespace std::chrono;
@@ -39,7 +41,9 @@ public:
 			int orderDelaySec,
 			int maxOrders,
 			double diffOpen,
-			double diffClose
+			double diffClose,
+			const char *DBUri,
+			const char *DBName
 	);
 
 	void start();
@@ -61,6 +65,7 @@ private:
 	char m_subscriptionURIB[64];
 	std::thread m_worker;
 	std::atomic_bool m_running;
+	MongoDBDriver m_mongoDriver;
 };
 
 

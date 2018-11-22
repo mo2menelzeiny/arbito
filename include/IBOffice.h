@@ -17,7 +17,9 @@
 #include "IBAPI/IBClient/IBClient.h"
 
 //SPDLOG
-#include <spdlog/spdlog.h>
+#include "spdlog/spdlog.h"
+
+#include "MongoDBDriver.h"
 
 
 class IBOffice {
@@ -27,7 +29,9 @@ public:
 			double quantity,
 			int publicationPort,
 			const char *publicationHost,
-			int subscriptionPort
+			int subscriptionPort,
+			const char *DBUri,
+			const char *DBName
 	);
 
 	void start();
@@ -44,6 +48,7 @@ private:
 	char m_subscriptionURI[64];
 	std::thread m_worker;
 	std::atomic_bool m_running;
+	MongoDBDriver m_mongoDriver;
 };
 
 
