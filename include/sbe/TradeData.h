@@ -302,19 +302,19 @@ public:
         return "";
     }
 
-    static SBE_CONSTEXPR std::int64_t idNullValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t idNullValue() SBE_NOEXCEPT
     {
-        return SBE_NULLVALUE_INT64;
+        return SBE_NULLVALUE_UINT64;
     }
 
-    static SBE_CONSTEXPR std::int64_t idMinValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t idMinValue() SBE_NOEXCEPT
     {
-        return -9223372036854775807L;
+        return 0x0L;
     }
 
-    static SBE_CONSTEXPR std::int64_t idMaxValue() SBE_NOEXCEPT
+    static SBE_CONSTEXPR std::uint64_t idMaxValue() SBE_NOEXCEPT
     {
-        return 9223372036854775807L;
+        return 0xfffffffffffffffeL;
     }
 
     static SBE_CONSTEXPR std::size_t idEncodingLength() SBE_NOEXCEPT
@@ -322,17 +322,17 @@ public:
         return 8;
     }
 
-    std::int64_t id() const
+    std::uint64_t id() const
     {
-        std::int64_t val;
-        std::memcpy(&val, m_buffer + m_offset + 1, sizeof(std::int64_t));
+        std::uint64_t val;
+        std::memcpy(&val, m_buffer + m_offset + 1, sizeof(std::uint64_t));
         return SBE_LITTLE_ENDIAN_ENCODE_64(val);
     }
 
-    TradeData &id(const std::int64_t value)
+    TradeData &id(const std::uint64_t value)
     {
-        std::int64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
-        std::memcpy(m_buffer + m_offset + 1, &val, sizeof(std::int64_t));
+        std::uint64_t val = SBE_LITTLE_ENDIAN_ENCODE_64(value);
+        std::memcpy(m_buffer + m_offset + 1, &val, sizeof(std::uint64_t));
         return *this;
     }
 

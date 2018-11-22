@@ -171,10 +171,12 @@ void FIXTradeOffice::work() {
 		switch (tradeData.side()) {
 			case '1':
 				fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = clOrdId;
+				fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 				m_fixSession.send(&m_NOSBFixMessage);
 				break;
 			case '2':
 				fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdId;
+				fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 				m_fixSession.send(&m_NOSSFixMessage);
 				break;
 			default:
