@@ -180,6 +180,8 @@ void FIXTradeOffice::work() {
 			default:
 				break;
 		}
+
+		systemLogger->info("{}", tradeData.side() == '1' ? "BUY" : "SELL");
 	};
 
 	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);
@@ -202,7 +204,7 @@ void FIXTradeOffice::work() {
 
 				if (execType == '8') {
 					// TODO: Handle failed order execution
-					systemLogger->error("Trade Office Order Failed {} {}", tradeData.id());
+					systemLogger->error("Trade Office Order Failed {}", tradeData.id());
 				}
 			}
 
