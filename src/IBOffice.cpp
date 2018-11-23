@@ -42,7 +42,7 @@ void IBOffice::work() {
 
 	auto systemLogger = spdlog::get("system");
 
-	double bid = 0, offer = 0;
+	double bid = -99, offer = 99;
 	double bidQty = 0, offerQty = 0;
 
 	aeron::Context aeronContext;
