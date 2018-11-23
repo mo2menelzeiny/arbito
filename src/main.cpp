@@ -1,7 +1,6 @@
 
 //SPDLOG
 #include "spdlog/async.h"
-#include "spdlog/sinks/daily_file_sink.h"
 #include "spdlog/sinks/stdout_sinks.h"
 
 // Domain
@@ -13,9 +12,6 @@
 
 int main() {
 	auto systemLogger = spdlog::create_async_nb<spdlog::sinks::stdout_sink_mt>("system");
-
-	const char *dbUri = getenv("MONGO_URI");
-	const char *dbName = getenv("MONGO_DB");
 
 	try {
 		auto mediaDriver = MediaDriver();
@@ -41,8 +37,8 @@ int main() {
 					stoi(getenv("MAX_ORDERS")),
 					stof(getenv("DIFF_OPEN")),
 					stof(getenv("DIFF_CLOSE")),
-					dbUri,
-					dbName
+					getenv("MONGO_URI"),
+					getenv("MONGO_DB")
 			);
 
 			centralOffice->start();
@@ -74,8 +70,8 @@ int main() {
 					getenv("TO_SENDER"),
 					getenv("TO_TARGET"),
 					stoi(getenv("HEARTBEAT")),
-					dbUri,
-					dbName
+					getenv("MONGO_URI"),
+					getenv("MONGO_DB")
 			);
 
 			fixMarketOffice->start();
@@ -90,8 +86,8 @@ int main() {
 					stoi(getenv("MO_CO_PORT")),
 					getenv("CO_HOST"),
 					stoi(getenv("TO_CO_PORT")),
-					dbUri,
-					dbName
+					getenv("MONGO_URI"),
+					getenv("MONGO_DB")
 			);
 
 			ibOffice->start();
