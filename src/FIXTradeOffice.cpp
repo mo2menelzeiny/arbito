@@ -166,7 +166,7 @@ void FIXTradeOffice::work() {
 		);
 
 		char clOrdId[64];
-		sprintf(clOrdId, "%li", tradeData.id());
+		sprintf(clOrdId, "%lu", tradeData.id());
 
 		switch (tradeData.side()) {
 			case '1':

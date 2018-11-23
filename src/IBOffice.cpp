@@ -130,10 +130,10 @@ void IBOffice::work() {
 		if (lastRecordedOrderId == orderId) return;
 
 		char orderIdStr[32];
-		sprintf(orderIdStr, "%li", orderId);
+		sprintf(orderIdStr, "%lu", orderId);
 
 		char clOrdIdStr[32];
-		sprintf(clOrdIdStr, "%li", tradeData.id());
+		sprintf(clOrdIdStr, "%lu", tradeData.id());
 
 		m_mongoDriver.recordExecution(clOrdIdStr, orderIdStr, tradeData.side(), avgFillPrice);
 

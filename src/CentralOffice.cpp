@@ -211,10 +211,10 @@ void CentralOffice::work() {
 				tradeData.side('1');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				sprintf(randIdAStr, "%li", randomIdA);
+				sprintf(randIdAStr, "%lu", randomIdA);
 				m_mongoDriver.recordTrigger(randIdAStr, bidA, orderType);
 
-				sprintf(randIdBStr, "%li", randomIdB);
+				sprintf(randIdBStr, "%lu", randomIdB);
 				m_mongoDriver.recordTrigger(randIdBStr, offerB, orderType);
 
 				break;
@@ -227,10 +227,10 @@ void CentralOffice::work() {
 				tradeData.side('2');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				sprintf(randIdAStr, "%li", randomIdA);
+				sprintf(randIdAStr, "%lu", randomIdA);
 				m_mongoDriver.recordTrigger(randIdAStr, offerA, orderType);
 
-				sprintf(randIdBStr, "%li", randomIdB);
+				sprintf(randIdBStr, "%lu", randomIdB);
 				m_mongoDriver.recordTrigger(randIdBStr, bidB, orderType);
 
 				break;
