@@ -15,7 +15,6 @@ find_package(ZLIB REQUIRED)
 find_package(libmongoc-1.0 1.7 REQUIRED)
 
 find_library(SSL_LIB ssl)
-find_library(DISRUPTOR_LIBRARIES Disruptor)
 find_library(AERON_CLIENT_LIB aeron_client)
 find_library(AERON_DRIVER_LIB aeron_driver)
 find_library(AERON_AGENT_LIB aeron_driver_agent)
@@ -56,7 +55,6 @@ target_include_directories(arbito PRIVATE "${MONGOC_INCLUDE_DIRS}")
 
 target_link_libraries(arbito
         ${CMAKE_THREAD_LIBS_INIT}
-        ${DISRUPTOR_LIBRARIES}
         ${Boost_LIBRARIES}
         ${SSL_LIB}
         ${OPENSSL_LIBRARIES}
