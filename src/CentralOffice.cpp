@@ -13,8 +13,8 @@ CentralOffice::CentralOffice(
 		int maxOrders,
 		double diffOpen,
 		double diffClose,
-		const char *DBUri,
-		const char *DBName
+		const char *dbUri,
+		const char *dbName
 ) : m_windowMs(windowMs),
     m_orderDelaySec(orderDelaySec),
     m_maxOrders(maxOrders),
@@ -22,8 +22,8 @@ CentralOffice::CentralOffice(
     m_diffClose(diffClose),
     m_mongoDriver(
 		    "IB",
-		    DBUri,
-		    DBName,
+		    dbUri,
+		    dbName,
 		    "coll_orders"
     ) {
 	sprintf(m_subscriptionURIA, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPortA);
@@ -218,6 +218,7 @@ void CentralOffice::work() {
 				m_mongoDriver.recordTrigger(randIdBStr, offerB, orderType);
 
 				break;
+
 			case DIFF_B:
 				tradeData.id(randomIdA);
 				tradeData.side('1');
@@ -244,7 +245,7 @@ void CentralOffice::work() {
 		orderDelayStart = time(nullptr);
 		isOrderDelayed = true;
 
-		systemLogger->info("Central Office placed an {} order", orderType);
+		systemLogger->info("{}", orderType);
 	};
 
 
@@ -272,7 +273,7 @@ void CentralOffice::work() {
 		bidA = marketData.bid();
 		offerA = marketData.offer();
 
-		marketLogger->info("[A] bid: {} offer: {}", bidA, offerA);
+		marketLogger->info("[SLOUGH] bid: {} offer: {}", bidA, offerA);
 
 		// timestampB = timestampNow;
 		// isExpiredA = false;
@@ -302,7 +303,7 @@ void CentralOffice::work() {
 		bidB = marketData.bid();
 		offerB = marketData.offer();
 
-		marketLogger->info("[B] bid: {} offer: {}", bidB, offerB);
+		marketLogger->info("[ZURICH] bid: {} offer: {}", bidB, offerB);
 
 		// timestampB = timestampNow;
 		// isExpiredB = false;
