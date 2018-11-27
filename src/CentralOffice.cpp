@@ -302,7 +302,7 @@ void CentralOffice::work() {
 		bidB = marketData.bid();
 		offerB = marketData.offer();
 
-		marketLogger->info("[A] bid: {} offer: {}", bidB, offerB);
+		marketLogger->info("[B] bid: {} offer: {}", bidB, offerB);
 
 		// timestampB = timestampNow;
 		// isExpiredB = false;
