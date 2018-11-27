@@ -122,6 +122,7 @@ void FIXTradeOffice::work() {
 	aeron::Context aeronContext;
 
 	aeronContext
+			.useConductorAgentInvoker(true)
 			.availableImageHandler([&](aeron::Image &image) {
 				systemLogger->info("{} available", image.sourceIdentity());
 			})
@@ -134,11 +135,14 @@ void FIXTradeOffice::work() {
 
 	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
 
+	aeronClient->conductorAgentInvoker().start();
+
 	auto subscriptionId = aeronClient->addSubscription(m_subscriptionURI, 1);
 
 	auto subscription = aeronClient->findSubscription(subscriptionId);
 	while (!subscription) {
 		std::this_thread::yield();
+		aeronClient->conductorAgentInvoker().invoke();
 		subscription = aeronClient->findSubscription(subscriptionId);
 	}
 
@@ -237,6 +241,7 @@ void FIXTradeOffice::work() {
 
 		subscription->poll(fragmentAssembler.handler(), 1);
 		m_fixSession.poll(onMessageHandler);
+		aeronClient->conductorAgentInvoker().invoke();
 
 		auto endTp = std::chrono::steady_clock::now();
 
