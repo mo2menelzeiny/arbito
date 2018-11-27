@@ -42,8 +42,8 @@ public:
 			int maxOrders,
 			double diffOpen,
 			double diffClose,
-			const char *DBUri,
-			const char *DBName
+			const char *dbUri,
+			const char *dbName
 	);
 
 	void start();
