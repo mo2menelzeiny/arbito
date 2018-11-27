@@ -1,6 +1,4 @@
 
-#include <FIXTradeOffice.h>
-
 #include "FIXTradeOffice.h"
 
 FIXTradeOffice::FIXTradeOffice(
