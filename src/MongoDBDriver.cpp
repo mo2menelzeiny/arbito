@@ -1,6 +1,4 @@
 
-#include <MongoDBDriver.h>
-
 #include "MongoDBDriver.h"
 
 MongoDBDriver::MongoDBDriver(
@@ -12,9 +10,10 @@ MongoDBDriver::MongoDBDriver(
     m_uri(uri),
     m_DBName(DBname),
     m_collectionName(collectionName) {
+	bson_error_t error;
+
 	mongoc_init();
 
-	bson_error_t error;
 	auto mongoCUri = mongoc_uri_new_with_error(m_uri, &error);
 
 	if (!mongoCUri) {
