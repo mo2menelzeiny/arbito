@@ -214,6 +214,10 @@ void FIXTradeOffice::work() {
 		}
 	});
 
+	int x = 0;
+	std::chrono::time_point<std::chrono::steady_clock> startTp;
+	double totalMs = 0, maxMs = 0;
+
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
 
@@ -223,13 +227,34 @@ void FIXTradeOffice::work() {
 			} catch (std::exception &ex) {
 				m_fixSession.terminate();
 				systemLogger->error("Trade office {}", ex.what());
+				std::this_thread::sleep_for(std::chrono::seconds(30));
 			}
 
-			std::this_thread::sleep_for(std::chrono::seconds(30));
 			continue;
 		}
 
+		startTp = std::chrono::steady_clock::now();
+
 		subscription->poll(fragmentAssembler.handler(), 1);
 		m_fixSession.poll(onMessageHandler);
+
+		auto endTp = std::chrono::steady_clock::now();
+
+		auto roundMs = std::chrono::duration_cast<std::chrono::microseconds>(endTp - startTp).count();
+
+		totalMs += roundMs;
+
+		if (roundMs > maxMs) {
+			maxMs = roundMs;
+		}
+
+		x++;
+
+		if (x > 10000000) {
+			systemLogger->info("[trade office] Max: {}, Avg: {}", maxMs, totalMs / x);
+			x = 0;
+			maxMs = 0;
+			totalMs = 0;
+		}
 	}
 }

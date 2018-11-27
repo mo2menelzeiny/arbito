@@ -176,6 +176,10 @@ void IBOffice::work() {
 
 	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);
 
+	int x = 0;
+	std::chrono::time_point<std::chrono::steady_clock> startTp;
+	double totalMs = 0, maxMs = 0;
+
 	while (m_running) {
 		if (!ibClient.isConnected()) {
 			bool result = ibClient.connect("127.0.0.1", 4001);
@@ -190,8 +194,29 @@ void IBOffice::work() {
 			systemLogger->info("IB Office OK");
 		}
 
+		startTp = std::chrono::steady_clock::now();
+
 		subscription->poll(fragmentAssembler.handler(), 1);
 		ibClient.processMessages();
+
+		auto endTp = std::chrono::steady_clock::now();
+
+		auto roundMs = std::chrono::duration_cast<std::chrono::microseconds>(endTp - startTp).count();
+
+		totalMs += roundMs;
+
+		if (roundMs > maxMs) {
+			maxMs = roundMs;
+		}
+
+		x++;
+
+		if (x > 1000000) {
+			systemLogger->info("[ib office] Max: {}, Avg: {}", maxMs, totalMs / x);
+			x = 0;
+			maxMs = 0;
+			totalMs = 0;
+		}
 	}
 
 	ibClient.disconnect();
