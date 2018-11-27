@@ -1,6 +1,4 @@
 
-#include <FIXMarketOffice.h>
-
 #include "FIXMarketOffice.h"
 
 FIXMarketOffice::FIXMarketOffice(
