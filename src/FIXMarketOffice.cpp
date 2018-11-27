@@ -150,6 +150,10 @@ void FIXMarketOffice::work() {
 
 	});
 
+	int x = 0;
+	std::chrono::time_point<std::chrono::steady_clock> startTp;
+	double totalMs = 0, maxMs = 0;
+
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
 
@@ -166,7 +170,28 @@ void FIXMarketOffice::work() {
 			continue;
 		}
 
+		startTp = std::chrono::steady_clock::now();
+
 		m_fixSession.poll(onMessageHandler);
+
+		auto endTp = std::chrono::steady_clock::now();
+
+		auto roundMs = std::chrono::duration_cast<std::chrono::microseconds>(endTp - startTp).count();
+
+		totalMs += roundMs;
+
+		if (roundMs > maxMs) {
+			maxMs = roundMs;
+		}
+
+		x++;
+
+		if (x > 10000000) {
+			systemLogger->info("[market office] Max: {}, Avg: {}", maxMs, totalMs / x);
+			x = 0;
+			maxMs = 0;
+			totalMs = 0;
+		}
 	}
 
 	m_fixSession.terminate();
