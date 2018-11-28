@@ -159,7 +159,6 @@ void FIXMarketOffice::work() {
 		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
 
 		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
-		marketLogger->flush();
 	});
 
 	while (m_running) {

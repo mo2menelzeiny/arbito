@@ -111,7 +111,6 @@ void IBMarketOffice::work() {
 		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
 
 		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
-		marketLogger->flush();
 	});
 
 	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
