@@ -21,7 +21,7 @@ CentralOffice::CentralOffice(
     m_diffOpen(diffOpen),
     m_diffClose(diffClose),
     m_mongoDriver(
-		    "IB",
+		    "CENTRAL",
 		    dbUri,
 		    dbName,
 		    "coll_orders"
@@ -49,6 +49,19 @@ void CentralOffice::work() {
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "central-office");
 
+	long sequence = 0;
+
+	double bidA = -99, offerA = 99;
+	double bidB = -99, offerB = 99;
+
+	int ordersCount = 0;
+	TriggerDifference currentDiff = DIFF_NONE;
+	TriggerDifference currentOrder = DIFF_NONE;
+
+	bool isOrderDelayed = false;
+	time_t orderDelay = m_orderDelaySec;
+	time_t orderDelayStart = time(nullptr);
+
 	auto systemLogger = spdlog::get("system");
 	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
 
@@ -57,11 +70,14 @@ void CentralOffice::work() {
 	aeron::Context aeronContext;
 
 	aeronContext
+			.useConductorAgentInvoker(true)
 			.availableImageHandler([&](aeron::Image &image) {
 				systemLogger->info("{} available", image.sourceIdentity());
 			})
 
 			.unavailableImageHandler([&](aeron::Image &image) {
+				bidA = -99, offerA = 99;
+				bidB = -99, offerB = 99;
 				systemLogger->error("{} unavailable", image.sourceIdentity());
 			})
 
@@ -71,10 +87,13 @@ void CentralOffice::work() {
 
 	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
 
+	aeronClient->conductorAgentInvoker().start();
+
 	auto publicationIdA = aeronClient->addExclusivePublication(m_publicationURIA, 1);
 	auto publicationA = aeronClient->findExclusivePublication(publicationIdA);
 	while (!publicationA) {
 		std::this_thread::yield();
+		aeronClient->conductorAgentInvoker().invoke();
 		publicationA = aeronClient->findExclusivePublication(publicationIdA);
 	}
 
@@ -82,6 +101,7 @@ void CentralOffice::work() {
 	auto publicationB = aeronClient->findExclusivePublication(publicationIdB);
 	while (!publicationB) {
 		std::this_thread::yield();
+		aeronClient->conductorAgentInvoker().invoke();
 		publicationB = aeronClient->findExclusivePublication(publicationIdB);
 	}
 
@@ -89,6 +109,7 @@ void CentralOffice::work() {
 	auto subscriptionA = aeronClient->findSubscription(subscriptionIdA);
 	while (!subscriptionA) {
 		std::this_thread::yield();
+		aeronClient->conductorAgentInvoker().invoke();
 		subscriptionA = aeronClient->findSubscription(subscriptionIdA);
 	}
 
@@ -96,6 +117,7 @@ void CentralOffice::work() {
 	auto subscriptionB = aeronClient->findSubscription(subscriptionIdB);
 	while (!subscriptionB) {
 		std::this_thread::yield();
+		aeronClient->conductorAgentInvoker().invoke();
 		subscriptionB = aeronClient->findSubscription(subscriptionIdB);
 	}
 
@@ -117,21 +139,6 @@ void CentralOffice::work() {
 	tradeData.wrapForEncode(tradeDataBuffer, sbe::MessageHeader::encodedLength(), 64);
 
 	auto encodedLength = static_cast<aeron::index_t>(sbe::MessageHeader::encodedLength() + tradeData.encodedLength());
-
-	double bidA = -99, offerA = 99;
-	double bidB = -99, offerB = 99;
-
-	/*bool isExpiredA = true, isExpiredB = true;
-	time_point<system_clock> timestampA, timestampB, timestampNow;
-	timestampA = timestampB = timestampNow = system_clock::now();*/
-
-	int ordersCount = 0;
-	TriggerDifference currentDiff = DIFF_NONE;
-	TriggerDifference currentOrder = DIFF_NONE;
-
-	bool isOrderDelayed = false;
-	time_t orderDelay = m_orderDelaySec;
-	time_t orderDelayStart = time(nullptr);
 
 	auto handleTriggers = [&] {
 		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) return;
@@ -273,10 +280,10 @@ void CentralOffice::work() {
 		bidA = marketData.bid();
 		offerA = marketData.offer();
 
-		marketLogger->info("[SLOUGH] bid: {} offer: {}", bidA, offerA);
+		++sequence;
 
-		// timestampB = timestampNow;
-		// isExpiredA = false;
+		marketLogger->info("[slough][{}] bid: {} offer: {} RSeq: {}", sequence, bidA, offerA, marketData.timestamp());
+		marketLogger->flush();
 	};
 
 	auto fragmentHandlerB = [&](
@@ -303,10 +310,10 @@ void CentralOffice::work() {
 		bidB = marketData.bid();
 		offerB = marketData.offer();
 
-		marketLogger->info("[ZURICH] bid: {} offer: {}", bidB, offerB);
+		++sequence;
 
-		// timestampB = timestampNow;
-		// isExpiredB = false;
+		marketLogger->info("[zurich][{}] bid: {} offer: {} RSeq: {}", sequence, bidB, offerB, marketData.timestamp());
+		marketLogger->flush();
 	};
 
 	auto fragmentAssemblerA = aeron::FragmentAssembler(fragmentHandlerA);
@@ -315,24 +322,9 @@ void CentralOffice::work() {
 	systemLogger->info("Central Office OK");
 
 	while (m_running) {
-		/*timestampNow = system_clock::now();*/
-
+		aeronClient->conductorAgentInvoker().invoke();
 		subscriptionA->poll(fragmentAssemblerA.handler(), 1);
 		subscriptionB->poll(fragmentAssemblerB.handler(), 1);
-
 		handleTriggers();
-
-		// TODO: Price expired feature under development
-		/*if (!isExpiredA && duration_cast<milliseconds>(timestampNow - timestampA).count() > m_windowMs) {
-			bidA = -99;
-			offerA = 99;
-			isExpiredA = true;
-		}
-
-		if (!isExpiredB && duration_cast<milliseconds>(timestampNow - timestampB).count() > m_windowMs) {
-			bidB = -99;
-			offerB = 99;
-			isExpiredB = true;
-		}*/
 	}
 }

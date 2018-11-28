@@ -16,7 +16,9 @@
 #include "FIXSession.h"
 
 // SPDLOG
-#include <spdlog/spdlog.h>
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/daily_file_sink.h"
+
 
 class FIXMarketOffice {
 public:

@@ -208,7 +208,7 @@ void FIXTradeOffice::work() {
 
 				if (execType == '8') {
 					// TODO: Handle failed order execution
-					systemLogger->error("Trade Office Order Failed {}", tradeData.id());
+					systemLogger->error("Order FAILED {}", tradeData.id());
 				}
 			}
 
@@ -217,10 +217,6 @@ void FIXTradeOffice::work() {
 				return;
 		}
 	});
-
-	int x = 0;
-	std::chrono::time_point<std::chrono::steady_clock> startTp;
-	double totalMs = 0, maxMs = 0;
 
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
@@ -237,29 +233,8 @@ void FIXTradeOffice::work() {
 			continue;
 		}
 
-		startTp = std::chrono::steady_clock::now();
-
 		subscription->poll(fragmentAssembler.handler(), 1);
 		m_fixSession.poll(onMessageHandler);
 		aeronClient->conductorAgentInvoker().invoke();
-
-		auto endTp = std::chrono::steady_clock::now();
-
-		auto roundMs = std::chrono::duration_cast<std::chrono::microseconds>(endTp - startTp).count();
-
-		totalMs += roundMs;
-
-		if (roundMs > maxMs) {
-			maxMs = roundMs;
-		}
-
-		x++;
-
-		if (x > 10000000) {
-			systemLogger->info("[trade office] Max: {}, Avg: {}", maxMs, totalMs / x);
-			x = 0;
-			maxMs = 0;
-			totalMs = 0;
-		}
 	}
 }
