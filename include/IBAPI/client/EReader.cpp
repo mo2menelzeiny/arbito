@@ -72,11 +72,16 @@ DWORD WINAPI EReader::readToQueueThread(LPVOID lpParam)
 }
 
 void EReader::readToQueue() {
+	if (m_buf.size() == 0 && !processNonBlockingSelect() && m_pClientSocket->isSocketOK())
+		return;
+
+	if (!putMessageToQueue())
+		m_pClientSocket->handleSocketError();
 	//EMessage *msg = 0;
 	/*cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
 	CPU_SET(2, &cpuset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);*/
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "ib-reader");
 
 	while (m_isAlive) {
@@ -87,7 +92,7 @@ void EReader::readToQueue() {
 			break;
 	}
 
-	m_pClientSocket->handleSocketError();
+	m_pClientSocket->handleSocketError();*/
 //	m_pEReaderSignal->issueSignal(); //letting client know that socket was closed
 }
 
@@ -100,12 +105,14 @@ bool EReader::putMessageToQueue() {
 	if (msg == 0)
 		return false;
 
-	{
+	m_msgQueue.push_back(std::shared_ptr<EMessage>(msg));
+
+	/*{
 		EMutexGuard lock(m_csMsgQueue);
 		m_msgQueue.push_back(std::shared_ptr<EMessage>(msg));
 	}
 
-//	m_pEReaderSignal->issueSignal();
+	m_pEReaderSignal->issueSignal();*/
 
 	return true;
 }
@@ -114,7 +121,8 @@ bool EReader::processNonBlockingSelect() {
 	fd_set readSet, writeSet, errorSet;
 	struct timeval tval;
 
-	tval.tv_usec = 100 * 1000; //100 ms
+//	tval.tv_usec = 100 * 1000; //100 ms
+	tval.tv_usec = 0; //0 ms
 	tval.tv_sec = 0;
 
 	if( m_pClientSocket->fd() >= 0 ) {
@@ -261,7 +269,7 @@ EMessage * EReader::readSingleMsg() {
 }
 
 std::shared_ptr<EMessage> EReader::getMsg(void) {
-	EMutexGuard lock(m_csMsgQueue);
+//	EMutexGuard lock(m_csMsgQueue);
 
 	if (m_msgQueue.size() == 0) {
 		return std::shared_ptr<EMessage>();
@@ -275,6 +283,8 @@ std::shared_ptr<EMessage> EReader::getMsg(void) {
 
 
 void EReader::processMsgs(void) {
+	readToQueue();
+
 	m_pClientSocket->onSend();
 
 	std::shared_ptr<EMessage> msg = getMsg();
