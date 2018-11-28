@@ -218,7 +218,9 @@ void CentralOffice::work() {
 				tradeData.side('1');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				m_mongoDriver.record(randIdStr, bidA, offerB, orderType);
+				std::thread([&] {
+					m_mongoDriver.record(randIdStr, bidA, offerB, orderType);
+				}).detach();
 
 				break;
 
@@ -229,7 +231,9 @@ void CentralOffice::work() {
 				tradeData.side('2');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				m_mongoDriver.record(randIdStr, bidB, offerA, orderType);
+				std::thread([&] {
+					m_mongoDriver.record(randIdStr, bidB, offerA, orderType);
+				}).detach();
 
 				break;
 		}

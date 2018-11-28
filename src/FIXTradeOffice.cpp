@@ -203,7 +203,9 @@ void FIXTradeOffice::work() {
 					char side = fix_get_field(msg, Side)->string_value[0];
 					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
 
-					m_mongoDriver.record(clOrdId, orderId, side, fillPrice);
+					std::thread([&] {
+						m_mongoDriver.record(clOrdId, orderId, side, fillPrice);
+					}).detach();
 				}
 
 				if (execType == '8') {
