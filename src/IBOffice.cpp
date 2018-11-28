@@ -1,6 +1,4 @@
 
-#include <IBOffice.h>
-
 #include "IBOffice.h"
 
 IBOffice::IBOffice(
@@ -41,6 +39,9 @@ void IBOffice::work() {
 	pthread_setname_np(pthread_self(), "ib-office");
 
 	auto systemLogger = spdlog::get("system");
+	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
+
+	long sequence = 0;
 
 	double bid = -99, offer = 99;
 	double bidQty = 0, offerQty = 0;
@@ -121,11 +122,17 @@ void IBOffice::work() {
 
 		if (m_quantity > offerQty || m_quantity > bidQty) return;
 
+		++sequence;
+
 		marketData
 				.bid(bid)
-				.offer(offer);
+				.offer(offer)
+				.timestamp(sequence);
 
 		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
+
+		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
+		marketLogger->flush();
 	});
 
 	OrderId lastRecordedOrderId = 0;
@@ -181,10 +188,6 @@ void IBOffice::work() {
 
 	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);
 
-	int x = 0;
-	std::chrono::time_point<std::chrono::steady_clock> startTp;
-	double totalMs = 0, maxMs = 0;
-
 	while (m_running) {
 		if (!ibClient.isConnected()) {
 			bool result = ibClient.connect("127.0.0.1", 4001);
@@ -199,30 +202,9 @@ void IBOffice::work() {
 			systemLogger->info("IB Office OK");
 		}
 
-		startTp = std::chrono::steady_clock::now();
-
 		subscription->poll(fragmentAssembler.handler(), 1);
 		ibClient.processMessages();
 		aeronClient->conductorAgentInvoker().invoke();
-
-		auto endTp = std::chrono::steady_clock::now();
-
-		auto roundMs = std::chrono::duration_cast<std::chrono::microseconds>(endTp - startTp).count();
-
-		totalMs += roundMs;
-
-		if (roundMs > maxMs) {
-			maxMs = roundMs;
-		}
-
-		x++;
-
-		if (x > 10000000) {
-			systemLogger->info("[ib office] Max: {}, Avg: {}", maxMs, totalMs / x);
-			x = 0;
-			maxMs = 0;
-			totalMs = 0;
-		}
 	}
 
 	ibClient.disconnect();

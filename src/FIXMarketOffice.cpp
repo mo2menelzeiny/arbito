@@ -85,6 +85,9 @@ void FIXMarketOffice::work() {
 	pthread_setname_np(pthread_self(), "market-office");
 
 	auto systemLogger = spdlog::get("system");
+	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
+
+	long sequence = 0;
 
 	aeron::Context aeronContext;
 
@@ -146,17 +149,18 @@ void FIXMarketOffice::work() {
 
 		if (m_quantity > offerQty || m_quantity > bidQty) return;
 
+		++sequence;
+
 		marketData
 				.bid(bid)
-				.offer(offer);
+				.offer(offer)
+				.timestamp(sequence);
 
 		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
 
+		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
+		marketLogger->flush();
 	});
-
-	int x = 0;
-	std::chrono::time_point<std::chrono::steady_clock> startTp;
-	double totalMs = 0, maxMs = 0;
 
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
@@ -174,29 +178,8 @@ void FIXMarketOffice::work() {
 			continue;
 		}
 
-		startTp = std::chrono::steady_clock::now();
-
 		m_fixSession.poll(onMessageHandler);
 		aeronClient->conductorAgentInvoker().invoke();
-
-		auto endTp = std::chrono::steady_clock::now();
-
-		auto roundMs = std::chrono::duration_cast<std::chrono::microseconds>(endTp - startTp).count();
-
-		totalMs += roundMs;
-
-		if (roundMs > maxMs) {
-			maxMs = roundMs;
-		}
-
-		x++;
-
-		if (x > 10000000) {
-			systemLogger->info("[market office] Max: {}, Avg: {}", maxMs, totalMs / x);
-			x = 0;
-			maxMs = 0;
-			totalMs = 0;
-		}
 	}
 
 	m_fixSession.terminate();
