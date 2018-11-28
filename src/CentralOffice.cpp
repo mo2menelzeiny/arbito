@@ -24,7 +24,7 @@ CentralOffice::CentralOffice(
 		    "CENTRAL",
 		    dbUri,
 		    dbName,
-		    "coll_orders"
+		    "coll_triggers"
     ) {
 	sprintf(m_subscriptionURIA, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPortA);
 	sprintf(m_subscriptionURIB, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPortB);
@@ -200,46 +200,36 @@ void CentralOffice::work() {
 
 		if (currentOrder == DIFF_NONE) return;
 
-		auto randomIdA = randomGenerator();
-		auto randomIdB = randomGenerator();
-
-		char randIdAStr[64];
-		char randIdBStr[64];
-
 		const char *orderType = currentOrder == currentDiff ? "OPEN" : "CLOSE";
+
+		auto randomId = randomGenerator();
+
+		char randIdStr[64];
+		sprintf(randIdStr, "%lu", randomId);
+
+		tradeData.id(randomId);
+
 
 		switch (currentOrder) {
 			case DIFF_A:
-				tradeData.id(randomIdA);
 				tradeData.side('2');
 				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				tradeData.id(randomIdB);
 				tradeData.side('1');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				sprintf(randIdAStr, "%lu", randomIdA);
-				m_mongoDriver.recordTrigger(randIdAStr, bidA, orderType);
-
-				sprintf(randIdBStr, "%lu", randomIdB);
-				m_mongoDriver.recordTrigger(randIdBStr, offerB, orderType);
+				m_mongoDriver.record(randIdStr, bidA, offerB, orderType);
 
 				break;
 
 			case DIFF_B:
-				tradeData.id(randomIdA);
 				tradeData.side('1');
 				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				tradeData.id(randomIdB);
 				tradeData.side('2');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				sprintf(randIdAStr, "%lu", randomIdA);
-				m_mongoDriver.recordTrigger(randIdAStr, offerA, orderType);
-
-				sprintf(randIdBStr, "%lu", randomIdB);
-				m_mongoDriver.recordTrigger(randIdBStr, bidB, orderType);
+				m_mongoDriver.record(randIdStr, bidB, offerA, orderType);
 
 				break;
 		}

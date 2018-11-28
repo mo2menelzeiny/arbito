@@ -7,14 +7,14 @@ IBOffice::IBOffice(
 		int publicationPort,
 		const char *publicationHost,
 		int subscriptionPort,
-		const char *DBUri,
-		const char *DBName
+		const char *dbUri,
+		const char *dbName
 ) : m_broker(broker),
     m_quantity(quantity),
     m_mongoDriver(
 		    broker,
-		    DBUri,
-		    DBName,
+		    dbUri,
+		    dbName,
 		    "coll_orders"
     ) {
 	sprintf(m_publicationURI, "aeron:udp?endpoint=%s:%i\n", publicationHost, publicationPort);
@@ -147,7 +147,7 @@ void IBOffice::work() {
 		char clOrdIdStr[32];
 		sprintf(clOrdIdStr, "%lu", tradeData.id());
 
-		m_mongoDriver.recordExecution(clOrdIdStr, orderIdStr, tradeData.side(), avgFillPrice);
+		m_mongoDriver.record(clOrdIdStr, orderIdStr, tradeData.side(), avgFillPrice);
 
 		lastRecordedOrderId = orderId;
 	});

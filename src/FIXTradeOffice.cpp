@@ -12,8 +12,8 @@ FIXTradeOffice::FIXTradeOffice(
 		const char *sender,
 		const char *target,
 		int heartbeat,
-		const char *DBUri,
-		const char *DBName
+		const char *dbUri,
+		const char *dbName
 ) : m_broker(broker),
     m_quantity(quantity),
     m_fixSession(
@@ -27,8 +27,8 @@ FIXTradeOffice::FIXTradeOffice(
     ),
     m_mongoDriver(
 		    broker,
-		    DBUri,
-		    DBName,
+		    dbUri,
+		    dbName,
 		    "coll_orders"
     ) {
 	sprintf(m_subscriptionURI, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPort);
@@ -203,7 +203,7 @@ void FIXTradeOffice::work() {
 					char side = fix_get_field(msg, Side)->string_value[0];
 					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
 
-					m_mongoDriver.recordExecution(clOrdId, orderId, side, fillPrice);
+					m_mongoDriver.record(clOrdId, orderId, side, fillPrice);
 				}
 
 				if (execType == '8') {

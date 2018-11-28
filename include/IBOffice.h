@@ -31,8 +31,8 @@ public:
 			int publicationPort,
 			const char *publicationHost,
 			int subscriptionPort,
-			const char *DBUri,
-			const char *DBName
+			const char *dbUri,
+			const char *dbName
 	);
 
 	void start();
