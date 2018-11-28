@@ -16,13 +16,13 @@ public:
 	MongoDBDriver(
 			const char *brokerName,
 			const char *uri,
-			const char *DBname,
+			const char *dbName,
 			const char *collectionName
 	);
 
-	void recordTrigger(const char *clOrdId, double triggerPrice, const char *orderType);
+	void record(const char *clOrdId, double bid, double offer, const char *orderType);
 
-	void recordExecution(const char *clOrdId, const char *orderId, char side, double fillPrice);
+	void record(const char *clOrdId, const char *orderId, char side, double fillPrice);
 
 
 

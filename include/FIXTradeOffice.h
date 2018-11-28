@@ -32,8 +32,8 @@ public:
 			const char *sender,
 			const char *target,
 			int heartbeat,
-			const char *DBUri,
-			const char *DBName
+			const char *dbUri,
+			const char *dbName
 	);
 
 	void start();

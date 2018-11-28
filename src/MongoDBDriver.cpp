@@ -4,11 +4,11 @@
 MongoDBDriver::MongoDBDriver(
 		const char *brokerName,
 		const char *uri,
-		const char *DBname,
+		const char *dbName,
 		const char *collectionName
 ) : m_broker(brokerName),
     m_uri(uri),
-    m_DBName(DBname),
+    m_DBName(dbName),
     m_collectionName(collectionName) {
 	bson_error_t error;
 
@@ -31,16 +31,18 @@ MongoDBDriver::MongoDBDriver(
 }
 
 
-void MongoDBDriver::recordTrigger(const char *clOrdId, double triggerPrice, const char *orderType) {
+void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const char *orderType) {
 	bson_error_t error;
 
 	auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>
 			(std::chrono::system_clock::now().time_since_epoch()).count();
+
 	bson_t *insert = BCON_NEW (
-			"timestamp_ms", BCON_DATE_TIME(nowMs),
+			"timestamp", BCON_DATE_TIME(nowMs),
 			"clOrdId", BCON_UTF8(clOrdId),
-			"order_type", BCON_UTF8(orderType),
-			"trigger_px", BCON_DOUBLE(triggerPrice)
+			"orderType", BCON_UTF8(orderType),
+			"sell", BCON_DOUBLE(bid),
+			"buy", BCON_DOUBLE(offer)
 	);
 
 	if (!mongoc_collection_insert_one(m_collection, insert, nullptr, nullptr, &error)) {
@@ -51,29 +53,25 @@ void MongoDBDriver::recordTrigger(const char *clOrdId, double triggerPrice, cons
 }
 
 
-void MongoDBDriver::recordExecution(const char *clOrdId, const char *orderId, char side, double fillPrice) {
+void MongoDBDriver::record(const char *clOrdId, const char *orderId, char side, double fillPrice) {
 	bson_error_t error;
 
 	auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>
 			(std::chrono::system_clock::now().time_since_epoch()).count();
 
-	bson_t *selector = BCON_NEW ("clOrdId", clOrdId);
-	bson_t *update_or_insert = BCON_NEW (
-			"$set", "{",
-			"avgPx", BCON_DOUBLE(fillPrice),
+	bson_t *insert = BCON_NEW (
+			"timestamp", BCON_DATE_TIME(nowMs),
+			"clOrdId", BCON_UTF8(clOrdId),
+			"fillPrice", BCON_DOUBLE(fillPrice),
 			"side", BCON_UTF8(side == '1' ? "BUY" : "SELL"),
 			"orderId", BCON_UTF8(orderId),
-			"broker_name", BCON_UTF8(m_broker),
-			"exec_timestamp_ms", BCON_DATE_TIME(nowMs),
-			"}"
+			"broker", BCON_UTF8(m_broker),
+			"timestamp", BCON_DATE_TIME(nowMs)
 	);
 
-	bson_t *opts = BCON_NEW ("upsert", BCON_BOOL(true));
-
-	if (!mongoc_collection_update_one(m_collection, selector, update_or_insert, opts, nullptr, &error)) {
+	if (!mongoc_collection_insert_one(m_collection, insert, nullptr, nullptr, &error)) {
 		fprintf(stderr, "MongoDB %s\n", error.message);
 	}
 
-	bson_destroy(update_or_insert);
-	bson_destroy(opts);
+	bson_destroy(insert);
 }
