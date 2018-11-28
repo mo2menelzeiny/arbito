@@ -73,10 +73,10 @@ DWORD WINAPI EReader::readToQueueThread(LPVOID lpParam)
 
 void EReader::readToQueue() {
 	//EMessage *msg = 0;
-	cpu_set_t cpuset;
+	/*cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
 	CPU_SET(2, &cpuset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);*/
 	pthread_setname_np(pthread_self(), "ib-reader");
 
 	while (m_isAlive) {
