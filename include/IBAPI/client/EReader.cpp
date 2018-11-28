@@ -88,7 +88,7 @@ void EReader::readToQueue() {
 	}
 
 	m_pClientSocket->handleSocketError();
-	m_pEReaderSignal->issueSignal(); //letting client know that socket was closed
+//	m_pEReaderSignal->issueSignal(); //letting client know that socket was closed
 }
 
 bool EReader::putMessageToQueue() {
@@ -105,7 +105,7 @@ bool EReader::putMessageToQueue() {
 		m_msgQueue.push_back(std::shared_ptr<EMessage>(msg));
 	}
 
-	m_pEReaderSignal->issueSignal();
+//	m_pEReaderSignal->issueSignal();
 
 	return true;
 }
@@ -170,7 +170,7 @@ bool EReader::processNonBlockingSelect() {
 }
 
 void EReader::onSend() {
-	m_pEReaderSignal->issueSignal();
+	// m_pEReaderSignal->issueSignal();
 }
 
 void EReader::onReceive() {
