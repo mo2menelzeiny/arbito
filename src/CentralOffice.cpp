@@ -8,15 +8,13 @@ CentralOffice::CentralOffice(
 		const char *publicationHostB,
 		int subscriptionPortA,
 		int subscriptionPortB,
-		int windowMs,
 		int orderDelaySec,
 		int maxOrders,
 		double diffOpen,
 		double diffClose,
 		const char *dbUri,
 		const char *dbName
-) : m_windowMs(windowMs),
-    m_orderDelaySec(orderDelaySec),
+) : m_orderDelaySec(orderDelaySec),
     m_maxOrders(maxOrders),
     m_diffOpen(diffOpen),
     m_diffClose(diffClose),
@@ -54,8 +52,14 @@ void CentralOffice::work() {
 	double bidA = -99, offerA = 99;
 	double bidB = -99, offerB = 99;
 
-	int ordersCount = 0;
+	int ordersCount = stoi(getenv("ORDERS_COUNT"));
+
 	TriggerDifference currentDiff = DIFF_NONE;
+
+	if (!strcmp(getenv("CURRENT_DIFF"), "DIFF_A")) currentDiff = DIFF_A;
+
+	if (!strcmp(getenv("CURRENT_DIFF"), "DIFF_B")) currentDiff = DIFF_B;
+
 	TriggerDifference currentOrder = DIFF_NONE;
 
 	bool isOrderDelayed = false;
