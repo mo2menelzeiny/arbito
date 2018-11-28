@@ -147,7 +147,9 @@ void IBOffice::work() {
 		char clOrdIdStr[32];
 		sprintf(clOrdIdStr, "%lu", tradeData.id());
 
-		m_mongoDriver.record(clOrdIdStr, orderIdStr, tradeData.side(), avgFillPrice);
+		std::thread([&] {
+			m_mongoDriver.record(clOrdIdStr, orderIdStr, tradeData.side(), avgFillPrice);
+		}).detach();
 
 		lastRecordedOrderId = orderId;
 	});
