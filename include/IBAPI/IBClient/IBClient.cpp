@@ -314,7 +314,7 @@ void IBClient::processMessages() {
 			break;
 	}*/
 
-	m_osSignal.waitForSignal();
+//	 m_osSignal.waitForSignal();
 	errno = 0;
 	m_pReader->processMsgs();
 }

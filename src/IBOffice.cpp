@@ -217,7 +217,7 @@ void IBOffice::work() {
 
 		x++;
 
-		if (x > 1000000) {
+		if (x > 10000000) {
 			systemLogger->info("[ib office] Max: {}, Avg: {}", maxMs, totalMs / x);
 			x = 0;
 			maxMs = 0;
