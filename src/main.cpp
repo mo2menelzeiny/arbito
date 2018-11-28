@@ -34,7 +34,6 @@ int main() {
 					getenv("TO_B_HOST"),
 					stoi(getenv("MO_A_PORT")),
 					stoi(getenv("MO_B_PORT")),
-					stoi(getenv("WINDOW_MS")),
 					stoi(getenv("ORDER_DELAY_SEC")),
 					stoi(getenv("MAX_ORDERS")),
 					stof(getenv("DIFF_OPEN")),
