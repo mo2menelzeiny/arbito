@@ -277,7 +277,6 @@ void CentralOffice::work() {
 		++sequence;
 
 		marketLogger->info("[slough][{}] bid: {} offer: {} RSeq: {}", sequence, bidA, offerA, marketData.timestamp());
-		marketLogger->flush();
 	};
 
 	auto fragmentHandlerB = [&](
@@ -307,7 +306,6 @@ void CentralOffice::work() {
 		++sequence;
 
 		marketLogger->info("[zurich][{}] bid: {} offer: {} RSeq: {}", sequence, bidB, offerB, marketData.timestamp());
-		marketLogger->flush();
 	};
 
 	auto fragmentAssemblerA = aeron::FragmentAssembler(fragmentHandlerA);
