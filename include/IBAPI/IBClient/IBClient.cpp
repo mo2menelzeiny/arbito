@@ -73,7 +73,7 @@ bool IBClient::connect(const char *host, unsigned int port, int clientId) {
 		// printf("Connected to %s:%d clientId:%d\n", m_pClient->host().c_str(), m_pClient->port(), clientId);
 		//! [ereader]
 		m_pReader = new EReader(m_pClient, &m_osSignal);
-		m_pReader->start();
+//		m_pReader->start();
 		//! [ereader]
 	}
 	// printf("Cannot connect to %s:%d clientId:%d\n", m_pClient->host().c_str(), m_pClient->port(), clientId);
