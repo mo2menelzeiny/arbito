@@ -8,7 +8,8 @@
 #include "CentralOffice.h"
 #include "FIXMarketOffice.h"
 #include "FIXTradeOffice.h"
-#include "IBOffice.h"
+#include "IBMarketOffice.h"
+#include "IBTradeOffice.h"
 
 int main() {
 	auto systemLogger = spdlog::create_async_nb<spdlog::sinks::stdout_sink_mt>("system");
@@ -20,7 +21,8 @@ int main() {
 		CentralOffice *centralOffice;
 		FIXMarketOffice *fixMarketOffice;
 		FIXTradeOffice *fixTradeOffice;
-		IBOffice *ibOffice;
+		IBMarketOffice *ibMarketOffice;
+		IBTradeOffice *ibTradeOffice;
 
 		auto arbito = getenv("ARBITO");
 
@@ -80,17 +82,23 @@ int main() {
 
 
 		if (!strcmp(arbito, "IBAPI")) {
-			ibOffice = new IBOffice(
+			ibMarketOffice = new IBMarketOffice(
 					getenv("BROKER"),
 					stof(getenv("QTY")),
 					stoi(getenv("MO_CO_PORT")),
-					getenv("CO_HOST"),
+					getenv("CO_HOST")
+			);
+
+			ibTradeOffice = new IBTradeOffice(
+					getenv("BROKER"),
+					stof(getenv("QTY")),
 					stoi(getenv("TO_CO_PORT")),
 					getenv("MONGO_URI"),
 					getenv("MONGO_DB")
 			);
 
-			ibOffice->start();
+			ibMarketOffice->start();
+			ibTradeOffice->start();
 		}
 
 		systemLogger->info("Main OK");

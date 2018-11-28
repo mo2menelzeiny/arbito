@@ -1,6 +1,6 @@
 
-#ifndef ARBITO_IBOFFICE_H
-#define ARBITO_IBOFFICE_H
+#ifndef ARBITO_IBTRADEOFFICE_H
+#define ARBITO_IBTRADEOFFICE_H
 
 // Aeron client
 #include <Context.h>
@@ -20,16 +20,15 @@
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/daily_file_sink.h"
 
+// Mongo
 #include "MongoDBDriver.h"
 
 
-class IBOffice {
+class IBTradeOffice {
 public:
-	IBOffice(
+	IBTradeOffice(
 			const char *broker,
 			double quantity,
-			int publicationPort,
-			const char *publicationHost,
 			int subscriptionPort,
 			const char *dbUri,
 			const char *dbName
@@ -45,7 +44,6 @@ private:
 private:
 	const char *m_broker;
 	double m_quantity;
-	char m_publicationURI[64];
 	char m_subscriptionURI[64];
 	std::thread m_worker;
 	std::atomic_bool m_running;
@@ -53,4 +51,4 @@ private:
 };
 
 
-#endif //ARBITO_IBOFFICE_H
+#endif //ARBITO_IBTRADEOFFICE_H
