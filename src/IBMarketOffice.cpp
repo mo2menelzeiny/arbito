@@ -101,9 +101,6 @@ void IBMarketOffice::work() {
 
 		if (m_quantity > offerQty || m_quantity > bidQty) return;
 
-		// prevents duplicate prices from IB Market Office
-		if (bid == marketData.bid() && offer == marketData.offer()) return;
-
 		++sequence;
 
 		marketData
