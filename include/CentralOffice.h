@@ -37,6 +37,7 @@ public:
 			const char *publicationHostB,
 			int subscriptionPortA,
 			int subscriptionPortB,
+			int windowMs,
 			int orderDelaySec,
 			int maxOrders,
 			double diffOpen,

@@ -8,13 +8,15 @@ CentralOffice::CentralOffice(
 		const char *publicationHostB,
 		int subscriptionPortA,
 		int subscriptionPortB,
+		int windowMs,
 		int orderDelaySec,
 		int maxOrders,
 		double diffOpen,
 		double diffClose,
 		const char *dbUri,
 		const char *dbName
-) : m_orderDelaySec(orderDelaySec),
+) : m_windowMs(windowMs),
+    m_orderDelaySec(orderDelaySec),
     m_maxOrders(maxOrders),
     m_diffOpen(diffOpen),
     m_diffClose(diffClose),
@@ -61,6 +63,10 @@ void CentralOffice::work() {
 	if (!strcmp(getenv("CURRENT_DIFF"), "DIFF_B")) currentDiff = DIFF_B;
 
 	TriggerDifference currentOrder = DIFF_NONE;
+
+	bool isExpiredA = true, isExpiredB = true;
+	time_point<system_clock> timestampA, timestampB, timestampNow;
+	timestampA = timestampB = timestampNow = system_clock::now();
 
 	bool isOrderDelayed = false;
 	time_t orderDelay = m_orderDelaySec;
@@ -208,6 +214,8 @@ void CentralOffice::work() {
 
 		const char *orderType = currentOrder == currentDiff ? "OPEN" : "CLOSE";
 
+		systemLogger->info("{}", orderType);
+
 		auto randomId = randomGenerator();
 		tradeData.id(randomId);
 		sprintf(randIdStr, "%lu", randomId);
@@ -247,8 +255,6 @@ void CentralOffice::work() {
 		currentOrder = DIFF_NONE;
 		orderDelayStart = time(nullptr);
 		isOrderDelayed = true;
-
-		systemLogger->info("{}", orderType);
 	};
 
 
@@ -277,6 +283,9 @@ void CentralOffice::work() {
 		offerA = marketData.offer();
 
 		++sequence;
+
+		timestampB = timestampNow;
+		isExpiredA = false;
 
 		marketLogger->info("[slough][{}] bid: {} offer: {} RSeq: {}", sequence, bidA, offerA, marketData.timestamp());
 	};
@@ -307,6 +316,9 @@ void CentralOffice::work() {
 
 		++sequence;
 
+		timestampB = timestampNow;
+		isExpiredB = false;
+
 		marketLogger->info("[zurich][{}] bid: {} offer: {} RSeq: {}", sequence, bidB, offerB, marketData.timestamp());
 	};
 
@@ -316,9 +328,23 @@ void CentralOffice::work() {
 	systemLogger->info("Central Office OK");
 
 	while (m_running) {
+		timestampNow = system_clock::now();
+
 		aeronClient->conductorAgentInvoker().invoke();
 		subscriptionA->poll(fragmentAssemblerA.handler(), 1);
 		subscriptionB->poll(fragmentAssemblerB.handler(), 1);
 		handleTriggers();
+
+		if (!isExpiredA && duration_cast<milliseconds>(timestampNow - timestampA).count() >= m_windowMs) {
+			bidA = -99;
+			offerA = 99;
+			isExpiredA = true;
+		}
+
+		if (!isExpiredB && duration_cast<milliseconds>(timestampNow - timestampB).count() >= m_windowMs) {
+			bidB = -99;
+			offerB = 99;
+			isExpiredB = true;
+		}
 	}
 }
