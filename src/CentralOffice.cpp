@@ -144,6 +144,8 @@ void CentralOffice::work() {
 
 	auto encodedLength = static_cast<aeron::index_t>(sbe::MessageHeader::encodedLength() + tradeData.encodedLength());
 
+	char randIdStr[64];
+
 	auto handleTriggers = [&] {
 		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) return;
 
@@ -207,12 +209,8 @@ void CentralOffice::work() {
 		const char *orderType = currentOrder == currentDiff ? "OPEN" : "CLOSE";
 
 		auto randomId = randomGenerator();
-
-		char randIdStr[64];
-		sprintf(randIdStr, "%lu", randomId);
-
 		tradeData.id(randomId);
-
+		sprintf(randIdStr, "%lu", randomId);
 
 		switch (currentOrder) {
 			case DIFF_A:
@@ -222,8 +220,8 @@ void CentralOffice::work() {
 				tradeData.side('1');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				std::thread([&] {
-					m_mongoDriver.record(randIdStr, bidA, offerB, orderType);
+				std::thread([=, mongoDriver = &m_mongoDriver] {
+					mongoDriver->record(randIdStr, bidA, offerB, orderType);
 				}).detach();
 
 				break;
@@ -235,8 +233,8 @@ void CentralOffice::work() {
 				tradeData.side('2');
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				std::thread([&] {
-					m_mongoDriver.record(randIdStr, bidB, offerA, orderType);
+				std::thread([=, mongoDriver = &m_mongoDriver] {
+					mongoDriver->record(randIdStr, bidB, offerA, orderType);
 				}).detach();
 
 				break;

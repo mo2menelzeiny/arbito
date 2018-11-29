@@ -70,20 +70,19 @@ void IBTradeOffice::work() {
 		// do nothing
 	});
 
+	char orderIdStr[64];
+	char clOrdIdStr[64];
 	OrderId lastRecordedOrderId = 0;
 
 	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
 		if (status != "Filled") return;
 		if (lastRecordedOrderId == orderId) return;
 
-		char orderIdStr[32];
 		sprintf(orderIdStr, "%lu", orderId);
-
-		char clOrdIdStr[32];
 		sprintf(clOrdIdStr, "%lu", tradeData.id());
 
-		std::thread([&] {
-			m_mongoDriver.record(clOrdIdStr, orderIdStr, tradeData.side(), avgFillPrice);
+		std::thread([=, mongoDriver = &m_mongoDriver] {
+			mongoDriver->record(clOrdIdStr, orderIdStr, tradeData.side(), avgFillPrice);
 		}).detach();
 
 		lastRecordedOrderId = orderId;

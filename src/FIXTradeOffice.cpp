@@ -149,6 +149,9 @@ void FIXTradeOffice::work() {
 	sbe::MessageHeader tradeDataHeader;
 	sbe::TradeData tradeData;
 
+	char clOrdId[64];
+	char orderId[64];
+
 	auto fragmentHandler = [&](
 			aeron::AtomicBuffer &buffer,
 			aeron::index_t offset,
@@ -167,7 +170,6 @@ void FIXTradeOffice::work() {
 				bufferLength
 		);
 
-		char clOrdId[64];
 		sprintf(clOrdId, "%lu", tradeData.id());
 
 		switch (tradeData.side()) {
@@ -196,15 +198,13 @@ void FIXTradeOffice::work() {
 				char execType = fix_get_field(msg, ExecType)->string_value[0];
 
 				if (execType == '2' || execType == 'F') {
-					char orderId[64];
-					char clOrdId[64];
 					fix_get_string(fix_get_field(msg, OrderID), orderId, 64);
 					fix_get_string(fix_get_field(msg, ClOrdID), clOrdId, 64);
 					char side = fix_get_field(msg, Side)->string_value[0];
 					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
 
-					std::thread([&] {
-						m_mongoDriver.record(clOrdId, orderId, side, fillPrice);
+					std::thread([=, mongoDriver = &m_mongoDriver] {
+						mongoDriver->record(clOrdId, orderId, side, fillPrice);
 					}).detach();
 				}
 
