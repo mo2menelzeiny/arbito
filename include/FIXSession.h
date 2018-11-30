@@ -7,7 +7,12 @@
 #include <functional>
 
 // FIX
-#include <libtrading/proto/fix_common.h>
+#include "libtrading/proto/fix_common.h"
+
+extern "C" {
+#include "libtrading/proto/test.h"
+};
+
 
 //Domain
 #include "FIXSocket.h"

@@ -218,8 +218,12 @@ void FIXTradeOffice::work() {
 			}
 
 				break;
+
 			default:
-				return;
+				printf("unhandled message: \n");
+				fprintmsg_iov(stdout, msg);
+
+				break;
 		}
 	});
 

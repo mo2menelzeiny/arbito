@@ -82,7 +82,7 @@ int main() {
 
 
 		if (!strcmp(arbito, "IBAPI")) {
-			ibMarketOffice = new IBMarketOffice(
+			/*ibMarketOffice = new IBMarketOffice(
 					getenv("BROKER"),
 					stof(getenv("QTY")),
 					stoi(getenv("MO_CO_PORT")),
@@ -98,7 +98,24 @@ int main() {
 			);
 
 			ibMarketOffice->start();
-			ibTradeOffice->start();
+			ibTradeOffice->start();*/
+
+			fixTradeOffice = new FIXTradeOffice(
+					getenv("BROKER"),
+					stof(getenv("QTY")),
+					stoi(getenv("TO_CO_PORT")),
+					getenv("TO_HOST"),
+					stoi(getenv("TO_PORT")),
+					getenv("TO_USERNAME"),
+					getenv("TO_PASSWORD"),
+					getenv("TO_SENDER"),
+					getenv("TO_TARGET"),
+					stoi(getenv("HEARTBEAT")),
+					getenv("MONGO_URI"),
+					getenv("MONGO_DB")
+			);
+
+			fixTradeOffice->start();
 		}
 
 		systemLogger->info("Main OK");
