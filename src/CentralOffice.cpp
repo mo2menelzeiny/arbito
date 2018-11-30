@@ -284,7 +284,7 @@ void CentralOffice::work() {
 
 		++sequence;
 
-		timestampB = timestampNow;
+		timestampA = timestampNow;
 		isExpiredA = false;
 
 		marketLogger->info("[slough][{}] bid: {} offer: {} RSeq: {}", sequence, bidA, offerA, marketData.timestamp());
