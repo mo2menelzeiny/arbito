@@ -31,7 +31,7 @@ void IBMarketOffice::work() {
 	auto systemLogger = spdlog::get("system");
 	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
 
-	long sequence = 0;
+	long seq = 0;
 
 	double bid = -99, offer = 99;
 	double bidQty = 0, offerQty = 0;
@@ -101,16 +101,16 @@ void IBMarketOffice::work() {
 
 		if (m_quantity > offerQty || m_quantity > bidQty) return;
 
-		++sequence;
+		++seq;
 
 		marketData
 				.bid(bid)
 				.offer(offer)
-				.timestamp(sequence);
+				.timestamp(seq);
 
 		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
 
-		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
+		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, seq, bid, offer);
 	});
 
 	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
