@@ -87,7 +87,7 @@ void FIXMarketOffice::work() {
 	auto systemLogger = spdlog::get("system");
 	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
 
-	long sequence = 0;
+	long seq = 0;
 
 	aeron::Context aeronContext;
 
@@ -149,16 +149,16 @@ void FIXMarketOffice::work() {
 
 		if (m_quantity > offerQty || m_quantity > bidQty) return;
 
-		++sequence;
+		++seq;
 
 		marketData
 				.bid(bid)
 				.offer(offer)
-				.timestamp(sequence);
+				.timestamp(seq);
 
 		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
 
-		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
+		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, seq, bid, offer);
 	});
 
 	while (m_running) {

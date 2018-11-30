@@ -118,6 +118,7 @@ void FIXTradeOffice::work() {
 	pthread_setname_np(pthread_self(), "trade-office");
 
 	auto systemLogger = spdlog::get("system");
+	auto tradeLogger = spdlog::daily_logger_st("trade", "trade_log");
 
 	aeron::Context aeronContext;
 
@@ -187,7 +188,9 @@ void FIXTradeOffice::work() {
 				break;
 		}
 
-		systemLogger->info("{}", tradeData.side() == '1' ? "BUY" : "SELL");
+		const char *side = tradeData.side() == '1' ? "BUY" : "SELL";
+		tradeLogger->info("{} id: {} seq: {}", side, tradeData.timestamp(), tradeData.id());
+		systemLogger->info("{}", side);
 	};
 
 	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);

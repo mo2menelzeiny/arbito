@@ -49,8 +49,9 @@ void CentralOffice::work() {
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "central-office");
 
-	long sequence = 0;
+	long seq = 0;
 
+	long seqA = 0, seqB = 0;
 	double bidA = -99, offerA = 99;
 	double bidB = -99, offerB = 99;
 
@@ -74,6 +75,7 @@ void CentralOffice::work() {
 
 	auto systemLogger = spdlog::get("system");
 	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
+	auto tradeLogger = spdlog::daily_logger_st("trade", "trade_log");
 
 	std::mt19937_64 randomGenerator(std::random_device{}());
 
@@ -214,8 +216,6 @@ void CentralOffice::work() {
 
 		const char *orderType = currentOrder == currentDiff ? "OPEN" : "CLOSE";
 
-		systemLogger->info("{}", orderType);
-
 		auto randomId = randomGenerator();
 		tradeData.id(randomId);
 		sprintf(randIdStr, "%lu", randomId);
@@ -223,10 +223,14 @@ void CentralOffice::work() {
 		switch (currentOrder) {
 			case DIFF_A:
 				tradeData.side('2');
+				tradeData.timestamp(seqA);
 				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
 
 				tradeData.side('1');
+				tradeData.timestamp(seqB);
 				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
+
+				tradeLogger->info("{} DIFF_A bid: {} seq: {} offer: {} seq: {}", orderType, bidA, seqA, offerB, seqB);
 
 				std::thread([=, mongoDriver = &m_mongoDriver] {
 					mongoDriver->record(randIdStr, bidA, offerB, orderType);
@@ -235,11 +239,15 @@ void CentralOffice::work() {
 				break;
 
 			case DIFF_B:
+				tradeData.side('2');
+				tradeData.timestamp(seqB);
+				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
+
 				tradeData.side('1');
+				tradeData.timestamp(seqA);
 				while (publicationA->offer(atomicBuffer, 0, encodedLength) < -1);
 
-				tradeData.side('2');
-				while (publicationB->offer(atomicBuffer, 0, encodedLength) < -1);
+				tradeLogger->info("{} DIFF_B bid: {} seq: {} offer: {} seq: {}", orderType, bidB, seqB, offerA, seqA);
 
 				std::thread([=, mongoDriver = &m_mongoDriver] {
 					mongoDriver->record(randIdStr, bidB, offerA, orderType);
@@ -255,6 +263,8 @@ void CentralOffice::work() {
 		currentOrder = DIFF_NONE;
 		orderDelayStart = time(nullptr);
 		isOrderDelayed = true;
+
+		systemLogger->info("{}", orderType);
 	};
 
 
@@ -281,13 +291,14 @@ void CentralOffice::work() {
 
 		bidA = marketData.bid();
 		offerA = marketData.offer();
+		seqA = marketData.timestamp();
 
-		++sequence;
+		++seq;
 
 		timestampA = timestampNow;
 		isExpiredA = false;
 
-		marketLogger->info("[slough][{}] bid: {} offer: {} RSeq: {}", sequence, bidA, offerA, marketData.timestamp());
+		marketLogger->info("[slough][{}] bid: {} offer: {} seq: {}", seq, bidA, offerA, seqA);
 	};
 
 	auto fragmentHandlerB = [&](
@@ -313,13 +324,14 @@ void CentralOffice::work() {
 
 		bidB = marketData.bid();
 		offerB = marketData.offer();
+		seqB = marketData.timestamp();
 
-		++sequence;
+		++seq;
 
 		timestampB = timestampNow;
 		isExpiredB = false;
 
-		marketLogger->info("[zurich][{}] bid: {} offer: {} RSeq: {}", sequence, bidB, offerB, marketData.timestamp());
+		marketLogger->info("[zurich][{}] bid: {} offer: {} seq: {}", seq, bidB, offerB, seqB);
 	};
 
 	auto fragmentAssemblerA = aeron::FragmentAssembler(fragmentHandlerA);
