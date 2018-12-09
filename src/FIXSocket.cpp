@@ -58,13 +58,22 @@ void FIXSocket::initiate() {
 		throw std::runtime_error("Socket options FAILED");
 	}
 
+	fcntl(m_socketFD, F_SETFL, O_NONBLOCK);
+
 	SSL_set_fd(m_ssl, m_socketFD);
-	int ssl_errno = SSL_connect(m_ssl);
+	int ssl_errno, attempts = 0;
+
+	do {
+		++attempts;
+		ssl_errno = SSL_connect(m_ssl);
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	} while (ssl_errno == -1 && attempts < 500);
+
 	if (ssl_errno <= 0) {
 		throw std::runtime_error("SSL FAILED");
 	}
 
-	fcntl(m_socketFD, F_SETFL, O_NONBLOCK);
+
 }
 
 void FIXSocket::terminate() {
