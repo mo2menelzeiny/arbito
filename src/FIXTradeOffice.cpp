@@ -260,6 +260,12 @@ void FIXTradeOffice::work() {
 		}
 	});
 
+	std::mt19937_64 randomGenerator(std::random_device{}());
+	char randIdStr[64];
+	bool isOrderDelayed = false, flag = false;
+	time_t orderDelay = 300;
+	time_t orderDelayStart = time(nullptr);
+
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
 
@@ -278,5 +284,26 @@ void FIXTradeOffice::work() {
 		subscription->poll(fragmentAssembler.handler(), 1);
 		m_fixSession.poll(onMessageHandler);
 		aeronClient->conductorAgentInvoker().invoke();
+
+		// FIXME: IB QA FIX session script
+
+		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) continue;
+
+		isOrderDelayed = true;
+
+		sprintf(randIdStr, "%lu", randomGenerator());
+
+		if (flag) {
+			flag = false;
+			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = randIdStr;
+			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_NOSBFixMessage);
+			continue;
+		}
+
+		flag = true;
+		fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = randIdStr;
+		fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
+		m_fixSession.send(&m_NOSSFixMessage);
 	}
 }
