@@ -155,6 +155,7 @@ enum fix_tag {
 	SettlCurrFxRate = 155,
 	SettlCurrFxRateCalc = 156,
 	SecondaryOrderID = 198,
+	CustomerOrFirm = 204,
 	IssueDate = 225,
 	MDReqID = 262,
 	SubscriptionRequestType = 263,

@@ -299,6 +299,8 @@ static enum fix_type fix_tag_type(int tag) {
 			return FIX_TYPE_CHAR;
 		case SecondaryOrderID:
 			return FIX_TYPE_STRING;
+		case CustomerOrFirm:
+			return FIX_TYPE_INT;
 		case IssueDate:
 			return FIX_TYPE_STRING;
 		case MDEntryPx:

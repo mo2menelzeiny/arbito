@@ -93,6 +93,39 @@ FIXTradeOffice::FIXTradeOffice(
 		m_NOSBFixMessage.nr_fields = size;
 	}
 
+	if (!strcmp(broker, "IB")) {
+		struct fix_field NOSSFields[] = {
+				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-SELL"),
+				FIX_STRING_FIELD(Symbol, "EUR.USD"),
+				FIX_CHAR_FIELD(Side, '2'),
+				FIX_STRING_FIELD(TransactTime, ""),
+				FIX_FLOAT_FIELD(OrderQty, quantity),
+				FIX_CHAR_FIELD(OrdType, '1'),
+				FIX_STRING_FIELD(Account, "U01038"),
+				FIX_INT_FIELD(CustomerOrFirm, 1)
+		};
+		unsigned long size = ARRAY_SIZE(NOSSFields);
+		m_NOSSFields = (fix_field *) malloc(size * sizeof(fix_field));
+		memcpy(m_NOSSFields, NOSSFields, size * sizeof(fix_field));
+		m_NOSSFixMessage.nr_fields = size;
+
+		struct fix_field NOSBFields[] = {
+				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-BUY"),
+				FIX_STRING_FIELD(Symbol, "EUR.USD"),
+				FIX_CHAR_FIELD(Side, '1'),
+				FIX_STRING_FIELD(TransactTime, ""),
+				FIX_FLOAT_FIELD(OrderQty, quantity),
+				FIX_CHAR_FIELD(OrdType, '1'),
+				FIX_STRING_FIELD(Account, "U01038"),
+				FIX_INT_FIELD(CustomerOrFirm, 1)
+		};
+
+		size = ARRAY_SIZE(NOSBFields);
+		m_NOSBFields = (fix_field *) malloc(size * sizeof(fix_field));
+		memcpy(m_NOSBFields, NOSBFields, size * sizeof(fix_field));
+		m_NOSBFixMessage.nr_fields = size;
+	}
+
 	m_NOSSFixMessage.type = FIX_MSG_TYPE_NEW_ORDER_SINGLE;
 	m_NOSSFixMessage.fields = m_NOSSFields;
 
