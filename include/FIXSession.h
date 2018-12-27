@@ -101,7 +101,7 @@ private:
 	int m_heartbeat;
 	FIXSocket m_fixSocket;
 	struct fix_session_cfg m_cfg;
-	struct fix_session *m_session;
+	struct fix_session *m_session = nullptr;
 	struct timespec m_lastTimespec{};
 };
 
