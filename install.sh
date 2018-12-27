@@ -11,7 +11,7 @@ cd Disruptor-cpp-master
 mkdir build
 cd build
 cmake .. -DDISRUPTOR_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
-make -j 4 install PREFIX=/usr/local
+make -j 2 install PREFIX=/usr/local
 
 #return to externals/
 cd ../..
@@ -24,7 +24,7 @@ cd mongo-c-driver-1.12.0
 mkdir cmake-build
 cd cmake-build
 cmake .. -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DCMAKE_BUILD_TYPE=Release
-make -j 4 install PREFIX=/usr/local
+make -j 2 install PREFIX=/usr/local
 
 #Leave to root
 cd ../../..
@@ -34,4 +34,4 @@ echo "Building executables.."
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j 4
+make -j 2
