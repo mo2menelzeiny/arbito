@@ -5,7 +5,6 @@ project(arbito)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-include_directories(/usr/local/include/aeronmd/)
 include_directories(include)
 
 find_package(Threads REQUIRED)
@@ -15,9 +14,7 @@ find_package(ZLIB REQUIRED)
 find_package(libmongoc-1.0 1.7 REQUIRED)
 
 find_library(SSL_LIB ssl)
-find_library(AERON_CLIENT_LIB aeron_client)
-find_library(AERON_DRIVER_LIB aeron_driver)
-find_library(AERON_AGENT_LIB aeron_driver_agent)
+find_library(DISRUPTOR_LIBRARIES Disruptor)
 
 file(GLOB HEADERS
         include/*.h
@@ -59,9 +56,7 @@ target_link_libraries(arbito
         ${SSL_LIB}
         ${OPENSSL_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${AERON_DRIVER_LIB}
-        ${AERON_AGENT_LIB}
-        ${AERON_CLIENT_LIB}
+        ${DISRUPTOR_LIBRARIES}
         ${MONGOC_LIBRARIES})
 
 target_compile_definitions(arbito PRIVATE "${MONGOC_DEFINITIONS}")
