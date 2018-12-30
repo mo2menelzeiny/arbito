@@ -2,13 +2,13 @@
 #include "IBMarketOffice.h"
 
 IBMarketOffice::IBMarketOffice(
+		std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &ringBuffer,
+		int cpuset,
 		const char *broker,
-		double quantity,
-		int publicationPort,
-		const char *publicationHost
-) : m_broker(broker),
+		double quantity
+) : m_ringBuffer(ringBuffer),
+    m_broker(broker),
     m_quantity(quantity) {
-	sprintf(m_publicationURI, "aeron:udp?endpoint=%s:%i\n", publicationHost, publicationPort);
 }
 
 void IBMarketOffice::start() {
@@ -24,63 +24,17 @@ void IBMarketOffice::stop() {
 void IBMarketOffice::work() {
 	cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
-	CPU_SET(1, &cpuset);
+	CPU_SET(m_cpuset, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "market-office");
 
+	auto consoleLogger = spdlog::get("console");
 	auto systemLogger = spdlog::get("system");
-	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
 
-	long seq = 0;
+	long sequence = 0;
 
 	double bid = -99, offer = 99;
 	double bidQty = 0, offerQty = 0;
-
-	aeron::Context aeronContext;
-
-	aeronContext
-			.useConductorAgentInvoker(true)
-			.availableImageHandler([&](aeron::Image &image) {
-				systemLogger->info("{} available", image.sourceIdentity());
-			})
-			.unavailableImageHandler([&](aeron::Image &image) {
-				systemLogger->error("{} unavailable", image.sourceIdentity());
-			})
-			.errorHandler([&](const std::exception &ex) {
-				systemLogger->error("{}", ex.what());
-			});
-
-	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
-
-	aeronClient->conductorAgentInvoker().start();
-
-	auto publicationId = aeronClient->addExclusivePublication(m_publicationURI, 1);
-	auto publication = aeronClient->findExclusivePublication(publicationId);
-	while (!publication) {
-		std::this_thread::yield();
-		aeronClient->conductorAgentInvoker().invoke();
-		publication = aeronClient->findExclusivePublication(publicationId);
-	}
-
-	uint8_t buffer[64];
-	aeron::concurrent::AtomicBuffer atomicBuffer;
-	atomicBuffer.wrap(buffer, 64);
-
-	auto marketDataMessageBuffer = reinterpret_cast<char *>(buffer);
-
-	sbe::MessageHeader marketDataHeader;
-	sbe::MarketData marketData;
-
-	marketDataHeader
-			.wrap(marketDataMessageBuffer, 0, 0, 64)
-			.blockLength(sbe::MarketData::sbeBlockLength())
-			.templateId(sbe::MarketData::sbeTemplateId())
-			.schemaId(sbe::MarketData::sbeSchemaId())
-			.version(sbe::MarketData::sbeSchemaVersion());
-
-	marketData.wrapForEncode(marketDataMessageBuffer, sbe::MessageHeader::encodedLength(), 64);
-
-	auto encodedLength = static_cast<aeron::index_t>(sbe::MessageHeader::encodedLength() + marketData.encodedLength());
 
 	auto onTickHandler = OnTickHandler([&](TickType tickType, double value) {
 		switch (tickType) {
@@ -101,16 +55,15 @@ void IBMarketOffice::work() {
 
 		if (m_quantity > offerQty || m_quantity > bidQty) return;
 
-		++seq;
+		++sequence;
 
-		marketData
-				.bid(bid)
-				.offer(offer)
-				.timestamp(seq);
+		auto nextSequence = m_ringBuffer->next();
+		(*m_ringBuffer)[nextSequence].bid = bid;
+		(*m_ringBuffer)[nextSequence].offer = offer;
+		(*m_ringBuffer)[nextSequence].sequence = sequence;
+		m_ringBuffer->publish(nextSequence);
 
-		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
-
-		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, seq, bid, offer);
+		systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
 	});
 
 	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
@@ -119,22 +72,42 @@ void IBMarketOffice::work() {
 
 	IBClient ibClient(onTickHandler, onOrderStatus);
 
+	using namespace std::chrono;
+	long counter = 0, duration = 0, max = 0, total = 0;
+	time_point<system_clock> start, end;
+
 	while (m_running) {
 		if (!ibClient.isConnected()) {
 			bool result = ibClient.connect("127.0.0.1", 4001, 0);
 
 			if (!result) {
-				systemLogger->info("Market Office Client FAILED");
+				consoleLogger->info("[{}] Market Office Client FAILED", m_broker);
 				std::this_thread::sleep_for(std::chrono::seconds(30));
 				continue;
 			}
 
 			ibClient.subscribeToFeed();
-			systemLogger->info("Market Office OK");
+			consoleLogger->info("[{}] Market Office OK", m_broker);
 		}
 
+		start = system_clock::now();
+
 		ibClient.processMessages();
-		aeronClient->conductorAgentInvoker().invoke();
+
+		duration = duration_cast<microseconds>(system_clock::now() - start).count();
+		total += duration;
+		++counter;
+
+		if (duration > max) {
+			max = duration;
+		}
+
+		if (counter > 1000000) {
+			printf("max: %li, avg: %li last seq: %li\n", max, total / counter, sequence);
+			max = 0;
+			total = 0;
+			counter = 0;
+		}
 	}
 
 	ibClient.disconnect();

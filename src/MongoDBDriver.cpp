@@ -2,12 +2,10 @@
 #include "MongoDBDriver.h"
 
 MongoDBDriver::MongoDBDriver(
-		const char *brokerName,
 		const char *uri,
 		const char *dbName,
 		const char *collectionName
-) : m_broker(brokerName),
-    m_uri(uri),
+) : m_uri(uri),
     m_DBName(dbName),
     m_collectionName(collectionName) {
 	bson_error_t error;
@@ -31,7 +29,7 @@ MongoDBDriver::MongoDBDriver(
 }
 
 
-void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const char *orderType) {
+void MongoDBDriver::record(unsigned long clOrdId, double bid, double offer, const char *orderType) {
 	bson_error_t error;
 
 	auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -39,7 +37,7 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 
 	bson_t *insert = BCON_NEW (
 			"timestamp", BCON_DATE_TIME(nowMs),
-			"clOrdId", BCON_UTF8(clOrdId),
+			"clOrdId", BCON_INT64(clOrdId),
 			"orderType", BCON_UTF8(orderType),
 			"sell", BCON_DOUBLE(bid),
 			"buy", BCON_DOUBLE(offer)
@@ -53,7 +51,7 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 }
 
 
-void MongoDBDriver::record(const char *clOrdId, const char *orderId, char side, double fillPrice) {
+void MongoDBDriver::record(unsigned long clOrdId, const char *orderId, char side, double fillPrice, const char *broker) {
 	bson_error_t error;
 
 	auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -61,11 +59,11 @@ void MongoDBDriver::record(const char *clOrdId, const char *orderId, char side, 
 
 	bson_t *insert = BCON_NEW (
 			"timestamp", BCON_DATE_TIME(nowMs),
-			"clOrdId", BCON_UTF8(clOrdId),
+			"clOrdId", BCON_INT64(clOrdId),
 			"fillPrice", BCON_DOUBLE(fillPrice),
 			"side", BCON_UTF8(side == '1' ? "BUY" : "SELL"),
 			"orderId", BCON_UTF8(orderId),
-			"broker", BCON_UTF8(m_broker),
+			"broker", BCON_UTF8(broker),
 			"timestamp", BCON_DATE_TIME(nowMs)
 	);
 

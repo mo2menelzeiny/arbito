@@ -2,9 +2,10 @@
 #include "FIXTradeOffice.h"
 
 FIXTradeOffice::FIXTradeOffice(
+		std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &inRingBuffer,
+		int cpuset,
 		const char *broker,
 		double quantity,
-		int subscriptionPort,
 		const char *host,
 		int port,
 		const char *username,
@@ -14,7 +15,9 @@ FIXTradeOffice::FIXTradeOffice(
 		int heartbeat,
 		const char *dbUri,
 		const char *dbName
-) : m_broker(broker),
+) : m_inRingBuffer(inRingBuffer),
+    m_cpuset(cpuset),
+    m_broker(broker),
     m_quantity(quantity),
     m_fixSession(
 		    host,
@@ -26,13 +29,10 @@ FIXTradeOffice::FIXTradeOffice(
 		    heartbeat
     ),
     m_mongoDriver(
-		    broker,
 		    dbUri,
 		    dbName,
 		    "coll_orders"
     ) {
-	sprintf(m_subscriptionURI, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPort);
-
 	if (!strcmp(broker, "LMAX")) {
 		struct fix_field NOSSFields[] = {
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-SELL"),
@@ -146,87 +146,56 @@ void FIXTradeOffice::stop() {
 void FIXTradeOffice::work() {
 	cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
-	CPU_SET(2, &cpuset);
+	CPU_SET(m_cpuset, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "trade-office");
 
+	auto consoleLogger = spdlog::get("console");
 	auto systemLogger = spdlog::get("system");
-	auto tradeLogger = spdlog::daily_logger_st("trade", "trade_log");
 
-	aeron::Context aeronContext;
+	Broker brokerEnum;
 
-	aeronContext
-			.useConductorAgentInvoker(true)
-			.availableImageHandler([&](aeron::Image &image) {
-				systemLogger->info("{} available", image.sourceIdentity());
-			})
-			.unavailableImageHandler([&](aeron::Image &image) {
-				systemLogger->error("{} unavailable", image.sourceIdentity());
-			})
-			.errorHandler([&](const std::exception &ex) {
-				systemLogger->error("{}", ex.what());
-			});
-
-	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
-
-	aeronClient->conductorAgentInvoker().start();
-
-	auto subscriptionId = aeronClient->addSubscription(m_subscriptionURI, 1);
-
-	auto subscription = aeronClient->findSubscription(subscriptionId);
-	while (!subscription) {
-		std::this_thread::yield();
-		aeronClient->conductorAgentInvoker().invoke();
-		subscription = aeronClient->findSubscription(subscriptionId);
+	if (!strcmp(m_broker, "LMAX")) {
+		brokerEnum = LMAX;
 	}
 
-	sbe::MessageHeader tradeDataHeader;
-	sbe::TradeData tradeData;
+	if (!strcmp(m_broker, "IB")) {
+		brokerEnum = IB;
+	}
+
+	if (!strcmp(m_broker, "SWISSQUOTE")) {
+		brokerEnum = SWISSQUOTE;
+	}
 
 	char clOrdId[64];
 	char orderId[64];
 
-	auto fragmentHandler = [&](
-			aeron::AtomicBuffer &buffer,
-			aeron::index_t offset,
-			aeron::index_t length,
-			const aeron::Header &header
-	) {
-		auto bufferLength = static_cast<const uint64_t>(length);
-		auto messageBuffer = reinterpret_cast<char *>(buffer.buffer() + offset);
+	auto businessPoller = m_inRingBuffer->newPoller();
 
-		tradeDataHeader.wrap(messageBuffer, 0, 0, bufferLength);
-		tradeData.wrapForDecode(
-				messageBuffer,
-				sbe::MessageHeader::encodedLength(),
-				tradeDataHeader.blockLength(),
-				tradeDataHeader.version(),
-				bufferLength
-		);
+	m_inRingBuffer->addGatingSequences({businessPoller->sequence()});
 
-		sprintf(clOrdId, "%lu", tradeData.id());
+	auto businessHandler = [&](BusinessEvent &event, int64_t seq, bool endOfBatch) -> bool {
+		sprintf(clOrdId, "%lu", event.id);
 
-		switch (tradeData.side()) {
-			case '1':
-				fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = clOrdId;
-				fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
-				m_fixSession.send(&m_NOSBFixMessage);
-				break;
-			case '2':
-				fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdId;
-				fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
-				m_fixSession.send(&m_NOSSFixMessage);
-				break;
-			default:
-				break;
+		if (event.buy == brokerEnum) {
+			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = clOrdId;
+			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_NOSBFixMessage);
 		}
 
-		const char *side = tradeData.side() == '1' ? "BUY" : "SELL";
-		tradeLogger->info("{} id: {} seq: {}", side, tradeData.timestamp(), tradeData.id());
-		systemLogger->info("{}", side);
-	};
+		if (event.sell == brokerEnum) {
+			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdId;
+			fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_NOSSFixMessage);
+		}
 
-	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);
+		const char *side = event.buy == brokerEnum ? "BUY" : "SELL";
+
+		systemLogger->info("[{}] {} id: {}", m_broker, side, event.id);
+		consoleLogger->info("[{}] {}", m_broker, side);
+
+		return false;
+	};
 
 	auto onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
 		switch (msg->type) {
@@ -239,21 +208,23 @@ void FIXTradeOffice::work() {
 					char side = fix_get_field(msg, Side)->string_value[0];
 					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
 
+					systemLogger->info("[{}] Filled Px: {} id: {}", m_broker, fillPrice, clOrdId);
+
 					std::thread([=, mongoDriver = &m_mongoDriver] {
-						mongoDriver->record(clOrdId, orderId, side, fillPrice);
+						mongoDriver->record(std::stoul(clOrdId), orderId, side, fillPrice, m_broker);
 					}).detach();
 				}
 
 				if (execType == '8') {
 					// TODO: Handle failed order execution
-					systemLogger->error("Order FAILED {}", tradeData.id());
+					consoleLogger->error("[{}] Trade Office Order FAILED", m_broker);
 				}
 			}
 
 				break;
 
 			default:
-				printf("unhandled message: \n");
+				printf("[%s] Unhandled message: \n", m_broker);
 				fprintmsg_iov(stdout, msg);
 
 				break;
@@ -271,19 +242,18 @@ void FIXTradeOffice::work() {
 
 			try {
 				m_fixSession.initiate();
-				systemLogger->info("Trade Office OK");
+				consoleLogger->info("Trade Office OK");
 			} catch (std::exception &ex) {
 				m_fixSession.terminate();
-				systemLogger->error("Trade office {}", ex.what());
+				consoleLogger->error("Trade office {}", ex.what());
 				std::this_thread::sleep_for(std::chrono::seconds(30));
 			}
 
 			continue;
 		}
 
-		subscription->poll(fragmentAssembler.handler(), 1);
 		m_fixSession.poll(onMessageHandler);
-		aeronClient->conductorAgentInvoker().invoke();
+		businessPoller->poll(businessHandler);
 
 		// FIXME: IB QA FIX session script
 
@@ -306,4 +276,6 @@ void FIXTradeOffice::work() {
 		fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 		m_fixSession.send(&m_NOSSFixMessage);
 	}
+
+	m_inRingBuffer->removeGatingSequence(businessPoller->sequence());
 }
