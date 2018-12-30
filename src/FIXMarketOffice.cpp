@@ -113,10 +113,6 @@ void FIXMarketOffice::work() {
 		systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
 	});
 
-	using namespace std::chrono;
-	long counter = 0, duration = 0, max = 0, total = 0;
-	time_point<system_clock> start, end;
-
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
 
@@ -133,24 +129,7 @@ void FIXMarketOffice::work() {
 			continue;
 		}
 
-		start = system_clock::now();
-
 		m_fixSession.poll(onMessageHandler);
-
-		duration = duration_cast<microseconds>(system_clock::now() - start).count();
-		total += duration;
-		++counter;
-
-		if (duration > max) {
-			max = duration;
-		}
-
-		if (counter > 10000000) {
-			printf("max: %li, avg: %li last sequence: %li\n", max, total / counter, sequence);
-			max = 0;
-			total = 0;
-			counter = 0;
-		}
 	}
 
 	m_fixSession.terminate();
