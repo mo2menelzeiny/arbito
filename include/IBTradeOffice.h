@@ -2,16 +2,8 @@
 #ifndef ARBITO_IBTRADEOFFICE_H
 #define ARBITO_IBTRADEOFFICE_H
 
-// Aeron client
-#include <Context.h>
-#include <Aeron.h>
-#include <concurrent/NoOpIdleStrategy.h>
-#include <FragmentAssembler.h>
-
-// SBE
-#include "sbe/sbe.h"
-#include "sbe/TradeData.h"
-#include "sbe/MarketData.h"
+// Disruptor
+#include "Disruptor/Disruptor.h"
 
 // IB
 #include "IBAPI/IBClient/IBClient.h"
@@ -22,14 +14,16 @@
 
 // Mongo
 #include "MongoDBDriver.h"
+#include "BusinessEvent.h"
 
 
 class IBTradeOffice {
 public:
 	IBTradeOffice(
+			std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &inRingBuffer,
+			int cpuset,
 			const char *broker,
 			double quantity,
-			int subscriptionPort,
 			const char *dbUri,
 			const char *dbName
 	);
@@ -42,9 +36,10 @@ private:
 	void work();
 
 private:
+	std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_inRingBuffer;
+	int m_cpuset;
 	const char *m_broker;
 	double m_quantity;
-	char m_subscriptionURI[64];
 	std::thread m_worker;
 	std::atomic_bool m_running;
 	MongoDBDriver m_mongoDriver;

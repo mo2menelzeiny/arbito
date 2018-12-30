@@ -2,31 +2,24 @@
 #ifndef ARBITO_FIXMARKETOFFICE_H
 #define ARBITO_FIXMARKETOFFICE_H
 
-// Aeron client
-#include <Context.h>
-#include <Aeron.h>
-#include <concurrent/NoOpIdleStrategy.h>
-#include <FragmentAssembler.h>
-
-// SBE
-#include "sbe/sbe.h"
-#include "sbe/MarketData.h"
-
-// Domain
-#include "FIXSession.h"
-
 // SPDLOG
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/daily_file_sink.h"
 
+// Disruptor
+#include "Disruptor/Disruptor.h"
+
+// Domain
+#include "FIXSession.h"
+#include "MarketDataEvent.h"
 
 class FIXMarketOffice {
 public:
 	FIXMarketOffice(
+			std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &inRingBuffer,
+			int cpuset,
 			const char *broker,
 			double quantity,
-			int publicationPort,
-			const char *publicationHost,
 			const char *host,
 			int port,
 			const char *username,
@@ -44,9 +37,10 @@ private:
 	void work();
 
 private:
+	std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_inRingBuffer;
+	int m_cpuset;
 	const char *m_broker;
 	double m_quantity;
-	char m_publicationURI[64];
 	struct fix_field *m_MDRFields;
 	struct fix_message m_MDRFixMessage{};
 	FIXSession m_fixSession;

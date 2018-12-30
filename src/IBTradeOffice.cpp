@@ -2,20 +2,21 @@
 #include "IBTradeOffice.h"
 
 IBTradeOffice::IBTradeOffice(
+		std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &inRingBuffer,
+		int cpuset,
 		const char *broker,
 		double quantity,
-		int subscriptionPort,
 		const char *dbUri,
 		const char *dbName
-) : m_broker(broker),
+) : m_inRingBuffer(inRingBuffer),
+    m_cpuset(cpuset),
+    m_broker(broker),
     m_quantity(quantity),
     m_mongoDriver(
-		    broker,
 		    dbUri,
 		    dbName,
 		    "coll_orders"
     ) {
-	sprintf(m_subscriptionURI, "aeron:udp?endpoint=0.0.0.0:%i\n", subscriptionPort);
 }
 
 void IBTradeOffice::start() {
@@ -31,59 +32,31 @@ void IBTradeOffice::stop() {
 void IBTradeOffice::work() {
 	cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
-	CPU_SET(2, &cpuset);
+	CPU_SET(m_cpuset, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "trade-office");
 
+	auto consoleLogger = spdlog::get("console");
 	auto systemLogger = spdlog::get("system");
-	auto tradeLogger = spdlog::daily_logger_st("trade", "trade_log");
-
-	aeron::Context aeronContext;
-
-	aeronContext
-			.useConductorAgentInvoker(true)
-			.availableImageHandler([&](aeron::Image &image) {
-				systemLogger->info("{} available", image.sourceIdentity());
-			})
-			.unavailableImageHandler([&](aeron::Image &image) {
-				systemLogger->error("{} unavailable", image.sourceIdentity());
-			})
-			.errorHandler([&](const std::exception &ex) {
-				systemLogger->error("{}", ex.what());
-			});
-
-	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
-
-	aeronClient->conductorAgentInvoker().start();
-
-	auto subscriptionId = aeronClient->addSubscription(m_subscriptionURI, 1);
-	auto subscription = aeronClient->findSubscription(subscriptionId);
-	while (!subscription) {
-		std::this_thread::yield();
-		aeronClient->conductorAgentInvoker().invoke();
-		subscription = aeronClient->findSubscription(subscriptionId);
-	}
-
-	sbe::MessageHeader tradeDataHeader;
-	sbe::TradeData tradeData;
 
 	auto onTickHandler = OnTickHandler([&](TickType tickType, double value) {
 		// do nothing
 	});
 
 	char orderIdStr[64];
-	char clOrdIdStr[64];
+
+	unsigned long lastClOrdId;
 	OrderId lastRecordedOrderId = 0;
+	char lastSide;
 
 	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
 		if (status != "Filled") return;
 		if (lastRecordedOrderId == orderId) return;
 
 		sprintf(orderIdStr, "%lu", orderId);
-		sprintf(clOrdIdStr, "%lu", tradeData.id());
 
 		std::thread([=, mongoDriver = &m_mongoDriver] {
-			mongoDriver->record(clOrdIdStr, orderIdStr, tradeData.side(), avgFillPrice);
+			mongoDriver->record(lastClOrdId, orderIdStr, lastSide, avgFillPrice, m_broker);
 		}).detach();
 
 		lastRecordedOrderId = orderId;
@@ -91,59 +64,46 @@ void IBTradeOffice::work() {
 
 	IBClient ibClient(onTickHandler, onOrderStatus);
 
-	auto fragmentHandler = [&](
-			aeron::AtomicBuffer &buffer,
-			aeron::index_t offset,
-			aeron::index_t length,
-			const aeron::Header &header
-	) {
-		auto bufferLength = static_cast<const uint64_t>(length);
-		auto messageBuffer = reinterpret_cast<char *>(buffer.buffer() + offset);
+	auto businessPoller = m_inRingBuffer->newPoller();
 
-		tradeDataHeader.wrap(messageBuffer, 0, 0, bufferLength);
-		tradeData.wrapForDecode(
-				messageBuffer,
-				sbe::MessageHeader::encodedLength(),
-				tradeDataHeader.blockLength(),
-				tradeDataHeader.version(),
-				bufferLength
-		);
+	m_inRingBuffer->addGatingSequences({businessPoller->sequence()});
 
-		switch (tradeData.side()) {
-			case '1':
-				ibClient.placeMarketOrder("BUY", m_quantity);
-				break;
-			case '2':
-				ibClient.placeMarketOrder("SELL", m_quantity);
-				break;
-			default:
-				break;
+	auto businessHandler = [&](BusinessEvent &event, int64_t seq, bool endOfBatch) -> bool {
+		if (event.buy == IB) {
+			ibClient.placeMarketOrder("BUY", m_quantity);
 		}
 
-		const char *side = tradeData.side() == '1' ? "BUY" : "SELL";
-		tradeLogger->info("{} id: {} seq: {}", side, tradeData.timestamp(), tradeData.id());
-		systemLogger->info("{}", side);
-	};
+		if (event.sell == IB) {
+			ibClient.placeMarketOrder("SELL", m_quantity);
+		}
 
-	auto fragmentAssembler = aeron::FragmentAssembler(fragmentHandler);
+		const char *side = event.buy == IB ? "BUY" : "SELL";
+		lastSide = event.buy == IB ? '1' : '2';
+		lastClOrdId = event.id;
+
+		systemLogger->info("[{}] {} id: {}", m_broker, side, event.id);
+		consoleLogger->info("[{}] {}", m_broker, side);
+
+		return false;
+	};
 
 	while (m_running) {
 		if (!ibClient.isConnected()) {
 			bool result = ibClient.connect("127.0.0.1", 4001, 1);
 
 			if (!result) {
-				systemLogger->info("Trade Office Client FAILED");
+				consoleLogger->info("[{}] Trade Office Client FAILED", m_broker);
 				std::this_thread::sleep_for(std::chrono::seconds(30));
 				continue;
 			}
 
-			systemLogger->info("Trade Office OK");
+			consoleLogger->info("[{}] Trade Office OK", m_broker);
 		}
 
-		subscription->poll(fragmentAssembler.handler(), 1);
 		ibClient.processMessages();
-		aeronClient->conductorAgentInvoker().invoke();
+		businessPoller->poll(businessHandler);
 	}
 
 	ibClient.disconnect();
+	m_inRingBuffer->removeGatingSequence(businessPoller->sequence());
 }

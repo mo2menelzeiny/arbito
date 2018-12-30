@@ -19,9 +19,7 @@ find_library(DISRUPTOR_LIBRARIES Disruptor)
 file(GLOB HEADERS
         include/*.h
         include/libtrading/*.h
-        include/libtrading/proto/*.h
-        include/sbe/*.h
-        include/date/*.h)
+        include/libtrading/proto/*.h)
 
 file(GLOB SOURCES
         src/*.cpp

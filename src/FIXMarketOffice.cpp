@@ -2,10 +2,10 @@
 #include "FIXMarketOffice.h"
 
 FIXMarketOffice::FIXMarketOffice(
+		std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &inRingBuffer,
+		int cpuset,
 		const char *broker,
 		double quantity,
-		int publicationPort,
-		const char *publicationHost,
 		const char *host,
 		int port,
 		const char *username,
@@ -13,7 +13,9 @@ FIXMarketOffice::FIXMarketOffice(
 		const char *sender,
 		const char *target,
 		int heartbeat
-) : m_broker(broker),
+) : m_inRingBuffer(inRingBuffer),
+    m_cpuset(cpuset),
+    m_broker(broker),
     m_quantity(quantity),
     m_fixSession(
 		    host,
@@ -24,8 +26,6 @@ FIXMarketOffice::FIXMarketOffice(
 		    target,
 		    heartbeat
     ) {
-	sprintf(m_publicationURI, "aeron:udp?endpoint=%s:%i\n", publicationHost, publicationPort);
-
 	if (!strcmp(broker, "LMAX")) {
 		struct fix_field fields[] = {
 				FIX_STRING_FIELD(MDReqID, "MARKET-DATA-REQUEST"),
@@ -80,61 +80,14 @@ void FIXMarketOffice::stop() {
 void FIXMarketOffice::work() {
 	cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
-	CPU_SET(1, &cpuset);
+	CPU_SET(m_cpuset, &cpuset);
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "market-office");
 
+	auto consoleLogger = spdlog::get("console");
 	auto systemLogger = spdlog::get("system");
-	auto marketLogger = spdlog::daily_logger_st("market", "market_log");
 
-	long seq = 0;
-
-	aeron::Context aeronContext;
-
-	aeronContext
-			.useConductorAgentInvoker(true)
-			.availableImageHandler([&](aeron::Image &image) {
-				systemLogger->info("{} available", image.sourceIdentity());
-			})
-			.unavailableImageHandler([&](aeron::Image &image) {
-				systemLogger->error("{} unavailable", image.sourceIdentity());
-			})
-			.errorHandler([&](const std::exception &ex) {
-				systemLogger->error("{}", ex.what());
-			});
-
-	auto aeronClient = std::make_shared<aeron::Aeron>(aeronContext);
-
-	aeronClient->conductorAgentInvoker().start();
-
-	auto publicationId = aeronClient->addExclusivePublication(m_publicationURI, 1);
-
-	auto publication = aeronClient->findExclusivePublication(publicationId);
-	while (!publication) {
-		std::this_thread::yield();
-		aeronClient->conductorAgentInvoker().invoke();
-		publication = aeronClient->findExclusivePublication(publicationId);
-	}
-
-	uint8_t buffer[64];
-	aeron::concurrent::AtomicBuffer atomicBuffer;
-	atomicBuffer.wrap(buffer, 64);
-
-	auto messageBuffer = reinterpret_cast<char *>(buffer);
-
-	sbe::MessageHeader messageHeader;
-	sbe::MarketData marketData;
-
-	messageHeader
-			.wrap(messageBuffer, 0, 0, 64)
-			.blockLength(sbe::MarketData::sbeBlockLength())
-			.templateId(sbe::MarketData::sbeTemplateId())
-			.schemaId(sbe::MarketData::sbeSchemaId())
-			.version(sbe::MarketData::sbeSchemaVersion());
-
-	marketData.wrapForEncode(messageBuffer, sbe::MessageHeader::encodedLength(), 64);
-
-	auto encodedLength = static_cast<aeron::index_t>(sbe::MessageHeader::encodedLength() + marketData.encodedLength());
+	long sequence = 0;
 
 	auto offerIdx = strcmp(m_broker, "LMAX") ? 4 : 2;
 	auto offerQtyIdx = offerIdx - 1;
@@ -149,17 +102,20 @@ void FIXMarketOffice::work() {
 
 		if (m_quantity > offerQty || m_quantity > bidQty) return;
 
-		++seq;
+		++sequence;
 
-		marketData
-				.bid(bid)
-				.offer(offer)
-				.timestamp(seq);
+		auto nextSequence = m_inRingBuffer->next();
+		(*m_inRingBuffer)[nextSequence].bid = bid;
+		(*m_inRingBuffer)[nextSequence].offer = offer;
+		(*m_inRingBuffer)[nextSequence].sequence = sequence;
+		m_inRingBuffer->publish(nextSequence);
 
-		while (publication->offer(atomicBuffer, 0, encodedLength) < -1);
-
-		marketLogger->info("[{}][{}] bid: {} offer: {}", m_broker, seq, bid, offer);
+		systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
 	});
+
+	using namespace std::chrono;
+	long counter = 0, duration = 0, max = 0, total = 0;
+	time_point<system_clock> start, end;
 
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
@@ -167,18 +123,34 @@ void FIXMarketOffice::work() {
 			try {
 				m_fixSession.initiate();
 				m_fixSession.send(&m_MDRFixMessage);
-				systemLogger->info("Market Office OK");
+				consoleLogger->info("[{}] Market Office OK", m_broker);
 			} catch (std::exception &ex) {
 				m_fixSession.terminate();
-				systemLogger->error("Market Office {}", ex.what());
+				consoleLogger->error("[{}] Market Office {}", m_broker, ex.what());
 				std::this_thread::sleep_for(std::chrono::seconds(30));
 			}
 
 			continue;
 		}
 
+		start = system_clock::now();
+
 		m_fixSession.poll(onMessageHandler);
-		aeronClient->conductorAgentInvoker().invoke();
+
+		duration = duration_cast<microseconds>(system_clock::now() - start).count();
+		total += duration;
+		++counter;
+
+		if (duration > max) {
+			max = duration;
+		}
+
+		if (counter > 10000000) {
+			printf("max: %li, avg: %li last sequence: %li\n", max, total / counter, sequence);
+			max = 0;
+			total = 0;
+			counter = 0;
+		}
 	}
 
 	m_fixSession.terminate();
