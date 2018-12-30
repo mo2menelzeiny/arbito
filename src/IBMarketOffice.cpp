@@ -72,10 +72,6 @@ void IBMarketOffice::work() {
 
 	IBClient ibClient(onTickHandler, onOrderStatus);
 
-	using namespace std::chrono;
-	long counter = 0, duration = 0, max = 0, total = 0;
-	time_point<system_clock> start, end;
-
 	while (m_running) {
 		if (!ibClient.isConnected()) {
 			bool result = ibClient.connect("127.0.0.1", 4001, 0);
@@ -90,24 +86,7 @@ void IBMarketOffice::work() {
 			consoleLogger->info("[{}] Market Office OK", m_broker);
 		}
 
-		start = system_clock::now();
-
 		ibClient.processMessages();
-
-		duration = duration_cast<microseconds>(system_clock::now() - start).count();
-		total += duration;
-		++counter;
-
-		if (duration > max) {
-			max = duration;
-		}
-
-		if (counter > 1000000) {
-			printf("max: %li, avg: %li last seq: %li\n", max, total / counter, sequence);
-			max = 0;
-			total = 0;
-			counter = 0;
-		}
 	}
 
 	ibClient.disconnect();
