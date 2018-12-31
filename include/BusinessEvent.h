@@ -2,11 +2,11 @@
 #ifndef ARBITO_BUSINESSEVENT_H
 #define ARBITO_BUSINESSEVENT_H
 
-#include "Broker.h"
+#include "BrokerEnum.h"
 
 struct BusinessEvent {
-	Broker buy;
-	Broker sell;
+	BrokerEnum buy;
+	BrokerEnum sell;
 	unsigned long id;
 };
 

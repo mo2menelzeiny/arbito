@@ -1,0 +1,12 @@
+
+#ifndef ARBITO_BROKERENUM_H
+#define ARBITO_BROKERENUM_H
+
+enum BrokerEnum {
+	LMAX,
+	IB,
+	SWISSQUOTE,
+	NONE
+};
+
+#endif //ARBITO_BROKERENUM_H
