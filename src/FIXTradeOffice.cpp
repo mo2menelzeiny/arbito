@@ -242,10 +242,10 @@ void FIXTradeOffice::work() {
 
 			try {
 				m_fixSession.initiate();
-				consoleLogger->info("Trade Office OK");
+				consoleLogger->info("[{}] Trade Office OK", m_broker);
 			} catch (std::exception &ex) {
 				m_fixSession.terminate();
-				consoleLogger->error("Trade office {}", ex.what());
+				consoleLogger->error("[{}] Trade office {}", m_broker, ex.what());
 				std::this_thread::sleep_for(std::chrono::seconds(30));
 			}
 
