@@ -70,7 +70,7 @@ void FIXSocket::initiate() {
 	} while (ssl_errno == -1 && attempts < 500);
 
 	if (ssl_errno <= 0) {
-		throw std::runtime_error("SSL FAILED" + std::to_string(ssl_errno));
+		throw std::runtime_error("SSL FAILED " + std::to_string(ssl_errno));
 	}
 }
 
