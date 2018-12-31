@@ -153,7 +153,7 @@ void FIXTradeOffice::work() {
 	auto consoleLogger = spdlog::get("console");
 	auto systemLogger = spdlog::get("system");
 
-	Broker brokerEnum;
+	BrokerEnum brokerEnum;
 
 	if (!strcmp(m_broker, "LMAX")) {
 		brokerEnum = LMAX;
