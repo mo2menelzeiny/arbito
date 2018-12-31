@@ -48,7 +48,7 @@ int main() {
 
 		FIXMarketOffice fixMarketOffice(
 				marketDataRingBuffer,
-				3,
+				2,
 				getenv("BROKER_A"),
 				stof(getenv("QTY_A")),
 				getenv("MO_A_HOST"),
@@ -76,12 +76,14 @@ int main() {
 				getenv("MONGO_DB")
 		);
 
+
 		IBMarketOffice ibMarketOffice(
 				marketDataRingBuffer,
 				4,
 				getenv("BROKER_B"),
 				stof(getenv("QTY_B"))
 		);
+
 
 		IBTradeOffice ibTradeOffice(
 				businessRingBuffer,
@@ -92,10 +94,27 @@ int main() {
 				getenv("MONGO_DB")
 		);
 
+		FIXTradeOffice ibFixTradeOffice(
+				businessRingBuffer,
+				5,
+				getenv("BROKER_B"),
+				stof(getenv("QTY_B")),
+				getenv("TO_B_HOST"),
+				stoi(getenv("TO_B_PORT")),
+				getenv("TO_B_USERNAME"),
+				getenv("TO_B_PASSWORD"),
+				getenv("TO_B_SENDER"),
+				getenv("TO_B_TARGET"),
+				stoi(getenv("HEARTBEAT")),
+				getenv("MONGO_URI"),
+				getenv("MONGO_DB")
+		);
+
 		// businessOffice.start();
-		fixMarketOffice.start();
+		// fixMarketOffice.start();
 		// fixTradeOffice.start();
 		// ibMarketOffice.start();
+		ibFixTradeOffice.start();
 		// ibTradeOffice.start();
 
 		consoleLogger->info("Main OK");
