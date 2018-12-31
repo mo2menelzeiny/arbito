@@ -96,13 +96,16 @@ FIXTradeOffice::FIXTradeOffice(
 	if (!strcmp(broker, "IB")) {
 		struct fix_field NOSSFields[] = {
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-SELL"),
-				FIX_STRING_FIELD(Symbol, "EUR.USD"),
+				FIX_STRING_FIELD(Symbol, "EUR"),
+				FIX_STRING_FIELD(Currency, "USD"),
+				FIX_STRING_FIELD(SecurityType, "CASH"),
 				FIX_CHAR_FIELD(Side, '2'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
 				FIX_CHAR_FIELD(OrdType, '1'),
 				FIX_STRING_FIELD(Account, "U01038"),
-				FIX_INT_FIELD(CustomerOrFirm, 1)
+				FIX_INT_FIELD(CustomerOrFirm, 0),
+				FIX_STRING_FIELD(ExDestination, "IDEALPRO")
 		};
 		unsigned long size = ARRAY_SIZE(NOSSFields);
 		m_NOSSFields = (fix_field *) malloc(size * sizeof(fix_field));
@@ -111,13 +114,16 @@ FIXTradeOffice::FIXTradeOffice(
 
 		struct fix_field NOSBFields[] = {
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-BUY"),
-				FIX_STRING_FIELD(Symbol, "EUR.USD"),
+				FIX_STRING_FIELD(Symbol, "EUR"),
+				FIX_STRING_FIELD(Currency, "USD"),
+				FIX_STRING_FIELD(SecurityType, "CASH"),
 				FIX_CHAR_FIELD(Side, '1'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
 				FIX_CHAR_FIELD(OrdType, '1'),
 				FIX_STRING_FIELD(Account, "U01038"),
-				FIX_INT_FIELD(CustomerOrFirm, 1)
+				FIX_INT_FIELD(CustomerOrFirm, 0),
+				FIX_STRING_FIELD(ExDestination, "IDEALPRO")
 		};
 
 		size = ARRAY_SIZE(NOSBFields);
@@ -218,13 +224,14 @@ void FIXTradeOffice::work() {
 				if (execType == '8') {
 					// TODO: Handle failed order execution
 					consoleLogger->error("[{}] Trade Office Order FAILED", m_broker);
+					fprintmsg_iov(stdout, msg);
 				}
 			}
 
 				break;
 
 			default:
-				printf("[%s] Unhandled message: \n", m_broker);
+				consoleLogger->error("[{}] Trade Office Unhandled FAILED", m_broker);
 				fprintmsg_iov(stdout, msg);
 
 				break;
@@ -260,6 +267,7 @@ void FIXTradeOffice::work() {
 		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) continue;
 
 		isOrderDelayed = true;
+		orderDelayStart = time(nullptr);
 
 		sprintf(randIdStr, "%lu", randomGenerator());
 
@@ -268,6 +276,7 @@ void FIXTradeOffice::work() {
 			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = randIdStr;
 			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_NOSBFixMessage);
+			consoleLogger->info("[{}] BUY", m_broker);
 			continue;
 		}
 
@@ -275,6 +284,7 @@ void FIXTradeOffice::work() {
 		fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = randIdStr;
 		fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 		m_fixSession.send(&m_NOSSFixMessage);
+		consoleLogger->info("[{}] SELL", m_broker);
 	}
 
 	m_inRingBuffer->removeGatingSequence(businessPoller->sequence());

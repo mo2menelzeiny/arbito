@@ -66,7 +66,7 @@ void FIXSocket::initiate() {
 	do {
 		++attempts;
 		ssl_errno = SSL_connect(m_ssl);
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	} while (ssl_errno == -1 && attempts < 500);
 
 	if (ssl_errno <= 0) {
