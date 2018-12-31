@@ -297,6 +297,8 @@ static enum fix_type fix_tag_type(int tag) {
 			return FIX_TYPE_STRING;
 		case SettlCurrFxRateCalc:
 			return FIX_TYPE_CHAR;
+		case SecurityType:
+			return FIX_TYPE_STRING;
 		case SecondaryOrderID:
 			return FIX_TYPE_STRING;
 		case CustomerOrFirm:
@@ -309,6 +311,8 @@ static enum fix_type fix_tag_type(int tag) {
 			return FIX_TYPE_FLOAT;
 		case CumQty:
 			return FIX_TYPE_FLOAT;
+		case Currency:
+			return FIX_TYPE_STRING;
 		case LastPx:
 			return FIX_TYPE_FLOAT;
 		case AvgPx:
