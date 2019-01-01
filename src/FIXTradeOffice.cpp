@@ -33,6 +33,8 @@ FIXTradeOffice::FIXTradeOffice(
 		    dbName,
 		    "coll_orders"
     ) {
+	// NOSB = New Single Order Buy
+	// NOSS = New Single Order Sell
 	if (!strcmp(broker, "LMAX")) {
 		struct fix_field NOSSFields[] = {
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-SELL"),
@@ -241,7 +243,7 @@ void FIXTradeOffice::work() {
 	std::mt19937_64 randomGenerator(std::random_device{}());
 	char randIdStr[64];
 	bool isOrderDelayed = false, flag = false;
-	time_t orderDelay = 300;
+	time_t orderDelay = 60;
 	time_t orderDelayStart = time(nullptr);
 
 	while (m_running) {
