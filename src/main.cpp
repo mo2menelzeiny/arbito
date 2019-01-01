@@ -21,13 +21,13 @@ int main() {
 
 	auto marketDataRingBuffer = Disruptor::RingBuffer<MarketDataEvent>::createMultiProducer(
 			[]() { return MarketDataEvent(); },
-			32,
+			8,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
 	auto businessRingBuffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
 			[]() { return BusinessEvent(); },
-			32,
+			8,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
@@ -45,6 +45,8 @@ int main() {
 				getenv("MONGO_URI"),
 				getenv("MONGO_DB")
 		);
+
+		// BROKER A
 
 		FIXMarketOffice fixMarketOffice(
 				marketDataRingBuffer,
@@ -76,6 +78,7 @@ int main() {
 				getenv("MONGO_DB")
 		);
 
+		// BROKER B
 
 		IBMarketOffice ibMarketOffice(
 				marketDataRingBuffer,
@@ -83,7 +86,6 @@ int main() {
 				getenv("BROKER_B"),
 				stof(getenv("QTY_B"))
 		);
-
 
 		IBTradeOffice ibTradeOffice(
 				businessRingBuffer,
@@ -110,12 +112,12 @@ int main() {
 				getenv("MONGO_DB")
 		);
 
-		// businessOffice.start();
-		// fixMarketOffice.start();
-		// fixTradeOffice.start();
-		// ibMarketOffice.start();
-		ibFixTradeOffice.start();
-		// ibTradeOffice.start();
+		 businessOffice.start();
+		 fixMarketOffice.start();
+		 fixTradeOffice.start();
+		 ibMarketOffice.start();
+		// ibFixTradeOffice.start();
+		 ibTradeOffice.start();
 
 		consoleLogger->info("Main OK");
 
