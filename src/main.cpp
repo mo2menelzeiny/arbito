@@ -112,12 +112,12 @@ int main() {
 				getenv("MONGO_DB")
 		);
 
-		 businessOffice.start();
-		 fixMarketOffice.start();
-		 fixTradeOffice.start();
-		 ibMarketOffice.start();
-		// ibFixTradeOffice.start();
-		 ibTradeOffice.start();
+		businessOffice.start();
+		fixMarketOffice.start();
+		fixTradeOffice.start();
+		ibMarketOffice.start();
+		ibFixTradeOffice.start();
+		// ibTradeOffice.start();
 
 		consoleLogger->info("Main OK");
 
