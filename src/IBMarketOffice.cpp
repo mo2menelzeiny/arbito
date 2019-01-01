@@ -74,7 +74,7 @@ void IBMarketOffice::work() {
 
 	while (m_running) {
 		if (!ibClient.isConnected()) {
-			bool result = ibClient.connect("127.0.0.1", 4001, 0);
+			bool result = ibClient.connect("127.0.0.1", 4002, 0);
 
 			if (!result) {
 				consoleLogger->info("[{}] Market Office Client FAILED", m_broker);
