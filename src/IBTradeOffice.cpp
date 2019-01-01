@@ -89,7 +89,7 @@ void IBTradeOffice::work() {
 
 	while (m_running) {
 		if (!ibClient.isConnected()) {
-			bool result = ibClient.connect("127.0.0.1", 4001, 1);
+			bool result = ibClient.connect("127.0.0.1", 4002, 1);
 
 			if (!result) {
 				consoleLogger->info("[{}] Trade Office Client FAILED", m_broker);
