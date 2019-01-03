@@ -98,7 +98,7 @@ int main() {
 
 		FIXTradeOffice ibFixTradeOffice(
 				businessRingBuffer,
-				5,
+				3,
 				getenv("BROKER_B"),
 				stof(getenv("QTY_B")),
 				getenv("TO_B_HOST"),
@@ -112,10 +112,10 @@ int main() {
 				getenv("MONGO_DB")
 		);
 
-		businessOffice.start();
-		fixMarketOffice.start();
-		fixTradeOffice.start();
-		ibMarketOffice.start();
+		// businessOffice.start();
+		// fixMarketOffice.start();
+		// fixTradeOffice.start();
+		// ibMarketOffice.start();
 		ibFixTradeOffice.start();
 		// ibTradeOffice.start();
 

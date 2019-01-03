@@ -223,8 +223,9 @@ void FIXTradeOffice::work() {
 					}).detach();
 				}
 
-				if (execType == '8') {
+				if (execType == '8' || execType == 'H') {
 					// TODO: Handle failed order execution
+					systemLogger->error("[{}] Cancelled id: {}", m_broker, clOrdId);
 					consoleLogger->error("[{}] Trade Office Order FAILED", m_broker);
 					fprintmsg_iov(stdout, msg);
 				}
