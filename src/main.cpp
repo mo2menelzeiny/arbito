@@ -98,7 +98,7 @@ int main() {
 
 		FIXTradeOffice ibFixTradeOffice(
 				businessRingBuffer,
-				3,
+				5,
 				getenv("BROKER_B"),
 				stof(getenv("QTY_B")),
 				getenv("TO_B_HOST"),
@@ -116,7 +116,7 @@ int main() {
 		// fixMarketOffice.start();
 		// fixTradeOffice.start();
 		// ibMarketOffice.start();
-		ibFixTradeOffice.start();
+		// ibFixTradeOffice.start();
 		// ibTradeOffice.start();
 
 		consoleLogger->info("Main OK");
