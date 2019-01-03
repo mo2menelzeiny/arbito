@@ -50,6 +50,8 @@ void IBTradeOffice::work() {
 	char lastSide;
 
 	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
+		consoleLogger->info("[{}] Order status: {}", m_broker, status);
+
 		if (status != "Filled") return;
 		if (lastRecordedOrderId == orderId) return;
 
@@ -87,6 +89,12 @@ void IBTradeOffice::work() {
 		return false;
 	};
 
+	std::mt19937_64 randomGenerator(std::random_device{}());
+	char randIdStr[64];
+	bool isOrderDelayed = false, flag = false;
+	time_t orderDelay = 60;
+	time_t orderDelayStart = time(nullptr);
+
 	while (m_running) {
 		if (!ibClient.isConnected()) {
 			bool result = ibClient.connect("127.0.0.1", 4002, 1);
@@ -102,6 +110,26 @@ void IBTradeOffice::work() {
 
 		ibClient.processMessages();
 		businessPoller->poll(businessHandler);
+
+		// FIXME: IB QA FIX session script
+
+		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) continue;
+
+		isOrderDelayed = true;
+		orderDelayStart = time(nullptr);
+
+		sprintf(randIdStr, "%lu", randomGenerator());
+
+		if (flag) {
+			flag = false;
+			ibClient.placeMarketOrder("BUY", m_quantity);
+			consoleLogger->info("[{}] BUY", m_broker);
+			continue;
+		}
+
+		flag = true;
+		ibClient.placeMarketOrder("SELL", m_quantity);
+		consoleLogger->info("[{}] SELL", m_broker);
 	}
 
 	ibClient.disconnect();
