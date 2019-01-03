@@ -117,7 +117,7 @@ int main() {
 		// fixTradeOffice.start();
 		// ibMarketOffice.start();
 		// ibFixTradeOffice.start();
-		// ibTradeOffice.start();
+		ibTradeOffice.start();
 
 		consoleLogger->info("Main OK");
 

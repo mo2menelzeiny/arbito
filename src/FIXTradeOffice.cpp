@@ -209,6 +209,7 @@ void FIXTradeOffice::work() {
 		switch (msg->type) {
 			case FIX_MSG_TYPE_EXECUTION_REPORT: {
 				char execType = fix_get_field(msg, ExecType)->string_value[0];
+				consoleLogger->info("[{}] Order status: {}", m_broker, execType);
 
 				if (execType == '2' || execType == 'F') {
 					fix_get_string(fix_get_field(msg, OrderID), orderId, 64);
@@ -241,6 +242,12 @@ void FIXTradeOffice::work() {
 		}
 	});
 
+	std::mt19937_64 randomGenerator(std::random_device{}());
+	char randIdStr[64];
+	bool isOrderDelayed = false, flag = false;
+	time_t orderDelay = 60;
+	time_t orderDelayStart = time(nullptr);
+
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
 
@@ -258,6 +265,30 @@ void FIXTradeOffice::work() {
 
 		m_fixSession.poll(onMessageHandler);
 		businessPoller->poll(businessHandler);
+
+		// FIXME: IB QA FIX session script
+
+		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) continue;
+
+		isOrderDelayed = true;
+		orderDelayStart = time(nullptr);
+
+		sprintf(randIdStr, "%lu", randomGenerator());
+
+		if (flag) {
+			flag = false;
+			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = randIdStr;
+			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_NOSBFixMessage);
+			consoleLogger->info("[{}] BUY", m_broker);
+			continue;
+		}
+
+		flag = true;
+		fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = randIdStr;
+		fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
+		m_fixSession.send(&m_NOSSFixMessage);
+		consoleLogger->info("[{}] SELL", m_broker);
 	}
 
 	m_inRingBuffer->removeGatingSequence(businessPoller->sequence());
