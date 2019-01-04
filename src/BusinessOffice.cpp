@@ -139,6 +139,10 @@ void BusinessOffice::work() {
 
 		auto randomId = randomGenerator();
 
+		char randomIdStr[64];
+
+		sprintf(randomIdStr, "%lu", randomId);
+
 		auto nextSequence = m_outRingBuffer->next();
 
 		(*m_outRingBuffer)[nextSequence].id = randomId;
@@ -160,7 +164,7 @@ void BusinessOffice::work() {
 				);
 
 				std::thread([=, mongoDriver = &m_mongoDriver] {
-					mongoDriver->record(randomId, marketDataA.bid, marketDataB.offer, orderType);
+					mongoDriver->record(randomIdStr, marketDataA.bid, marketDataB.offer, orderType);
 				}).detach();
 
 				break;
@@ -180,7 +184,7 @@ void BusinessOffice::work() {
 				);
 
 				std::thread([=, mongoDriver = &m_mongoDriver] {
-					mongoDriver->record(randomId, marketDataB.bid, marketDataA.offer, orderType);
+					mongoDriver->record(randomIdStr, marketDataB.bid, marketDataA.offer, orderType);
 				}).detach();
 
 				break;

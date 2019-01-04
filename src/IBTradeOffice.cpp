@@ -44,21 +44,19 @@ void IBTradeOffice::work() {
 	});
 
 	char orderIdStr[64];
+	char clOrdIdStr[64];
 
-	unsigned long lastClOrdId;
 	OrderId lastRecordedOrderId = 0;
 	char lastSide;
 
 	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
-		consoleLogger->info("[{}] Order status: {}", m_broker, status);
-
 		if (status != "Filled") return;
 		if (lastRecordedOrderId == orderId) return;
 
 		sprintf(orderIdStr, "%lu", orderId);
 
 		std::thread([=, mongoDriver = &m_mongoDriver] {
-			mongoDriver->record(lastClOrdId, orderIdStr, lastSide, avgFillPrice, m_broker);
+			mongoDriver->record(clOrdIdStr, orderIdStr, lastSide, avgFillPrice, m_broker);
 		}).detach();
 
 		lastRecordedOrderId = orderId;
@@ -81,19 +79,13 @@ void IBTradeOffice::work() {
 
 		const char *side = event.buy == IB ? "BUY" : "SELL";
 		lastSide = event.buy == IB ? '1' : '2';
-		lastClOrdId = event.id;
+		sprintf(clOrdIdStr, "%lu", event.id);
 
-		systemLogger->info("[{}] {} id: {}", m_broker, side, event.id);
+		systemLogger->info("[{}] {} id: {}", m_broker, side, clOrdIdStr);
 		consoleLogger->info("[{}] {}", m_broker, side);
 
 		return false;
 	};
-
-	std::mt19937_64 randomGenerator(std::random_device{}());
-	char randIdStr[64];
-	bool isOrderDelayed = false, flag = false;
-	time_t orderDelay = 60;
-	time_t orderDelayStart = time(nullptr);
 
 	while (m_running) {
 		if (!ibClient.isConnected()) {
@@ -110,26 +102,6 @@ void IBTradeOffice::work() {
 
 		ibClient.processMessages();
 		businessPoller->poll(businessHandler);
-
-		// FIXME: IB QA FIX session script
-
-		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) continue;
-
-		isOrderDelayed = true;
-		orderDelayStart = time(nullptr);
-
-		sprintf(randIdStr, "%lu", randomGenerator());
-
-		if (flag) {
-			flag = false;
-			ibClient.placeMarketOrder("BUY", m_quantity);
-			consoleLogger->info("[{}] BUY", m_broker);
-			continue;
-		}
-
-		flag = true;
-		ibClient.placeMarketOrder("SELL", m_quantity);
-		consoleLogger->info("[{}] SELL", m_broker);
 	}
 
 	ibClient.disconnect();
