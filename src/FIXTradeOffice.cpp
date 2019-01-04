@@ -175,31 +175,31 @@ void FIXTradeOffice::work() {
 		brokerEnum = SWISSQUOTE;
 	}
 
-	char clOrdId[64];
-	char orderId[64];
+	char clOrdIdStr[64];
+	char orderIdStr[64];
 
 	auto businessPoller = m_inRingBuffer->newPoller();
 
 	m_inRingBuffer->addGatingSequences({businessPoller->sequence()});
 
 	auto businessHandler = [&](BusinessEvent &event, int64_t seq, bool endOfBatch) -> bool {
-		sprintf(clOrdId, "%lu", event.id);
+		sprintf(clOrdIdStr, "%lu", event.id);
 
 		if (event.buy == brokerEnum) {
-			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = clOrdId;
+			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = clOrdIdStr;
 			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_NOSBFixMessage);
 		}
 
 		if (event.sell == brokerEnum) {
-			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdId;
+			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdIdStr;
 			fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_NOSSFixMessage);
 		}
 
 		const char *side = event.buy == brokerEnum ? "BUY" : "SELL";
 
-		systemLogger->info("[{}] {} id: {}", m_broker, side, event.id);
+		systemLogger->info("[{}] {} id: {}", m_broker, side, clOrdIdStr);
 		consoleLogger->info("[{}] {}", m_broker, side);
 
 		return false;
@@ -209,24 +209,24 @@ void FIXTradeOffice::work() {
 		switch (msg->type) {
 			case FIX_MSG_TYPE_EXECUTION_REPORT: {
 				char execType = fix_get_field(msg, ExecType)->string_value[0];
-				consoleLogger->info("[{}] Order status: {}", m_broker, execType);
+				char ordStatus = fix_get_field(msg, OrdStatus)->string_value[0];
 
-				if (execType == '2' || execType == 'F') {
-					fix_get_string(fix_get_field(msg, OrderID), orderId, 64);
-					fix_get_string(fix_get_field(msg, ClOrdID), clOrdId, 64);
+				if ((execType == '2' || execType == 'F') && ordStatus == '2') {
+					fix_get_string(fix_get_field(msg, OrderID), orderIdStr, 64);
+					fix_get_string(fix_get_field(msg, ClOrdID), clOrdIdStr, 64);
 					char side = fix_get_field(msg, Side)->string_value[0];
 					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
 
-					systemLogger->info("[{}] Filled Px: {} id: {}", m_broker, fillPrice, clOrdId);
+					systemLogger->info("[{}] Filled Px: {} id: {}", m_broker, fillPrice, clOrdIdStr);
 
-					std::thread([=, mongoDriver = &m_mongoDriver] {
-						mongoDriver->record(std::stoul(clOrdId), orderId, side, fillPrice, m_broker);
+					std::thread([=, mongoDriver = &m_mongoDriver, broker = m_broker] {
+						mongoDriver->record(clOrdIdStr, orderIdStr, side, fillPrice, broker);
 					}).detach();
 				}
 
 				if (execType == '8' || execType == 'H') {
 					// TODO: Handle failed order execution
-					systemLogger->error("[{}] Cancelled id: {}", m_broker, clOrdId);
+					systemLogger->error("[{}] Cancelled id: {}", m_broker, clOrdIdStr);
 					consoleLogger->error("[{}] Trade Office Order FAILED", m_broker);
 					fprintmsg_iov(stdout, msg);
 				}

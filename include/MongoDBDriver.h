@@ -17,9 +17,9 @@ public:
 			const char *collectionName
 	);
 
-	void record(unsigned long clOrdId, double bid, double offer, const char *orderType);
+	void record(const char *clOrdId, double bid, double offer, const char *orderType);
 
-	void record(unsigned long clOrdId, const char *orderId, char side, double fillPrice, const char *broker);
+	void record(const char *clOrdId, const char *orderId, char side, double fillPrice, const char *broker);
 
 
 
