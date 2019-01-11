@@ -28,7 +28,8 @@ public:
 			const char *password,
 			const char *sender,
 			const char *target,
-			int heartbeat
+			int heartbeat,
+			bool sslEnabled
 	);
 
 	inline bool isActive() const {

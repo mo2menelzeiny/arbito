@@ -13,6 +13,7 @@ FIXTradeOffice::FIXTradeOffice(
 		const char *sender,
 		const char *target,
 		int heartbeat,
+		bool sslEnabled,
 		const char *dbUri,
 		const char *dbName
 ) : m_inRingBuffer(inRingBuffer),
@@ -26,7 +27,8 @@ FIXTradeOffice::FIXTradeOffice(
 		    password,
 		    sender,
 		    target,
-		    heartbeat
+		    heartbeat,
+		    sslEnabled
     ),
     m_mongoDriver(
 		    dbUri,

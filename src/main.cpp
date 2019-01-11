@@ -59,7 +59,8 @@ int main() {
 				getenv("MO_A_PASSWORD"),
 				getenv("MO_A_SENDER"),
 				getenv("MO_A_TARGET"),
-				stoi(getenv("HEARTBEAT"))
+				stoi(getenv("HEARTBEAT")),
+				true
 		);
 
 		FIXTradeOffice fixTradeOffice(
@@ -74,6 +75,7 @@ int main() {
 				getenv("TO_A_SENDER"),
 				getenv("TO_A_TARGET"),
 				stoi(getenv("HEARTBEAT")),
+				true,
 				getenv("MONGO_URI"),
 				getenv("MONGO_DB")
 		);
@@ -108,6 +110,7 @@ int main() {
 				getenv("TO_B_SENDER"),
 				getenv("TO_B_TARGET"),
 				stoi(getenv("HEARTBEAT")),
+				false,
 				getenv("MONGO_URI"),
 				getenv("MONGO_DB")
 		);
@@ -117,7 +120,7 @@ int main() {
 		// fixTradeOffice.start();
 		// ibMarketOffice.start();
 		// ibFixTradeOffice.start();
-		ibTradeOffice.start();
+		// ibTradeOffice.start();
 
 		consoleLogger->info("Main OK");
 

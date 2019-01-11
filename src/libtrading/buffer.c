@@ -92,6 +92,16 @@ ssize_t buffer_recv(struct buffer *buf, int sockfd, struct ssl_st *ssl, size_t s
 	if (count > size)
 		count = size;
 
+	if (ssl == NULL) {
+		len = io_recv(sockfd, end, count, flags);
+		if (len < 0)
+			return len;
+
+		buf->end += len;
+
+		return len;
+	}
+
 	len = SSL_read(ssl, end, count);
 	if (len < 0)
 		return len;

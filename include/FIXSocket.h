@@ -21,7 +21,7 @@
 
 class FIXSocket {
 public:
-	FIXSocket(const char *host, int port) : m_host(host), m_port(port) {}
+	FIXSocket(const char *host, int port, bool sslEnabled) : m_host(host), m_port(port), m_sslEnabled(sslEnabled) {}
 
 	inline int socketFD() const {
 		return m_socketFD;
@@ -39,6 +39,7 @@ private:
 	const char *m_host;
 	int m_port;
 	int m_socketFD{};
+	bool m_sslEnabled;
 	SSL_CTX *m_ssl_ctx{};
 	SSL *m_ssl{};
 };

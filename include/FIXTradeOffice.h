@@ -28,6 +28,7 @@ public:
 			const char *sender,
 			const char *target,
 			int heartbeat,
+			bool sslEnabled,
 			const char *dbUri,
 			const char *dbName
 	);
