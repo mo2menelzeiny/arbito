@@ -12,7 +12,8 @@ FIXMarketOffice::FIXMarketOffice(
 		const char *password,
 		const char *sender,
 		const char *target,
-		int heartbeat
+		int heartbeat,
+		bool sslEnabled
 ) : m_inRingBuffer(inRingBuffer),
     m_cpuset(cpuset),
     m_broker(broker),
@@ -24,7 +25,8 @@ FIXMarketOffice::FIXMarketOffice(
 		    password,
 		    sender,
 		    target,
-		    heartbeat
+		    heartbeat,
+		    sslEnabled
     ) {
 	if (!strcmp(broker, "LMAX")) {
 		struct fix_field fields[] = {

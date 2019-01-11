@@ -8,13 +8,14 @@ FIXSession::FIXSession(
 		const char *password,
 		const char *sender,
 		const char *target,
-		int heartbeat
+		int heartbeat,
+		bool sslEnabled
 ) : m_username(username),
     m_password(password),
     m_sender(sender),
     m_target(target),
     m_heartbeat(heartbeat),
-    m_fixSocket(host, port) {
+    m_fixSocket(host, port, sslEnabled) {
 }
 
 void FIXSession::initiate() {
@@ -45,7 +46,10 @@ void FIXSession::initiate() {
 void FIXSession::terminate() {
 	m_fixSocket.terminate();
 
-	if (m_session == nullptr) return;
+	if (m_session == nullptr) {
+		return;
+	}
+
 	m_session->active = false;
 	fix_session_free(m_session);
 }
