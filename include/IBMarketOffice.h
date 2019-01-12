@@ -18,26 +18,42 @@
 class IBMarketOffice {
 public:
 	IBMarketOffice(
-			std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &ringBuffer,
-			int cpuset,
+			std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &outRingBuffer,
 			const char *broker,
 			double quantity
 	);
 
-	void start();
+	inline void doWork() {
+		if (!m_ibClient->isConnected()) {
+			if (!m_ibClient->connect("127.0.0.1", 4002, 0)) {
+				char message[64];
+				sprintf(message, "[%s] Market Office Client FAILED" , m_broker);
+				throw std::runtime_error(message);
+			}
 
-	void stop();
+			m_ibClient->subscribeToFeed();
+			m_consoleLogger->info("[{}] Market Office OK", m_broker);
+		}
+
+		m_ibClient->processMessages();
+	}
+
+	void cleanup();
 
 private:
-	void work();
-
-private:
-	std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_ringBuffer;
-	int m_cpuset;
+	std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_outRingBuffer;
 	const char *m_broker;
 	double m_quantity;
-	std::thread m_worker;
-	std::atomic_bool m_running;
+	std::shared_ptr<spdlog::logger> m_consoleLogger;
+	std::shared_ptr<spdlog::logger> m_systemLogger;
+	long m_sequence;
+	double m_bid;
+	double m_bidQty;
+	double m_offer;
+	double m_offerQty;
+	IBClient *m_ibClient;
+	OnTickHandler m_onTickHandler;
+	OnOrderStatusHandler m_onOrderStatusHandler;
 };
 
 
