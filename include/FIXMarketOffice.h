@@ -3,11 +3,11 @@
 #define ARBITO_FIXMARKETOFFICE_H
 
 // SPDLOG
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/daily_file_sink.h"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/daily_file_sink.h>
 
 // Disruptor
-#include "Disruptor/Disruptor.h"
+#include <Disruptor/Disruptor.h>
 
 // Domain
 #include "FIXSession.h"
@@ -16,8 +16,7 @@
 class FIXMarketOffice {
 public:
 	FIXMarketOffice(
-			std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &inRingBuffer,
-			int cpuset,
+			std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &outRingBuffer,
 			const char *broker,
 			double quantity,
 			const char *host,
@@ -30,23 +29,40 @@ public:
 			bool sslEnabled
 	);
 
-	void start();
+	inline void doWork() {
+		if (!m_fixSession.isActive()) {
 
-	void stop();
+			try {
+				m_fixSession.initiate();
+			} catch (std::exception &ex) {
+				char message[64];
+				sprintf(message, "[%s] Market Office %s", m_broker, ex.what());
+				throw std::runtime_error(message);
+			}
+
+			m_fixSession.send(&m_MDRFixMessage);
+			m_consoleLogger->info("[{}] Market Office OK", m_broker);
+			return;
+		}
+
+		m_fixSession.poll(m_onMessageHandler);
+	}
+
+	void cleanup();
 
 private:
-	void work();
-
-private:
-	std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_inRingBuffer;
-	int m_cpuset;
+	std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_outRingBuffer;
 	const char *m_broker;
 	double m_quantity;
 	struct fix_field *m_MDRFields;
 	struct fix_message m_MDRFixMessage{};
 	FIXSession m_fixSession;
-	std::thread m_worker;
-	std::atomic_bool m_running;
+	std::shared_ptr<spdlog::logger> m_consoleLogger;
+	std::shared_ptr<spdlog::logger> m_systemLogger;
+	long m_sequence;
+	OnMessageHandler m_onMessageHandler;
+	unsigned long m_offerIdx;
+	unsigned long m_offerQtyIdx;
 };
 
 
