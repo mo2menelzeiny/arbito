@@ -1,9 +1,8 @@
 
-#include "FIXMarketOffice.h"
+#include <FIXMarketOffice.h>
 
 FIXMarketOffice::FIXMarketOffice(
-		std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &inRingBuffer,
-		int cpuset,
+		std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &outRingBuffer,
 		const char *broker,
 		double quantity,
 		const char *host,
@@ -14,8 +13,7 @@ FIXMarketOffice::FIXMarketOffice(
 		const char *target,
 		int heartbeat,
 		bool sslEnabled
-) : m_inRingBuffer(inRingBuffer),
-    m_cpuset(cpuset),
+) : m_outRingBuffer(outRingBuffer),
     m_broker(broker),
     m_quantity(quantity),
     m_fixSession(
@@ -67,72 +65,42 @@ FIXMarketOffice::FIXMarketOffice(
 
 	m_MDRFixMessage.type = FIX_MSG_TYPE_MARKET_DATA_REQUEST;
 	m_MDRFixMessage.fields = m_MDRFields;
-}
 
-void FIXMarketOffice::start() {
-	m_running = true;
-	m_worker = std::thread(&FIXMarketOffice::work, this);
-}
+	m_consoleLogger = spdlog::get("console");
+	m_systemLogger = spdlog::get("system");
 
-void FIXMarketOffice::stop() {
-	m_running = false;
-	m_worker.join();
-}
+	m_sequence = 0;
 
-void FIXMarketOffice::work() {
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(m_cpuset, &cpuset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(pthread_self(), "market-office");
+	m_offerIdx = strcmp(m_broker, "LMAX") ? 4 : 2;
+	m_offerQtyIdx = m_offerIdx - 1;
 
-	auto consoleLogger = spdlog::get("console");
-	auto systemLogger = spdlog::get("system");
-
-	long sequence = 0;
-
-	auto offerIdx = strcmp(m_broker, "LMAX") ? 4 : 2;
-	auto offerQtyIdx = offerIdx - 1;
-
-	auto onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
-		if (msg->type != FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH) return;
-
-		double bid = fix_get_float(msg, MDEntryPx, 0.0);
-		double bidQty = fix_get_float(msg, MDEntrySize, 0.0);
-		double offer = fix_get_field_at(msg, msg->nr_fields - offerIdx)->float_value;
-		double offerQty = fix_get_field_at(msg, msg->nr_fields - offerQtyIdx)->float_value;
-
-		if (m_quantity > offerQty || m_quantity > bidQty) return;
-
-		++sequence;
-
-		auto nextSequence = m_inRingBuffer->next();
-		(*m_inRingBuffer)[nextSequence].bid = bid;
-		(*m_inRingBuffer)[nextSequence].offer = offer;
-		(*m_inRingBuffer)[nextSequence].sequence = sequence;
-		m_inRingBuffer->publish(nextSequence);
-
-		systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
-	});
-
-	while (m_running) {
-		if (!m_fixSession.isActive()) {
-
-			try {
-				m_fixSession.initiate();
-				m_fixSession.send(&m_MDRFixMessage);
-				consoleLogger->info("[{}] Market Office OK", m_broker);
-			} catch (std::exception &ex) {
-				m_fixSession.terminate();
-				consoleLogger->error("[{}] Market Office {}", m_broker, ex.what());
-				std::this_thread::sleep_for(std::chrono::seconds(30));
-			}
-
-			continue;
+	m_onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
+		if (msg->type != FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH) {
+			return;
 		}
 
-		m_fixSession.poll(onMessageHandler);
-	}
+		double bid = fix_get_float(msg, MDEntryPx, 0);
+		double bidQty = fix_get_float(msg, MDEntrySize, 0);
 
+		double offer = fix_get_field_at(msg, static_cast<int>(msg->nr_fields - m_offerIdx))->float_value;
+		double offerQty = fix_get_field_at(msg, static_cast<int>(msg->nr_fields - m_offerQtyIdx))->float_value;
+
+		if (m_quantity > offerQty || m_quantity > bidQty) {
+			return;
+		}
+
+		++m_sequence;
+
+		auto nextSequence = m_outRingBuffer->next();
+		(*m_outRingBuffer)[nextSequence].bid = bid;
+		(*m_outRingBuffer)[nextSequence].offer = offer;
+		(*m_outRingBuffer)[nextSequence].sequence = m_sequence;
+		m_outRingBuffer->publish(nextSequence);
+
+		m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, m_sequence, bid, offer);
+	});
+}
+
+void FIXMarketOffice::cleanup() {
 	m_fixSession.terminate();
 }

@@ -1,23 +1,31 @@
 
 //Disruptor
-#include "Disruptor/Disruptor.h"
-#include "Disruptor/BusySpinWaitStrategy.h"
+#include <Disruptor/Disruptor.h>
+#include <Disruptor/BusySpinWaitStrategy.h>
 
 //SPDLOG
-#include "spdlog/async.h"
-#include "spdlog/sinks/stdout_sinks.h"
-#include "spdlog/sinks/daily_file_sink.h"
+#include <spdlog/async.h>
+#include <spdlog/sinks/stdout_sinks.h>
+#include <spdlog/sinks/daily_file_sink.h>
 
 // Domain
-#include "BusinessOffice.h"
-#include "FIXMarketOffice.h"
-#include "FIXTradeOffice.h"
-#include "IBMarketOffice.h"
-#include "IBTradeOffice.h"
+#include <BusinessOffice.h>
+#include <FIXMarketOffice.h>
+#include <FIXTradeOffice.h>
+#include <IBMarketOffice.h>
+#include <IBTradeOffice.h>
 
 int main() {
-	auto consoleLogger = spdlog::create_async_nb<spdlog::sinks::stdout_sink_mt>("console");
-	auto marketLogger = spdlog::daily_logger_mt<spdlog::async_factory_nonblock>("system", "log");
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(3, &cpuset);
+	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+	pthread_setname_np(pthread_self(), "arbito-core");
+
+	std::atomic_bool isRunning(true);
+
+	auto consoleLogger = spdlog::stdout_logger_st<spdlog::async_factory_nonblock>("console");
+	auto marketLogger = spdlog::daily_logger_st<spdlog::async_factory_nonblock>("system", "log");
 
 	auto marketDataRingBuffer = Disruptor::RingBuffer<MarketDataEvent>::createMultiProducer(
 			[]() { return MarketDataEvent(); },
@@ -31,105 +39,114 @@ int main() {
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
+	BusinessOffice businessOffice(
+			marketDataRingBuffer,
+			businessRingBuffer,
+			1,
+			stoi(getenv("WINDOW_MS")),
+			stoi(getenv("ORDER_DELAY_SEC")),
+			stoi(getenv("MAX_ORDERS")),
+			stof(getenv("DIFF_OPEN")),
+			stof(getenv("DIFF_CLOSE")),
+			getenv("MONGO_URI"),
+			getenv("MONGO_DB")
+	);
+
+	// BROKER A
+
+	FIXMarketOffice marketOfficeA(
+			marketDataRingBuffer,
+			getenv("BROKER_A"),
+			stof(getenv("QTY_A")),
+			getenv("MO_A_HOST"),
+			stoi(getenv("MO_A_PORT")),
+			getenv("MO_A_USERNAME"),
+			getenv("MO_A_PASSWORD"),
+			getenv("MO_A_SENDER"),
+			getenv("MO_A_TARGET"),
+			stoi(getenv("HEARTBEAT")),
+			true
+	);
+
+	FIXTradeOffice fixTradeOffice(
+			businessRingBuffer,
+			3,
+			getenv("BROKER_A"),
+			stof(getenv("QTY_A")),
+			getenv("TO_A_HOST"),
+			stoi(getenv("TO_A_PORT")),
+			getenv("TO_A_USERNAME"),
+			getenv("TO_A_PASSWORD"),
+			getenv("TO_A_SENDER"),
+			getenv("TO_A_TARGET"),
+			stoi(getenv("HEARTBEAT")),
+			true,
+			getenv("MONGO_URI"),
+			getenv("MONGO_DB")
+	);
+
+	// BROKER B
+
+	IBMarketOffice ibMarketOffice(
+			marketDataRingBuffer,
+			4,
+			getenv("BROKER_B"),
+			stof(getenv("QTY_B"))
+	);
+
+	IBTradeOffice ibTradeOffice(
+			businessRingBuffer,
+			5,
+			getenv("BROKER_B"),
+			stof(getenv("QTY_B")),
+			getenv("MONGO_URI"),
+			getenv("MONGO_DB")
+	);
+
+	FIXTradeOffice ibFixTradeOffice(
+			businessRingBuffer,
+			5,
+			getenv("BROKER_B"),
+			stof(getenv("QTY_B")),
+			getenv("TO_B_HOST"),
+			stoi(getenv("TO_B_PORT")),
+			getenv("TO_B_USERNAME"),
+			getenv("TO_B_PASSWORD"),
+			getenv("TO_B_SENDER"),
+			getenv("TO_B_TARGET"),
+			stoi(getenv("HEARTBEAT")),
+			false,
+			getenv("MONGO_URI"),
+			getenv("MONGO_DB")
+	);
+
+	using namespace std::chrono;
+	long counter = 0, duration = 0, max = 0;
+	time_point<system_clock> start, end;
+
 	try {
 
-		BusinessOffice businessOffice(
-				marketDataRingBuffer,
-				businessRingBuffer,
-				1,
-				stoi(getenv("WINDOW_MS")),
-				stoi(getenv("ORDER_DELAY_SEC")),
-				stoi(getenv("MAX_ORDERS")),
-				stof(getenv("DIFF_OPEN")),
-				stof(getenv("DIFF_CLOSE")),
-				getenv("MONGO_URI"),
-				getenv("MONGO_DB")
-		);
+		while (isRunning) {
+			start = system_clock::now();
 
-		// BROKER A
+			marketOfficeA.doWork();
 
-		FIXMarketOffice fixMarketOffice(
-				marketDataRingBuffer,
-				2,
-				getenv("BROKER_A"),
-				stof(getenv("QTY_A")),
-				getenv("MO_A_HOST"),
-				stoi(getenv("MO_A_PORT")),
-				getenv("MO_A_USERNAME"),
-				getenv("MO_A_PASSWORD"),
-				getenv("MO_A_SENDER"),
-				getenv("MO_A_TARGET"),
-				stoi(getenv("HEARTBEAT")),
-				true
-		);
+			duration = duration_cast<microseconds>(system_clock::now() - start).count();
+			++counter;
 
-		FIXTradeOffice fixTradeOffice(
-				businessRingBuffer,
-				3,
-				getenv("BROKER_A"),
-				stof(getenv("QTY_A")),
-				getenv("TO_A_HOST"),
-				stoi(getenv("TO_A_PORT")),
-				getenv("TO_A_USERNAME"),
-				getenv("TO_A_PASSWORD"),
-				getenv("TO_A_SENDER"),
-				getenv("TO_A_TARGET"),
-				stoi(getenv("HEARTBEAT")),
-				true,
-				getenv("MONGO_URI"),
-				getenv("MONGO_DB")
-		);
+			if (duration > max) {
+				max = duration;
+			}
 
-		// BROKER B
-
-		IBMarketOffice ibMarketOffice(
-				marketDataRingBuffer,
-				4,
-				getenv("BROKER_B"),
-				stof(getenv("QTY_B"))
-		);
-
-		IBTradeOffice ibTradeOffice(
-				businessRingBuffer,
-				5,
-				getenv("BROKER_B"),
-				stof(getenv("QTY_B")),
-				getenv("MONGO_URI"),
-				getenv("MONGO_DB")
-		);
-
-		FIXTradeOffice ibFixTradeOffice(
-				businessRingBuffer,
-				5,
-				getenv("BROKER_B"),
-				stof(getenv("QTY_B")),
-				getenv("TO_B_HOST"),
-				stoi(getenv("TO_B_PORT")),
-				getenv("TO_B_USERNAME"),
-				getenv("TO_B_PASSWORD"),
-				getenv("TO_B_SENDER"),
-				getenv("TO_B_TARGET"),
-				stoi(getenv("HEARTBEAT")),
-				false,
-				getenv("MONGO_URI"),
-				getenv("MONGO_DB")
-		);
-
-		// businessOffice.start();
-		// fixMarketOffice.start();
-		// fixTradeOffice.start();
-		// ibMarketOffice.start();
-		// ibFixTradeOffice.start();
-		// ibTradeOffice.start();
-
-		consoleLogger->info("Main OK");
-
-		while (true) {
-			std::this_thread::sleep_for(std::chrono::minutes(1));
+			if (counter > 1000000) {
+				printf("max: %li \n", max);
+				max = 0;
+				counter = 0;
+			}
 		}
 
 	} catch (std::exception &ex) {
-		consoleLogger->error("Main {}", ex.what());
+		consoleLogger->error("{}", ex.what());
 	}
 
 	return EXIT_FAILURE;
