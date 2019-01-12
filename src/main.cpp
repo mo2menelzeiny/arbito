@@ -42,7 +42,6 @@ int main() {
 	BusinessOffice businessOffice(
 			marketDataRingBuffer,
 			businessRingBuffer,
-			1,
 			stoi(getenv("WINDOW_MS")),
 			stoi(getenv("ORDER_DELAY_SEC")),
 			stoi(getenv("MAX_ORDERS")),
@@ -118,9 +117,10 @@ int main() {
 			start = system_clock::now();
 
 			marketOfficeA.doWork();
-			// marketOfficeB.doWork();
+			marketOfficeB.doWork();
+			businessOffice.doWork();
 			tradeOfficeA.doWork();
-			// tradeOfficeB.doWork();
+			tradeOfficeB.doWork();
 
 			end = system_clock::now();
 
