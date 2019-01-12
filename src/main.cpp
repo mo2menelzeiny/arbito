@@ -68,9 +68,8 @@ int main() {
 			true
 	);
 
-	FIXTradeOffice fixTradeOffice(
+	FIXTradeOffice tradeOfficeA(
 			businessRingBuffer,
-			3,
 			getenv("BROKER_A"),
 			stof(getenv("QTY_A")),
 			getenv("TO_A_HOST"),
@@ -93,18 +92,8 @@ int main() {
 			stof(getenv("QTY_B"))
 	);
 
-	IBTradeOffice ibTradeOffice(
+	FIXTradeOffice tradeOfficeB(
 			businessRingBuffer,
-			5,
-			getenv("BROKER_B"),
-			stof(getenv("QTY_B")),
-			getenv("MONGO_URI"),
-			getenv("MONGO_DB")
-	);
-
-	FIXTradeOffice ibFixTradeOffice(
-			businessRingBuffer,
-			5,
 			getenv("BROKER_B"),
 			stof(getenv("QTY_B")),
 			getenv("TO_B_HOST"),
@@ -120,7 +109,7 @@ int main() {
 	);
 
 	using namespace std::chrono;
-	long counter = 0, duration = 0, max = 0;
+	long counter = 0, duration = 0, max = 0, total = 0;
 	time_point<system_clock> start, end;
 
 	try {
@@ -129,11 +118,14 @@ int main() {
 			start = system_clock::now();
 
 			marketOfficeA.doWork();
-			marketOfficeB.doWork();
+			// marketOfficeB.doWork();
+			tradeOfficeA.doWork();
+			// tradeOfficeB.doWork();
 
 			end = system_clock::now();
 
-			duration = duration_cast<microseconds>(end - start).count();
+			duration = duration_cast<nanoseconds>(end - start).count();
+			total += duration;
 			++counter;
 
 			if (duration > max) {
@@ -141,9 +133,10 @@ int main() {
 			}
 
 			if (counter > 1000000) {
-				printf("max: %li \n", max);
+				printf("max: %li avg: %li \n", max, total / counter);
 				max = 0;
 				counter = 0;
+				total = 0;
 			}
 		}
 
