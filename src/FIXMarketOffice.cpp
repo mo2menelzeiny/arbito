@@ -75,29 +75,35 @@ FIXMarketOffice::FIXMarketOffice(
 	m_offerQtyIdx = m_offerIdx - 1;
 
 	m_onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
-		if (msg->type != FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH) {
-			return;
+		switch (msg->type) {
+			case FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
+				double bid = fix_get_float(msg, MDEntryPx, 0);
+				double bidQty = fix_get_float(msg, MDEntrySize, 0);
+				double offer = fix_get_field_at(msg, static_cast<int>(msg->nr_fields - m_offerIdx))->float_value;
+				double offerQty = fix_get_field_at(msg, static_cast<int>(msg->nr_fields - m_offerQtyIdx))->float_value;
+
+				if (m_quantity > offerQty || m_quantity > bidQty) {
+					break;
+				}
+
+				++m_sequence;
+
+				auto nextSequence = m_outRingBuffer->next();
+				(*m_outRingBuffer)[nextSequence].bid = bid;
+				(*m_outRingBuffer)[nextSequence].offer = offer;
+				(*m_outRingBuffer)[nextSequence].sequence = m_sequence;
+				m_outRingBuffer->publish(nextSequence);
+
+				m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, m_sequence, bid, offer);
+			}
+				break;
+
+			default:
+				m_consoleLogger->error("[{}] Market Office Unhandled FAILED", m_broker);
+				fprintmsg_iov(stdout, msg);
+
+				break;
 		}
-
-		double bid = fix_get_float(msg, MDEntryPx, 0);
-		double bidQty = fix_get_float(msg, MDEntrySize, 0);
-
-		double offer = fix_get_field_at(msg, static_cast<int>(msg->nr_fields - m_offerIdx))->float_value;
-		double offerQty = fix_get_field_at(msg, static_cast<int>(msg->nr_fields - m_offerQtyIdx))->float_value;
-
-		if (m_quantity > offerQty || m_quantity > bidQty) {
-			return;
-		}
-
-		++m_sequence;
-
-		auto nextSequence = m_outRingBuffer->next();
-		(*m_outRingBuffer)[nextSequence].bid = bid;
-		(*m_outRingBuffer)[nextSequence].offer = offer;
-		(*m_outRingBuffer)[nextSequence].sequence = m_sequence;
-		m_outRingBuffer->publish(nextSequence);
-
-		m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, m_sequence, bid, offer);
 	});
 }
 
