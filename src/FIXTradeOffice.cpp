@@ -1,9 +1,8 @@
 
-#include "FIXTradeOffice.h"
+#include <FIXTradeOffice.h>
 
 FIXTradeOffice::FIXTradeOffice(
 		std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &inRingBuffer,
-		int cpuset,
 		const char *broker,
 		double quantity,
 		const char *host,
@@ -17,7 +16,6 @@ FIXTradeOffice::FIXTradeOffice(
 		const char *dbUri,
 		const char *dbName
 ) : m_inRingBuffer(inRingBuffer),
-    m_cpuset(cpuset),
     m_broker(broker),
     m_quantity(quantity),
     m_fixSession(
@@ -141,95 +139,70 @@ FIXTradeOffice::FIXTradeOffice(
 
 	m_NOSBFixMessage.type = FIX_MSG_TYPE_NEW_ORDER_SINGLE;
 	m_NOSBFixMessage.fields = m_NOSBFields;
-}
 
-void FIXTradeOffice::start() {
-	m_running = true;
-	m_worker = std::thread(&FIXTradeOffice::work, this);
-}
-
-void FIXTradeOffice::stop() {
-	m_running = false;
-	m_worker.join();
-}
-
-void FIXTradeOffice::work() {
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(m_cpuset, &cpuset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(pthread_self(), "trade-office");
-
-	auto consoleLogger = spdlog::get("console");
-	auto systemLogger = spdlog::get("system");
-
-	BrokerEnum brokerEnum;
+	m_consoleLogger = spdlog::get("console");
+	m_systemLogger = spdlog::get("system");
 
 	if (!strcmp(m_broker, "LMAX")) {
-		brokerEnum = LMAX;
+		m_brokerEnum = LMAX;
 	}
 
 	if (!strcmp(m_broker, "IB")) {
-		brokerEnum = IB;
+		m_brokerEnum = IB;
 	}
 
 	if (!strcmp(m_broker, "SWISSQUOTE")) {
-		brokerEnum = SWISSQUOTE;
+		m_brokerEnum = SWISSQUOTE;
 	}
 
-	char clOrdIdStr[64];
-	char orderIdStr[64];
+	m_businessEventPoller = m_inRingBuffer->newPoller();
+	m_inRingBuffer->addGatingSequences({m_businessEventPoller->sequence()});
 
-	auto businessPoller = m_inRingBuffer->newPoller();
+	m_businessEventHandler = [&](BusinessEvent &event, int64_t seq, bool endOfBatch) -> bool {
+		sprintf(m_clOrdIdStrBuff, "%lu", event.id);
 
-	m_inRingBuffer->addGatingSequences({businessPoller->sequence()});
-
-	auto businessHandler = [&](BusinessEvent &event, int64_t seq, bool endOfBatch) -> bool {
-		sprintf(clOrdIdStr, "%lu", event.id);
-
-		if (event.buy == brokerEnum) {
-			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = clOrdIdStr;
+		if (event.buy == m_brokerEnum) {
+			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
 			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_NOSBFixMessage);
 		}
 
-		if (event.sell == brokerEnum) {
-			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdIdStr;
+		if (event.sell == m_brokerEnum) {
+			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
 			fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_NOSSFixMessage);
 		}
 
-		const char *side = event.buy == brokerEnum ? "BUY" : "SELL";
+		const char *side = event.buy == m_brokerEnum ? "BUY" : "SELL";
 
-		systemLogger->info("[{}] {} id: {}", m_broker, side, clOrdIdStr);
-		consoleLogger->info("[{}] {}", m_broker, side);
+		m_systemLogger->info("[{}] {} id: {}", m_broker, side, m_clOrdIdStrBuff);
+		m_consoleLogger->info("[{}] {}", m_broker, side);
 
 		return false;
 	};
 
-	auto onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
+	m_onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
 		switch (msg->type) {
 			case FIX_MSG_TYPE_EXECUTION_REPORT: {
 				char execType = fix_get_field(msg, ExecType)->string_value[0];
 				char ordStatus = fix_get_field(msg, OrdStatus)->string_value[0];
 
 				if ((execType == '2' || execType == 'F') && ordStatus == '2') {
-					fix_get_string(fix_get_field(msg, OrderID), orderIdStr, 64);
-					fix_get_string(fix_get_field(msg, ClOrdID), clOrdIdStr, 64);
+					fix_get_string(fix_get_field(msg, OrderID), m_orderIdStrBuff, 64);
+					fix_get_string(fix_get_field(msg, ClOrdID), m_clOrdIdStrBuff, 64);
 					char side = fix_get_field(msg, Side)->string_value[0];
 					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
 
-					systemLogger->info("[{}] Filled Px: {} id: {}", m_broker, fillPrice, clOrdIdStr);
+					m_systemLogger->info("[{}] Filled Px: {} id: {}", m_broker, fillPrice, m_clOrdIdStrBuff);
 
 					std::thread([=, mongoDriver = &m_mongoDriver, broker = m_broker] {
-						mongoDriver->record(clOrdIdStr, orderIdStr, side, fillPrice, broker);
+						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, broker);
 					}).detach();
 				}
 
 				if (execType == '8' || execType == 'H') {
-					// TODO: Handle failed order execution
-					systemLogger->error("[{}] Cancelled id: {}", m_broker, clOrdIdStr);
-					consoleLogger->error("[{}] Trade Office Order FAILED", m_broker);
+					m_systemLogger->error("[{}] Cancelled id: {}", m_broker, m_clOrdIdStrBuff);
+					m_consoleLogger->error("[{}] Trade Office Order FAILED", m_broker);
 					fprintmsg_iov(stdout, msg);
 				}
 			}
@@ -237,61 +210,15 @@ void FIXTradeOffice::work() {
 				break;
 
 			default:
-				consoleLogger->error("[{}] Trade Office Unhandled FAILED", m_broker);
+				m_consoleLogger->error("[{}] Trade Office Unhandled FAILED", m_broker);
 				fprintmsg_iov(stdout, msg);
 
 				break;
 		}
 	});
+}
 
-	std::mt19937_64 randomGenerator(std::random_device{}());
-	char randIdStr[64];
-	bool isOrderDelayed = false, flag = false;
-	time_t orderDelay = 60;
-	time_t orderDelayStart = time(nullptr);
-
-	while (m_running) {
-		if (!m_fixSession.isActive()) {
-
-			try {
-				m_fixSession.initiate();
-				consoleLogger->info("[{}] Trade Office OK", m_broker);
-			} catch (std::exception &ex) {
-				m_fixSession.terminate();
-				consoleLogger->error("[{}] Trade office {}", m_broker, ex.what());
-				std::this_thread::sleep_for(std::chrono::seconds(30));
-			}
-
-			continue;
-		}
-
-		m_fixSession.poll(onMessageHandler);
-		businessPoller->poll(businessHandler);
-
-		// FIXME: IB QA FIX session script
-
-		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) continue;
-
-		isOrderDelayed = true;
-		orderDelayStart = time(nullptr);
-
-		sprintf(randIdStr, "%lu", randomGenerator());
-
-		if (flag) {
-			flag = false;
-			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = randIdStr;
-			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
-			m_fixSession.send(&m_NOSBFixMessage);
-			consoleLogger->info("[{}] BUY", m_broker);
-			continue;
-		}
-
-		flag = true;
-		fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = randIdStr;
-		fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
-		m_fixSession.send(&m_NOSSFixMessage);
-		consoleLogger->info("[{}] SELL", m_broker);
-	}
-
-	m_inRingBuffer->removeGatingSequence(businessPoller->sequence());
+void FIXTradeOffice::cleanup() {
+	m_fixSession.terminate();
+	m_inRingBuffer->removeGatingSequence(m_businessEventPoller->sequence());
 }
