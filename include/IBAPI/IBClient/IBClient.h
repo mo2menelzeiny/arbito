@@ -107,14 +107,14 @@ enum State {
 
 typedef std::function<void(TickType field, double value)> OnTickHandler;
 
-typedef std::function<void(OrderId orderId, const std::string &status, double avgFillPrice)> OnOrderStatus;
+typedef std::function<void(OrderId orderId, const std::string &status, double avgFillPrice)> OnOrderStatusHandler;
 
 //! [ewrapperimpl]
 class IBClient : public EWrapper {
 //! [ewrapperimpl]
 public:
 
-	explicit IBClient(OnTickHandler &onTickHandler, OnOrderStatus &onOrderStatus);
+	IBClient(OnTickHandler &onTickHandler, OnOrderStatusHandler &onOrderStatusHandler);
 
 	~IBClient();
 
@@ -234,7 +234,7 @@ private:
 
 private:
 	OnTickHandler m_onTickHandler;
-	OnOrderStatus m_onOrderStatus;
+	OnOrderStatusHandler m_onOrderStatus;
 
 	//! [socket_declare]
 	EReaderOSSignal m_osSignal;

@@ -1,93 +1,62 @@
 
-#include "IBMarketOffice.h"
+#include <IBMarketOffice.h>
 
 IBMarketOffice::IBMarketOffice(
-		std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &ringBuffer,
-		int cpuset,
+		std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &outRingBuffer,
 		const char *broker,
 		double quantity
-) : m_ringBuffer(ringBuffer),
+) : m_outRingBuffer(outRingBuffer),
     m_broker(broker),
     m_quantity(quantity) {
-}
+	m_consoleLogger = spdlog::get("console");
+	m_systemLogger = spdlog::get("system");
 
-void IBMarketOffice::start() {
-	m_running = true;
-	m_worker = std::thread(&IBMarketOffice::work, this);
-}
+	m_sequence = 0;
 
-void IBMarketOffice::stop() {
-	m_running = false;
-	m_worker.join();
-}
+	m_bid = -99;
+	m_bidQty = 0;
+	m_offer = 99;
+	m_offerQty = 0;
 
-void IBMarketOffice::work() {
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(m_cpuset, &cpuset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(pthread_self(), "market-office");
-
-	auto consoleLogger = spdlog::get("console");
-	auto systemLogger = spdlog::get("system");
-
-	long sequence = 0;
-
-	double bid = -99, offer = 99;
-	double bidQty = 0, offerQty = 0;
-
-	auto onTickHandler = OnTickHandler([&](TickType tickType, double value) {
+	m_onTickHandler = OnTickHandler([&](TickType tickType, double value) {
 		switch (tickType) {
 			case ASK:
-				offer = value;
+				m_offer = value;
 				break;
 			case BID:
-				bid = value;
+				m_bid = value;
 				break;
 			case BID_SIZE:
-				bidQty = value;
+				m_bidQty = value;
 			case ASK_SIZE:
-				offerQty = value;
+				m_offerQty = value;
 				break;
 			default:
 				break;
 		}
 
-		if (m_quantity > offerQty || m_quantity > bidQty) return;
+		if (m_quantity > m_offerQty || m_quantity > m_bidQty) {
+			return;
+		}
 
-		++sequence;
+		++m_sequence;
 
-		auto nextSequence = m_ringBuffer->next();
-		(*m_ringBuffer)[nextSequence].bid = bid;
-		(*m_ringBuffer)[nextSequence].offer = offer;
-		(*m_ringBuffer)[nextSequence].sequence = sequence;
-		m_ringBuffer->publish(nextSequence);
+		auto nextSequence = m_outRingBuffer->next();
+		(*m_outRingBuffer)[nextSequence].bid = m_bid;
+		(*m_outRingBuffer)[nextSequence].offer = m_offer;
+		(*m_outRingBuffer)[nextSequence].sequence = m_sequence;
+		m_outRingBuffer->publish(nextSequence);
 
-		systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);
+		m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, m_sequence, m_bid, m_offer);
 	});
 
-	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
+	m_onOrderStatusHandler = OnOrderStatusHandler([&](OrderId orderId, const std::string &status, double avgPrice) {
 		// do nothing
 	});
 
-	IBClient ibClient(onTickHandler, onOrderStatus);
+	m_ibClient = new IBClient(m_onTickHandler, m_onOrderStatusHandler);
+}
 
-	while (m_running) {
-		if (!ibClient.isConnected()) {
-			bool result = ibClient.connect("127.0.0.1", 4002, 0);
-
-			if (!result) {
-				consoleLogger->info("[{}] Market Office Client FAILED", m_broker);
-				std::this_thread::sleep_for(std::chrono::seconds(30));
-				continue;
-			}
-
-			ibClient.subscribeToFeed();
-			consoleLogger->info("[{}] Market Office OK", m_broker);
-		}
-
-		ibClient.processMessages();
-	}
-
-	ibClient.disconnect();
+void IBMarketOffice::cleanup() {
+	m_ibClient->disconnect();
 }

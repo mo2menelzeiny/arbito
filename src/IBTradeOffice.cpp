@@ -49,7 +49,7 @@ void IBTradeOffice::work() {
 	OrderId lastRecordedOrderId = 0;
 	char lastSide;
 
-	auto onOrderStatus = OnOrderStatus([&](OrderId orderId, const std::string &status, double avgFillPrice) {
+	auto onOrderStatus = OnOrderStatusHandler([&](OrderId orderId, const std::string &status, double avgFillPrice) {
 		if (status != "Filled") return;
 		if (lastRecordedOrderId == orderId) return;
 

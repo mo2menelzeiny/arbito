@@ -87,9 +87,8 @@ int main() {
 
 	// BROKER B
 
-	IBMarketOffice ibMarketOffice(
+	IBMarketOffice marketOfficeB(
 			marketDataRingBuffer,
-			4,
 			getenv("BROKER_B"),
 			stof(getenv("QTY_B"))
 	);
@@ -130,8 +129,11 @@ int main() {
 			start = system_clock::now();
 
 			marketOfficeA.doWork();
+			marketOfficeB.doWork();
 
-			duration = duration_cast<microseconds>(system_clock::now() - start).count();
+			end = system_clock::now();
+
+			duration = duration_cast<microseconds>(end - start).count();
 			++counter;
 
 			if (duration > max) {

@@ -43,9 +43,9 @@ const int SLEEP_BETWEEN_PINGS = 30; // seconds
 ///////////////////////////////////////////////////////////
 // member funcs
 //! [socket_init]
-IBClient::IBClient(OnTickHandler &onTickHandler, OnOrderStatus &onOrderStatus) :
+IBClient::IBClient(OnTickHandler &onTickHandler, OnOrderStatusHandler &onOrderStatusHandler) :
 		m_onTickHandler(onTickHandler),
-		m_onOrderStatus(onOrderStatus),
+		m_onOrderStatus(onOrderStatusHandler),
 		m_osSignal(0),
 		m_pClient(new EClientSocket(this, &m_osSignal)),
 		m_state(ST_CONNECT),
