@@ -225,7 +225,7 @@ void BusinessOffice::work() {
 		return false;
 	};
 
-	consoleLogger->info("Central Office OK");
+	consoleLogger->info("Business Office OK");
 
 	while (m_running) {
 		marketDataPoller->poll(marketDataHandler);
