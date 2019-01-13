@@ -21,7 +21,7 @@ int main() {
 
 	auto marketDataRingBuffer = Disruptor::RingBuffer<MarketDataEvent>::createMultiProducer(
 			[]() { return MarketDataEvent(); },
-			8,
+			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
