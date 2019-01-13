@@ -220,5 +220,4 @@ FIXTradeOffice::FIXTradeOffice(
 
 void FIXTradeOffice::cleanup() {
 	m_fixSession.terminate();
-	m_inRingBuffer->removeGatingSequence(m_businessEventPoller->sequence());
 }

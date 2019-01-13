@@ -2,12 +2,12 @@
 #ifndef ARBITO_FIXMARKETOFFICE_H
 #define ARBITO_FIXMARKETOFFICE_H
 
+// Disruptor
+#include <Disruptor/Disruptor.h>
+
 // SPDLOG
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/daily_file_sink.h>
-
-// Disruptor
-#include <Disruptor/Disruptor.h>
 
 // Domain
 #include "FIXSession.h"

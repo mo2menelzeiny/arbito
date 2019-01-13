@@ -22,8 +22,8 @@ BusinessOffice::BusinessOffice(
 		    dbUri,
 		    dbName,
 		    "coll_triggers"
-    ) {
-	m_idGenerator = std::mt19937_64(std::random_device{}());
+    ),
+    m_idGenerator(std::random_device{}()) {
 
 	m_consoleLogger = spdlog::get("console");
 	m_systemLogger = spdlog::get("system");
@@ -73,5 +73,4 @@ BusinessOffice::BusinessOffice(
 }
 
 void BusinessOffice::cleanup() {
-	m_inRingBuffer->removeGatingSequence(m_marketDataEventPoller->sequence());
 }
