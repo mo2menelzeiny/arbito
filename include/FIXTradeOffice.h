@@ -5,7 +5,6 @@
 // Disruptor
 #include <Disruptor/Disruptor.h>
 
-
 // SPDLOG
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/daily_file_sink.h>
