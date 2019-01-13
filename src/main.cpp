@@ -1,12 +1,12 @@
 
 //Disruptor
-#include "Disruptor/Disruptor.h"
-#include "Disruptor/BusySpinWaitStrategy.h"
+#include <Disruptor/Disruptor.h>
+#include <Disruptor/BusySpinWaitStrategy.h>
 
 //SPDLOG
-#include "spdlog/async.h"
-#include "spdlog/sinks/stdout_sinks.h"
-#include "spdlog/sinks/daily_file_sink.h"
+#include <spdlog/async.h>
+#include <spdlog/sinks/stdout_sinks.h>
+#include <spdlog/sinks/daily_file_sink.h>
 
 // Domain
 #include "BusinessOffice.h"
@@ -16,7 +16,7 @@
 #include "IBTradeOffice.h"
 
 int main() {
-	auto consoleLogger = spdlog::create_async_nb<spdlog::sinks::stdout_sink_mt>("console");
+	auto consoleLogger = spdlog::stdout_logger_mt<spdlog::async_factory_nonblock>("console");
 	auto marketLogger = spdlog::daily_logger_mt<spdlog::async_factory_nonblock>("system", "log");
 
 	auto marketDataRingBuffer = Disruptor::RingBuffer<MarketDataEvent>::createMultiProducer(
@@ -48,7 +48,7 @@ int main() {
 
 		// BROKER A
 
-		FIXMarketOffice fixMarketOffice(
+		FIXMarketOffice marketOfficeA(
 				marketDataRingBuffer,
 				2,
 				getenv("BROKER_A"),
@@ -63,7 +63,7 @@ int main() {
 				true
 		);
 
-		FIXTradeOffice fixTradeOffice(
+		FIXTradeOffice tradeOfficeA(
 				businessRingBuffer,
 				3,
 				getenv("BROKER_A"),
@@ -82,23 +82,14 @@ int main() {
 
 		// BROKER B
 
-		IBMarketOffice ibMarketOffice(
+		IBMarketOffice marketOfficeB(
 				marketDataRingBuffer,
 				4,
 				getenv("BROKER_B"),
 				stof(getenv("QTY_B"))
 		);
 
-		IBTradeOffice ibTradeOffice(
-				businessRingBuffer,
-				5,
-				getenv("BROKER_B"),
-				stof(getenv("QTY_B")),
-				getenv("MONGO_URI"),
-				getenv("MONGO_DB")
-		);
-
-		FIXTradeOffice ibFixTradeOffice(
+		FIXTradeOffice tradeOfficeB(
 				businessRingBuffer,
 				5,
 				getenv("BROKER_B"),
@@ -115,12 +106,11 @@ int main() {
 				getenv("MONGO_DB")
 		);
 
-		// businessOffice.start();
-		// fixMarketOffice.start();
-		// fixTradeOffice.start();
-		// ibMarketOffice.start();
-		// ibFixTradeOffice.start();
-		// ibTradeOffice.start();
+		 businessOffice.start();
+		 marketOfficeA.start();
+		 tradeOfficeA.start();
+		 marketOfficeB.start();
+		 tradeOfficeB.start();
 
 		consoleLogger->info("Main OK");
 
