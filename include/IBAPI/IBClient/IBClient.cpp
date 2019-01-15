@@ -1367,13 +1367,13 @@ void IBClient::error(int id, int errorCode, const std::string &errorString) {
 void IBClient::tickPrice(TickerId tickerId, TickType field, double price, const TickAttrib &attribs) {
 	/*printf("Tick Price. Ticker Id: %ld, Field: %d, Price: %g, CanAutoExecute: %d, PastLimit: %d, PreOpen: %d\n",
 	       tickerId, (int) field, price, attribs.canAutoExecute, attribs.pastLimit, attribs.preOpen);*/
-	m_onTickHandler(field, price);
+	// m_onTickHandler(field, price);
 }
 //! [tickprice]
 
 //! [ticksize]
 void IBClient::tickSize(TickerId tickerId, TickType field, int size) {
-	m_onTickHandler(field, size);
+	// m_onTickHandler(field, size);
 }
 //! [ticksize]
 
@@ -1612,8 +1612,9 @@ void IBClient::execDetailsEnd(int reqId) {
 //! [updatemktdepth]
 void IBClient::updateMktDepth(TickerId id, int position, int operation, int side,
                               double price, int size) {
-	printf("UpdateMarketDepth. %ld - Position: %d, Operation: %d, Side: %d, Price: %g, Size: %d\n", id, position,
-	       operation, side, price, size);
+//	printf("UpdateMarketDepth. %ld - Position: %d, Operation: %d, Side: %d, Price: %g, Size: %d\n", id, position,
+//	       operation, side, price, size);
+	m_onTickHandler(side, price, size);
 }
 //! [updatemktdepth]
 
@@ -1635,7 +1636,7 @@ void IBClient::updateNewsBulletin(int msgId, int msgType, const std::string &new
 
 //! [managedaccounts]
 void IBClient::managedAccounts(const std::string &accountsList) {
-	printf("Account List: %s\n", accountsList.c_str());
+	// printf("Account List: %s\n", accountsList.c_str());
 }
 //! [managedaccounts]
 
@@ -1715,8 +1716,8 @@ void IBClient::marketDataType(TickerId reqId, int marketDataType) {
 
 //! [commissionreport]
 void IBClient::commissionReport(const CommissionReport &commissionReport) {
-	printf("CommissionReport. %s - %g %s RPNL %g\n", commissionReport.execId.c_str(), commissionReport.commission,
-	       commissionReport.currency.c_str(), commissionReport.realizedPNL);
+//	printf("CommissionReport. %s - %g %s RPNL %g\n", commissionReport.execId.c_str(), commissionReport.commission,
+//	       commissionReport.currency.c_str(), commissionReport.realizedPNL);
 }
 //! [commissionreport]
 
@@ -2099,5 +2100,6 @@ void IBClient::subscribeToFeed() {
 	contract.currency = "USD";
 	contract.exchange = "IDEALPRO";
 
-	m_pClient->reqMktData(1001, contract, "", false, false, TagValueListSPtr());
+	m_pClient->reqMktDepth(1001, contract, 1, TagValueListSPtr());
+//	m_pClient->reqMktData(1001, contract, "", false, false, TagValueListSPtr());
 }

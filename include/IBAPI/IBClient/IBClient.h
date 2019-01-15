@@ -105,7 +105,7 @@ enum State {
 	ST_IDLE
 };
 
-typedef std::function<void(TickType field, double value)> OnTickHandler;
+typedef std::function<void(int side, double price, int size)> OnTickHandler;
 
 typedef std::function<void(OrderId orderId, const std::string &status, double avgFillPrice)> OnOrderStatus;
 

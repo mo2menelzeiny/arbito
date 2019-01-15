@@ -36,18 +36,15 @@ void IBMarketOffice::work() {
 	double bid = -99, offer = 99;
 	double bidQty = 0, offerQty = 0;
 
-	auto onTickHandler = OnTickHandler([&](TickType tickType, double value) {
-		switch (tickType) {
-			case ASK:
-				offer = value;
+	auto onTickHandler = OnTickHandler([&](int side, double price, int size) {
+		switch (side) {
+			case 0:
+				offer = price;
+				offerQty = size;
 				break;
-			case BID:
-				bid = value;
-				break;
-			case BID_SIZE:
-				bidQty = value;
-			case ASK_SIZE:
-				offerQty = value;
+			case 1:
+				bid = price;
+				bidQty = size;
 				break;
 			default:
 				break;

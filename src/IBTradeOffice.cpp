@@ -39,7 +39,7 @@ void IBTradeOffice::work() {
 	auto consoleLogger = spdlog::get("console");
 	auto systemLogger = spdlog::get("system");
 
-	auto onTickHandler = OnTickHandler([&](TickType tickType, double value) {
+	auto onTickHandler = OnTickHandler([&](int side, double price, int size) {
 		// do nothing
 	});
 
