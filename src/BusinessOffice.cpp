@@ -234,15 +234,6 @@ void BusinessOffice::work() {
 				break;
 		}
 
-		systemLogger->info(
-				"diffA: {} diffB: {} - {} {} {} {} - event {} {}",
-				marketDataA.bid - marketDataB.offer,
-				marketDataB.bid - marketDataA.offer,
-				marketDataA.bid, marketDataA.offer,
-				marketDataB.bid, marketDataB.offer,
-				event.bid, event.offer
-		);
-
 		return false;
 	};
 

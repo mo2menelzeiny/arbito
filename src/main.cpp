@@ -106,11 +106,11 @@ int main() {
 				getenv("MONGO_DB")
 		);
 
-		 businessOffice.start();
-		 marketOfficeA.start();
-//		 tradeOfficeA.start();
-		 marketOfficeB.start();
-//		 tradeOfficeB.start();
+		businessOffice.start();
+		marketOfficeA.start();
+		tradeOfficeA.start();
+		marketOfficeB.start();
+		tradeOfficeB.start();
 
 		consoleLogger->info("Main OK");
 
