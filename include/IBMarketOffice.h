@@ -14,6 +14,7 @@
 
 // Domain
 #include "MarketDataEvent.h"
+#include "BrokerEnum.h"
 
 class IBMarketOffice {
 public:

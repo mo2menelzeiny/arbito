@@ -91,6 +91,16 @@ void FIXMarketOffice::work() {
 
 	long sequence = 0;
 
+	BrokerEnum brokerEnum;
+
+	if (!strcmp(m_broker, "LMAX")) {
+		brokerEnum = LMAX;
+	}
+
+	if (!strcmp(m_broker, "SWISSQUOTE")) {
+		brokerEnum = SWISSQUOTE;
+	}
+
 	auto offerIdx = strcmp(m_broker, "LMAX") ? 4 : 2;
 	auto offerQtyIdx = offerIdx - 1;
 
@@ -110,6 +120,7 @@ void FIXMarketOffice::work() {
 		(*m_inRingBuffer)[nextSequence].bid = bid;
 		(*m_inRingBuffer)[nextSequence].offer = offer;
 		(*m_inRingBuffer)[nextSequence].sequence = sequence;
+		(*m_inRingBuffer)[nextSequence].broker = brokerEnum;
 		m_inRingBuffer->publish(nextSequence);
 
 		systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);

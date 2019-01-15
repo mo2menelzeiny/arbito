@@ -61,6 +61,7 @@ void IBMarketOffice::work() {
 		(*m_ringBuffer)[nextSequence].bid = bid;
 		(*m_ringBuffer)[nextSequence].offer = offer;
 		(*m_ringBuffer)[nextSequence].sequence = sequence;
+		(*m_ringBuffer)[nextSequence].broker = IB;
 		m_ringBuffer->publish(nextSequence);
 
 		systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, sequence, bid, offer);

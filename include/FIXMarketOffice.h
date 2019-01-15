@@ -12,6 +12,7 @@
 // Domain
 #include "FIXSession.h"
 #include "MarketDataEvent.h"
+#include "BrokerEnum.h"
 
 class FIXMarketOffice {
 public:
