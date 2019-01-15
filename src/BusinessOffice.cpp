@@ -2,8 +2,8 @@
 #include "BusinessOffice.h"
 
 BusinessOffice::BusinessOffice(
-		std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &inRingBuffer,
-		std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &outRingBuffer,
+		std::shared_ptr <Disruptor::RingBuffer<MarketDataEvent>> &inRingBuffer,
+		std::shared_ptr <Disruptor::RingBuffer<BusinessEvent>> &outRingBuffer,
 		int cpuset,
 		int windowMs,
 		int orderDelaySec,
@@ -13,7 +13,7 @@ BusinessOffice::BusinessOffice(
 		const char *dbUri,
 		const char *dbName
 ) : m_inRingBuffer(inRingBuffer),
-	m_cpuset(cpuset),
+    m_cpuset(cpuset),
     m_windowMs(windowMs),
     m_orderDelaySec(orderDelaySec),
     m_maxOrders(maxOrders),
@@ -43,14 +43,19 @@ void BusinessOffice::work() {
 	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 	pthread_setname_np(pthread_self(), "business-office");
 
-	MarketDataEvent marketDataEmpty = (MarketDataEvent) {
+	MarketDataEvent marketDataA = (MarketDataEvent) {
 			.bid = -99,
 			.offer = 99,
 			.sequence = 0,
 			.broker = NONE
 	};
 
-	MarketDataEvent marketDataA = marketDataEmpty, marketDataB = marketDataEmpty;
+	MarketDataEvent marketDataB = (MarketDataEvent) {
+			.bid = -99,
+			.offer = 99,
+			.sequence = 0,
+			.broker = NONE
+	};
 
 	int ordersCount = stoi(getenv("ORDERS_COUNT"));
 
@@ -213,15 +218,31 @@ void BusinessOffice::work() {
 	auto marketDataHandler = [&](MarketDataEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		switch (event.broker) {
 			case LMAX:
-				marketDataA = event;
+				marketDataA.bid = event.bid;
+				marketDataA.offer = event.offer;
+				marketDataA.sequence = event.sequence;
+				marketDataA.broker = event.broker;
 				break;
 			case IB:
-				marketDataB = event;
+				marketDataB.bid = event.bid;
+				marketDataB.offer = event.offer;
+				marketDataB.sequence = event.sequence;
+				marketDataB.broker = event.broker;
 				break;
 			case SWISSQUOTE:
 			case NONE:
 				break;
 		}
+
+		systemLogger->info(
+				"diffA: {} diffB: {} - {} {} {} {} - event {} {}",
+				marketDataA.bid - marketDataB.offer,
+				marketDataB.bid - marketDataA.offer,
+				marketDataA.bid, marketDataA.offer,
+				marketDataB.bid, marketDataB.offer,
+				event.bid, event.offer
+		);
+
 		return false;
 	};
 
