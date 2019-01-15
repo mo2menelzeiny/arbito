@@ -13,6 +13,7 @@ BusinessOffice::BusinessOffice(
 		const char *dbUri,
 		const char *dbName
 ) : m_inRingBuffer(inRingBuffer),
+	m_outRingBuffer(outRingBuffer),
     m_cpuset(cpuset),
     m_windowMs(windowMs),
     m_orderDelaySec(orderDelaySec),
@@ -66,10 +67,6 @@ void BusinessOffice::work() {
 	if (!strcmp(getenv("CURRENT_DIFF"), "DIFF_B")) currentDiff = DIFF_B;
 
 	TriggerDifference currentOrder = DIFF_NONE;
-
-	/*bool isExpiredA = true, isExpiredB = true;
-	time_point<system_clock> timestampA, timestampB, timestampNow;
-	timestampA = timestampB = timestampNow = system_clock::now();*/
 
 	bool isOrderDelayed = false;
 	time_t orderDelay = m_orderDelaySec;
@@ -218,16 +215,10 @@ void BusinessOffice::work() {
 	auto marketDataHandler = [&](MarketDataEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		switch (event.broker) {
 			case LMAX:
-				marketDataA.bid = event.bid;
-				marketDataA.offer = event.offer;
-				marketDataA.sequence = event.sequence;
-				marketDataA.broker = event.broker;
+				marketDataA = event;
 				break;
 			case IB:
-				marketDataB.bid = event.bid;
-				marketDataB.offer = event.offer;
-				marketDataB.sequence = event.sequence;
-				marketDataB.broker = event.broker;
+				marketDataB = event;
 				break;
 			case SWISSQUOTE:
 			case NONE:
