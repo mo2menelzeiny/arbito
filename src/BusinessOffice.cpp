@@ -81,6 +81,8 @@ void BusinessOffice::work() {
 
 	std::mt19937_64 randomGenerator(std::random_device{}());
 
+	char randomIdStr[64];
+
 	auto handleTriggers = [&] {
 		if (isOrderDelayed && ((time(nullptr) - orderDelayStart) < orderDelay)) return;
 
@@ -145,8 +147,6 @@ void BusinessOffice::work() {
 
 		auto randomId = randomGenerator();
 
-		char randomIdStr[64];
-
 		sprintf(randomIdStr, "%lu", randomId);
 
 		auto nextSequence = m_outRingBuffer->next();
@@ -161,7 +161,7 @@ void BusinessOffice::work() {
 				m_outRingBuffer->publish(nextSequence);
 
 				systemLogger->info(
-						"{} bid: {} sequence: {} offer: {} sequence: {}",
+						"{} bid A: {} sequence: {} offer B: {} sequence: {}",
 						orderType,
 						marketDataA.bid,
 						marketDataA.sequence,
@@ -181,7 +181,7 @@ void BusinessOffice::work() {
 				m_outRingBuffer->publish(nextSequence);
 
 				systemLogger->info(
-						"{} bid: {} sequence: {} offer: {} sequence: {}",
+						"{} bid B: {} sequence: {} offer A: {} sequence: {}",
 						orderType,
 						marketDataB.bid,
 						marketDataB.sequence,
@@ -223,8 +223,8 @@ void BusinessOffice::work() {
 				break;
 			case IB:
 				marketDataB = event;
-				timestampB = timestampNow;
-				isExpiredB = false;
+//				timestampB = timestampNow;
+//				isExpiredB = false;
 				break;
 			case SWISSQUOTE:
 			case NONE:
@@ -237,13 +237,13 @@ void BusinessOffice::work() {
 	consoleLogger->info("Business Office OK");
 
 	while (m_running) {
-		timestampNow = system_clock::now();
-
-		if (!isExpiredB && duration_cast<milliseconds>(timestampNow - timestampB).count() >= m_windowMs) {
-			marketDataB.bid = -99;
-			marketDataB.offer = 99;
-			isExpiredB = true;
-		}
+//		timestampNow = system_clock::now();
+//
+//		if (!isExpiredB && duration_cast<milliseconds>(timestampNow - timestampB).count() >= m_windowMs) {
+//			marketDataB.bid = -99;
+//			marketDataB.offer = 99;
+//			isExpiredB = true;
+//		}
 
 		marketDataPoller->poll(marketDataHandler);
 		handleTriggers();
