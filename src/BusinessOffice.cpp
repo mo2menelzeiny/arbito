@@ -137,13 +137,15 @@ void BusinessOffice::work() {
 
 		}
 
+		const char *orderType = currentOrder == currentDiff ? "OPEN" : "CLOSE";
+
 		if (ordersCount == 0) {
 			currentDiff = DIFF_NONE;
 		}
 
-		if (currentOrder == DIFF_NONE) return;
-
-		const char *orderType = currentOrder == currentDiff ? "OPEN" : "CLOSE";
+		if (currentOrder == DIFF_NONE) {
+			return;
+		}
 
 		auto randomId = randomGenerator();
 
