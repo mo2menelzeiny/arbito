@@ -7,6 +7,7 @@ IBMarketOffice::IBMarketOffice(
 		const char *broker,
 		double quantity
 ) : m_ringBuffer(ringBuffer),
+	m_cpuset(cpuset),
     m_broker(broker),
     m_quantity(quantity) {
 }
