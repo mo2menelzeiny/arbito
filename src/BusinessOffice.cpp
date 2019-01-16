@@ -90,8 +90,8 @@ void BusinessOffice::work() {
 
 		bool canOpen = ordersCount < m_maxOrders;
 
-		double diffA = marketDataA.bid - (std::trunc(10000 * marketDataB.offer) / 10000);
-		double diffB = (std::trunc(10000 * marketDataB.bid) / 10000) - marketDataA.offer;
+		double diffA = marketDataA.bid - (std::trunc(10000 * static_cast<float>(marketDataB.offer)) / 10000);
+		double diffB = (std::trunc(10000 * static_cast<float>(marketDataB.bid)) / 10000) - marketDataA.offer;
 
 		switch (currentDiff) {
 			case DIFF_A:
