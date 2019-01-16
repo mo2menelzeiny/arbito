@@ -60,7 +60,7 @@ int main() {
 				getenv("MO_A_SENDER"),
 				getenv("MO_A_TARGET"),
 				stoi(getenv("HEARTBEAT")),
-				true
+				false
 		);
 
 		FIXTradeOffice tradeOfficeA(
@@ -75,7 +75,7 @@ int main() {
 				getenv("TO_A_SENDER"),
 				getenv("TO_A_TARGET"),
 				stoi(getenv("HEARTBEAT")),
-				true,
+				false,
 				getenv("MONGO_URI"),
 				getenv("MONGO_DB")
 		);
