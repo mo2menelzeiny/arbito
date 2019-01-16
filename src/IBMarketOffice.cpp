@@ -39,11 +39,11 @@ void IBMarketOffice::work() {
 	auto onTickHandler = OnTickHandler([&](int side, double price, int size) {
 		switch (side) {
 			case 0:
-				offer = std::trunc(10000 * price) / 10000;
+				offer = price;
 				offerQty = size;
 				break;
 			case 1:
-				bid = std::trunc(10000 * price) / 10000;
+				bid = price;
 				bidQty = size;
 				break;
 			default:
