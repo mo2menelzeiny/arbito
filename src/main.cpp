@@ -21,13 +21,13 @@ int main() {
 
 	auto marketDataRingBuffer = Disruptor::RingBuffer<MarketDataEvent>::createMultiProducer(
 			[]() { return MarketDataEvent(); },
-			16,
+			32,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
 	auto businessRingBuffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
 			[]() { return BusinessEvent(); },
-			8,
+			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
