@@ -202,7 +202,7 @@ void FIXTradeOffice::work() {
 		const char *side = event.buy == brokerEnum ? "BUY" : "SELL";
 
 		systemLogger->info("[{}] {} id: {}", m_broker, side, clOrdIdStr);
-		consoleLogger->info("[{}] {}", m_broker, side);
+		// consoleLogger->info("[{}] {}", m_broker, side);
 
 		return false;
 	};
