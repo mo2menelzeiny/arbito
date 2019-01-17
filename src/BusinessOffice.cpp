@@ -107,6 +107,8 @@ void BusinessOffice::work() {
 					break;
 				}
 
+				break;
+
 			case DIFF_B:
 				if (canOpen && diffB >= m_diffOpen) {
 					currentOrder = DIFF_B;
@@ -119,6 +121,8 @@ void BusinessOffice::work() {
 					--ordersCount;
 					break;
 				}
+
+				break;
 
 			case DIFF_NONE:
 				if (diffA >= m_diffOpen) {
@@ -134,6 +138,8 @@ void BusinessOffice::work() {
 					++ordersCount;
 					break;
 				}
+
+				break;
 
 		}
 
