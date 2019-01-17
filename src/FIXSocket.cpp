@@ -82,7 +82,7 @@ void FIXSocket::initiate() {
 void FIXSocket::terminate() {
 	close(m_socketFD);
 
-	if (!m_ssl) {
+	if (!m_sslEnabled) {
 		return;
 	}
 
