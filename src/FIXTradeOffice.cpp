@@ -202,7 +202,6 @@ void FIXTradeOffice::work() {
 		const char *side = event.buy == brokerEnum ? "BUY" : "SELL";
 
 		systemLogger->info("[{}] {} id: {}", m_broker, side, clOrdIdStr);
-		// consoleLogger->info("[{}] {}", m_broker, side);
 
 		return false;
 	};
@@ -227,10 +226,10 @@ void FIXTradeOffice::work() {
 				}
 
 				if (execType == '8' || execType == 'H') {
-					// TODO: Handle failed order execution
+					char text[128];
+					fix_get_string(fix_get_field(msg, Text), text, 128);
+					consoleLogger->error("[{}] Trade Office Order FAILED {}", m_broker, text);
 					systemLogger->error("[{}] Cancelled id: {}", m_broker, clOrdIdStr);
-					consoleLogger->error("[{}] Trade Office Order FAILED", m_broker);
-					fprintmsg_iov(stdout, msg);
 				}
 			}
 

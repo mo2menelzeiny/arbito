@@ -16,6 +16,8 @@
 #include "IBTradeOffice.h"
 
 int main() {
+	pthread_setname_np(pthread_self(), "arbito-core");
+
 	auto consoleLogger = spdlog::stdout_logger_mt<spdlog::async_factory_nonblock>("console");
 	auto marketLogger = spdlog::daily_logger_mt<spdlog::async_factory_nonblock>("system", "log");
 
