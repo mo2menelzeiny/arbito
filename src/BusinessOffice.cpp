@@ -58,9 +58,9 @@ void BusinessOffice::work() {
 			.broker = NONE
 	};
 
-//	bool isExpiredB = true;
-//	time_point<system_clock> timestampB, timestampNow;
-//	timestampB = timestampNow = system_clock::now();
+	bool isExpiredB = true;
+	time_point<system_clock> timestampB, timestampNow;
+	timestampB = timestampNow = system_clock::now();
 
 	int ordersCount = stoi(getenv("ORDERS_COUNT"));
 
@@ -230,8 +230,8 @@ void BusinessOffice::work() {
 				break;
 			case IB:
 				marketDataB = event;
-//				timestampB = timestampNow;
-//				isExpiredB = false;
+				timestampB = timestampNow;
+				isExpiredB = false;
 				break;
 			case SWISSQUOTE:
 			case NONE:
@@ -244,13 +244,13 @@ void BusinessOffice::work() {
 	consoleLogger->info("Business Office OK");
 
 	while (m_running) {
-//		timestampNow = system_clock::now();
-//
-//		if (!isExpiredB && duration_cast<milliseconds>(timestampNow - timestampB).count() >= m_windowMs) {
-//			marketDataB.bid = -99;
-//			marketDataB.offer = 99;
-//			isExpiredB = true;
-//		}
+		timestampNow = system_clock::now();
+
+		if (!isExpiredB && duration_cast<milliseconds>(timestampNow - timestampB).count() >= m_windowMs) {
+			marketDataB.bid = -99;
+			marketDataB.offer = 99;
+			isExpiredB = true;
+		}
 
 		marketDataPoller->poll(marketDataHandler);
 		handleTriggers();
