@@ -102,14 +102,14 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-SELL"),
 				FIX_STRING_FIELD(Symbol, "EUR"),
 				FIX_STRING_FIELD(Currency, "USD"),
-				FIX_STRING_FIELD(SecurityType, "CASH"),
+				FIX_STRING_FIELD(SecurityType, "CFD"),
 				FIX_CHAR_FIELD(Side, '2'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
 				FIX_CHAR_FIELD(OrdType, '1'),
 				FIX_STRING_FIELD(Account, "U2707646"),
 				FIX_INT_FIELD(CustomerOrFirm, 0),
-				FIX_STRING_FIELD(ExDestination, "IDEALPRO")
+				FIX_STRING_FIELD(ExDestination, "SMART")
 		};
 		unsigned long size = ARRAY_SIZE(NOSSFields);
 		m_NOSSFields = (fix_field *) malloc(size * sizeof(fix_field));
@@ -120,14 +120,14 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-BUY"),
 				FIX_STRING_FIELD(Symbol, "EUR"),
 				FIX_STRING_FIELD(Currency, "USD"),
-				FIX_STRING_FIELD(SecurityType, "CASH"),
+				FIX_STRING_FIELD(SecurityType, "CFD"),
 				FIX_CHAR_FIELD(Side, '1'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
 				FIX_CHAR_FIELD(OrdType, '1'),
 				FIX_STRING_FIELD(Account, "U2707646"),
 				FIX_INT_FIELD(CustomerOrFirm, 0),
-				FIX_STRING_FIELD(ExDestination, "IDEALPRO")
+				FIX_STRING_FIELD(ExDestination, "SMART")
 		};
 
 		size = ARRAY_SIZE(NOSBFields);
