@@ -23,10 +23,10 @@ BusinessOffice::BusinessOffice(
 		    dbName,
 		    "coll_triggers"
     ),
-    m_idGenerator(std::random_device{}()) {
+    m_idGenerator(std::random_device{}()),
+    m_consoleLogger(spdlog::get("console")),
+    m_systemLogger(spdlog::get("system")){
 
-	m_consoleLogger = spdlog::get("console");
-	m_systemLogger = spdlog::get("system");
 
 	m_ordersCount = stoi(getenv("ORDERS_COUNT"));
 

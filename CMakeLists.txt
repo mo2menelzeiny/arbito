@@ -8,13 +8,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 include_directories(include)
 
 find_package(Threads REQUIRED)
-find_package(OpenSSL REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread)
-find_package(ZLIB REQUIRED)
-find_package(libmongoc-1.0 1.7 REQUIRED)
 
 find_library(SSL_LIB ssl)
-find_library(DISRUPTOR_LIBRARIES Disruptor)
+find_library(DISRUPTOR_LIB Disruptor)
+find_library(MONGOC_LIB libmongoc-1.0.so.0.0.0)
 
 file(GLOB HEADERS
         include/*.h
@@ -46,18 +44,19 @@ add_executable(arbito
         ${SPDLOG}
         ${IBAPI})
 
-target_include_directories(arbito PRIVATE "${MONGOC_INCLUDE_DIRS}")
+#target_include_directories(arbito PRIVATE "${MONGOC_INCLUDE_DIRS}")
+
+target_include_directories(arbito PRIVATE
+        /usr/include/libmongoc-1.0
+        /usr/include/libbson-1.0)
 
 target_link_libraries(arbito
         ${CMAKE_THREAD_LIBS_INIT}
         ${Boost_LIBRARIES}
         ${SSL_LIB}
-        ${OPENSSL_LIBRARIES}
-        ${ZLIB_LIBRARIES}
-        ${DISRUPTOR_LIBRARIES}
-        ${MONGOC_LIBRARIES})
+        ${MONGOC_LIB})
 
-target_compile_definitions(arbito PRIVATE "${MONGOC_DEFINITIONS}")
+#target_compile_definitions(arbito PRIVATE "${MONGOC_DEFINITIONS}")
 
 FILE(COPY resources DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 message(STATUS "Copied resources to binary directory")
