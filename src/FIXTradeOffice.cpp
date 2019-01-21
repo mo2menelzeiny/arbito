@@ -243,8 +243,8 @@ void FIXTradeOffice::work() {
 		}
 	});
 
-	bool ordered = false;
-
+	bool buy = true, sell = false;
+	time_t start = time(nullptr);
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
 
@@ -263,12 +263,22 @@ void FIXTradeOffice::work() {
 		m_fixSession.poll(onMessageHandler);
 		businessPoller->poll(businessHandler);
 
-		if (!ordered) {
-			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = "TESTORDERCFD3";
+		if (!sell) {
+			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = "TESTORDERCFD4";
 			fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_NOSSFixMessage);
 			systemLogger->info("TEST SELL");
-			ordered = true;
+			sell = true;
+			buy = false;
+			start = time(nullptr);
+		}
+
+		if (!buy && (time(nullptr) - start > 5)) {
+			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = "TESTORDERCFD5";
+			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_NOSBFixMessage);
+			systemLogger->info("TEST BUY");
+			buy = true;
 		}
 	}
 
