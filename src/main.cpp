@@ -107,8 +107,8 @@ int main() {
 		);
 
 		businessOffice.start();
-		marketOfficeA.start();
-//		marketOfficeB.start();
+//		marketOfficeA.start();
+		marketOfficeB.start();
 //		tradeOfficeA.start();
 		std::this_thread::sleep_for(seconds(1));
 		tradeOfficeB.start();

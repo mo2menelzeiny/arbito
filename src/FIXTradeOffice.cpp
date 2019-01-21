@@ -264,10 +264,10 @@ void FIXTradeOffice::work() {
 		businessPoller->poll(businessHandler);
 
 		if (!ordered) {
-			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = "TESTORDERCFD2";
-			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
-			m_fixSession.send(&m_NOSBFixMessage);
-			systemLogger->info("TEST BUY");
+			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = "TESTORDERCFD3";
+			fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_NOSSFixMessage);
+			systemLogger->info("TEST SELL");
 			ordered = true;
 		}
 	}
