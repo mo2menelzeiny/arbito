@@ -2,7 +2,7 @@
 #include <FIXMarketOffice.h>
 
 FIXMarketOffice::FIXMarketOffice(
-		std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &outRingBuffer,
+		std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> &outRingBuffer,
 		const char *broker,
 		double quantity,
 		const char *host,

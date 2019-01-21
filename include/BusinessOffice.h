@@ -11,7 +11,7 @@
 
 // Domain
 #include "BusinessEvent.h"
-#include "MarketDataEvent.h"
+#include "MarketEvent.h"
 #include "TriggerDifference.h"
 #include "MongoDBDriver.h"
 
@@ -21,9 +21,8 @@ using namespace std::chrono;
 class BusinessOffice {
 public:
 	BusinessOffice(
-			std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &inRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> &inRingBuffer,
 			std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &outRingBuffer,
-			int windowMs,
 			int orderDelaySec,
 			int maxOrders,
 			double diffOpen,
@@ -33,7 +32,7 @@ public:
 	);
 
 	inline void doWork() {
-		m_marketDataEventPoller->poll(m_marketDataEventHandler);
+		m_marketEventPoller->poll(m_marketEventHandler);
 
 		if (m_isOrderDelayed && ((time(nullptr) - m_lastOrderTime) < m_orderDelaySec)) {
 			return;
@@ -43,8 +42,8 @@ public:
 
 		bool canOpen = m_ordersCount < m_maxOrders;
 
-		double diffA = m_marketDataA.bid - m_marketDataB.offer;
-		double diffB = m_marketDataB.bid - m_marketDataA.offer;
+		double diffA = m_marketDataA.bid - m_marketDataBTrunc.offer;
+		double diffB = m_marketDataBTrunc.bid - m_marketDataA.offer;
 
 		switch (m_currentDiff) {
 			case DIFF_A:
@@ -60,6 +59,8 @@ public:
 					break;
 				}
 
+				break;
+
 			case DIFF_B:
 				if (canOpen && diffB >= m_diffOpen) {
 					m_currentOrder = DIFF_B;
@@ -72,6 +73,8 @@ public:
 					--m_ordersCount;
 					break;
 				}
+
+				break;
 
 			case DIFF_NONE:
 				if (diffA >= m_diffOpen) {
@@ -88,10 +91,11 @@ public:
 					break;
 				}
 
-		}
+				break;
 
-		if (m_ordersCount == 0) {
-			m_currentDiff = DIFF_NONE;
+			default:
+				break;
+
 		}
 
 		if (m_currentOrder == DIFF_NONE) {
@@ -99,6 +103,10 @@ public:
 		}
 
 		const char *orderType = m_currentOrder == m_currentDiff ? "OPEN" : "CLOSE";
+
+		if (m_ordersCount == 0) {
+			m_currentDiff = DIFF_NONE;
+		}
 
 		auto randomId = m_idGenerator();
 		sprintf(m_randomIdStrBuff, "%lu", randomId);
@@ -114,7 +122,7 @@ public:
 				m_outRingBuffer->publish(nextSequence);
 
 				m_systemLogger->info(
-						"{} bid: {} sequence: {} offer: {} sequence: {}",
+						"{} bid A: {} sequence A: {} offer B: {} sequence B: {}",
 						orderType,
 						m_marketDataA.bid,
 						m_marketDataA.sequence,
@@ -138,7 +146,7 @@ public:
 				m_outRingBuffer->publish(nextSequence);
 
 				m_systemLogger->info(
-						"{} bid: {} sequence: {} offer: {} sequence: {}",
+						"{} bid B: {} sequence B: {} offer A: {} sequence A: {}",
 						orderType,
 						m_marketDataB.bid,
 						m_marketDataB.sequence,
@@ -156,9 +164,11 @@ public:
 
 				break;
 
-			case DIFF_NONE:
+			default:
 				break;
 		}
+
+		m_currentOrder = DIFF_NONE;
 
 		m_marketDataA.bid = -99;
 		m_marketDataA.offer = 99;
@@ -166,19 +176,22 @@ public:
 		m_marketDataB.bid = -99;
 		m_marketDataB.offer = 99;
 
-		m_currentOrder = DIFF_NONE;
+		m_marketDataBTrunc.bid = -99;
+		m_marketDataBTrunc.offer = 99;
+
 		m_lastOrderTime = time(nullptr);
 		m_isOrderDelayed = true;
 
 		m_consoleLogger->info("{}", orderType);
 	}
 
-	void cleanup();
+	void initiate();
+
+	void terminate();
 
 private:
-	std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_inRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> m_inRingBuffer;
 	std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_outRingBuffer;
-	int m_windowMs;
 	int m_orderDelaySec;
 	int m_maxOrders;
 	double m_diffOpen;
@@ -186,15 +199,17 @@ private:
 	MongoDBDriver m_mongoDriver;
 	std::shared_ptr<spdlog::logger> m_consoleLogger;
 	std::shared_ptr<spdlog::logger> m_systemLogger;
-	std::shared_ptr<Disruptor::EventPoller<MarketDataEvent>> m_marketDataEventPoller;
-	std::function<bool(MarketDataEvent &, long, bool)> m_marketDataEventHandler;
-	MarketDataEvent m_marketDataA;
-	MarketDataEvent m_marketDataB;
+	std::shared_ptr<Disruptor::EventPoller<MarketEvent>> m_marketEventPoller;
+	std::function<bool(MarketEvent &, long, bool)> m_marketEventHandler;
+	MarketEvent m_marketDataA;
+	MarketEvent m_marketDataB;
+	MarketEvent m_marketDataBTrunc;
 	int m_ordersCount;
 	TriggerDifference m_currentDiff;
 	TriggerDifference m_currentOrder;
 	std::mt19937_64 m_idGenerator;
 	char m_randomIdStrBuff[64];
+	char m_truncStrBuff[9];
 	bool m_isOrderDelayed;
 	time_t m_lastOrderTime;
 };
