@@ -108,9 +108,9 @@ int main() {
 
 //		businessOffice.start();
 //		marketOfficeA.start();
-		marketOfficeB.start();
+//		marketOfficeB.start();
 //		tradeOfficeA.start();
-//		tradeOfficeB.start();
+		tradeOfficeB.start();
 
 		consoleLogger->info("Main OK");
 
