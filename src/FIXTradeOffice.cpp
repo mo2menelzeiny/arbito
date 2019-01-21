@@ -219,7 +219,6 @@ void FIXTradeOffice::work() {
 					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
 
 					systemLogger->info("[{}] Filled Px: {} id: {}", m_broker, fillPrice, clOrdIdStr);
-					systemLogger->flush();
 
 					std::thread([=, mongoDriver = &m_mongoDriver, broker = m_broker] {
 						mongoDriver->record(clOrdIdStr, orderIdStr, side, fillPrice, broker);
@@ -265,11 +264,10 @@ void FIXTradeOffice::work() {
 		businessPoller->poll(businessHandler);
 
 		if (!ordered) {
-			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = "TESTORDERCFD1";
+			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = "TESTORDERCFD2";
 			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_NOSBFixMessage);
-			systemLogger->info("ORDER");
-			systemLogger->flush();
+			systemLogger->info("TEST BUY");
 			ordered = true;
 		}
 	}

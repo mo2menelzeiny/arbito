@@ -106,10 +106,11 @@ int main() {
 				getenv("MONGO_DB")
 		);
 
-//		businessOffice.start();
-//		marketOfficeA.start();
+		businessOffice.start();
+		marketOfficeA.start();
 //		marketOfficeB.start();
 //		tradeOfficeA.start();
+		std::this_thread::sleep_for(seconds(1));
 		tradeOfficeB.start();
 
 		consoleLogger->info("Main OK");
