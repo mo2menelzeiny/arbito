@@ -243,6 +243,8 @@ void FIXTradeOffice::work() {
 		}
 	});
 
+	bool ordered = false;
+
 	while (m_running) {
 		if (!m_fixSession.isActive()) {
 
@@ -260,6 +262,13 @@ void FIXTradeOffice::work() {
 
 		m_fixSession.poll(onMessageHandler);
 		businessPoller->poll(businessHandler);
+
+		if (!ordered) {
+			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = clOrdIdStr;
+			fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_NOSSFixMessage);
+			ordered = true;
+		}
 	}
 
 	m_inRingBuffer->removeGatingSequence(businessPoller->sequence());
