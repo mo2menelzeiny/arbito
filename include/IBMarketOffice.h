@@ -13,12 +13,12 @@
 #include "Disruptor/Disruptor.h"
 
 // Domain
-#include "MarketDataEvent.h"
+#include "MarketEvent.h"
 
 class IBMarketOffice {
 public:
 	IBMarketOffice(
-			std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> &outRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> &outRingBuffer,
 			const char *broker,
 			double quantity
 	);
@@ -41,7 +41,7 @@ public:
 	void cleanup();
 
 private:
-	std::shared_ptr<Disruptor::RingBuffer<MarketDataEvent>> m_outRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> m_outRingBuffer;
 	const char *m_broker;
 	double m_quantity;
 	std::shared_ptr<spdlog::logger> m_consoleLogger;
