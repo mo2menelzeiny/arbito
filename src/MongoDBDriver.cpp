@@ -39,8 +39,8 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 			"timestamp", BCON_DATE_TIME(nowMs),
 			"clOrdId", BCON_UTF8(clOrdId),
 			"orderType", BCON_UTF8(orderType),
-			"sell", BCON_DOUBLE(bid),
-			"buy", BCON_DOUBLE(offer)
+			"bid", BCON_DOUBLE(bid),
+			"offer", BCON_DOUBLE(offer)
 	);
 
 	if (!mongoc_collection_insert_one(m_collection, insert, nullptr, nullptr, &error)) {
