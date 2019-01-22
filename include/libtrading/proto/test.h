@@ -30,3 +30,4 @@ int script_read(FILE *stream, struct fcontainer *server, struct fcontainer *clie
 int fmsgcmp(struct fix_message *expected, struct fix_message *actual);
 void fprintmsg_iov(FILE *stream, struct fix_message *msg);
 void fprintmsg(FILE *stream, struct fix_message *msg);
+void msg_string(char *buf, struct fix_message *msg);

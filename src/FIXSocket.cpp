@@ -86,7 +86,13 @@ void FIXSocket::terminate() {
 		return;
 	}
 
+	if (m_ssl == nullptr) {
+		return;
+	}
+
 	SSL_free(m_ssl);
+	m_ssl = nullptr;
+
 	ERR_free_strings();
 	EVP_cleanup();
 }

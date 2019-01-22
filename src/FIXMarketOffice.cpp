@@ -25,7 +25,21 @@ FIXMarketOffice::FIXMarketOffice(
 		    target,
 		    heartbeat,
 		    sslEnabled
-    ) {
+    ),
+    m_consoleLogger(spdlog::get("console")),
+    m_systemLogger(spdlog::get("system")),
+    m_sequence(0),
+    m_offerIdx(strcmp(m_broker, "LMAX") ? 4 : 2),
+    m_offerQtyIdx(m_offerIdx - 1) {
+
+	if (!strcmp(m_broker, "LMAX")) {
+		m_brokerEnum = LMAX;
+	}
+
+	if (!strcmp(m_broker, "SWISSQUOTE")) {
+		m_brokerEnum = SWISSQUOTE;
+	}
+
 	if (!strcmp(broker, "LMAX")) {
 		struct fix_field fields[] = {
 				FIX_STRING_FIELD(MDReqID, "MARKET-DATA-REQUEST"),
@@ -66,14 +80,6 @@ FIXMarketOffice::FIXMarketOffice(
 	m_MDRFixMessage.type = FIX_MSG_TYPE_MARKET_DATA_REQUEST;
 	m_MDRFixMessage.fields = m_MDRFields;
 
-	m_consoleLogger = spdlog::get("console");
-	m_systemLogger = spdlog::get("system");
-
-	m_sequence = 0;
-
-	m_offerIdx = strcmp(m_broker, "LMAX") ? 4 : 2;
-	m_offerQtyIdx = m_offerIdx - 1;
-
 	m_onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
 		switch (msg->type) {
 			case FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
@@ -92,6 +98,7 @@ FIXMarketOffice::FIXMarketOffice(
 				(*m_outRingBuffer)[nextSequence].bid = bid;
 				(*m_outRingBuffer)[nextSequence].offer = offer;
 				(*m_outRingBuffer)[nextSequence].sequence = m_sequence;
+				(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
 				m_outRingBuffer->publish(nextSequence);
 
 				m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, m_sequence, bid, offer);
@@ -99,14 +106,21 @@ FIXMarketOffice::FIXMarketOffice(
 				break;
 
 			default:
-				m_consoleLogger->error("[{}] Market Office Unhandled FAILED", m_broker);
-				fprintmsg_iov(stdout, msg);
-
+				char text[256];
+				msg_string(text, msg);
+				m_consoleLogger->error("[{}] Market Office Unhandled FAILED {}", m_broker, text);
 				break;
 		}
 	});
 }
 
-void FIXMarketOffice::cleanup() {
+void FIXMarketOffice::initiate() {
+	m_fixSession.initiate();
+	m_fixSession.send(&m_MDRFixMessage);
+	m_consoleLogger->info("[{}] Market Office OK", m_broker);
+}
+
+void FIXMarketOffice::terminate() {
 	m_fixSession.terminate();
 }
+

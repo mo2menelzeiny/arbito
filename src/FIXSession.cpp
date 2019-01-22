@@ -50,8 +50,8 @@ void FIXSession::terminate() {
 		return;
 	}
 
-	m_session->active = false;
 	fix_session_free(m_session);
+	m_session = nullptr;
 }
 
 

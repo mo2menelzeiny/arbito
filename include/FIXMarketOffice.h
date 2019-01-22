@@ -30,25 +30,12 @@ public:
 	);
 
 	inline void doWork() {
-		if (!m_fixSession.isActive()) {
-
-			try {
-				m_fixSession.initiate();
-			} catch (std::exception &ex) {
-				char message[64];
-				sprintf(message, "[%s] Market Office %s", m_broker, ex.what());
-				throw std::runtime_error(message);
-			}
-
-			m_fixSession.send(&m_MDRFixMessage);
-			m_consoleLogger->info("[{}] Market Office OK", m_broker);
-			return;
-		}
-
 		m_fixSession.poll(m_onMessageHandler);
 	}
 
-	void cleanup();
+	void initiate();
+
+	void terminate();
 
 private:
 	std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> m_outRingBuffer;
@@ -63,6 +50,7 @@ private:
 	OnMessageHandler m_onMessageHandler;
 	unsigned long m_offerIdx;
 	unsigned long m_offerQtyIdx;
+	BrokerEnum m_brokerEnum;
 };
 
 
