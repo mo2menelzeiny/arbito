@@ -58,13 +58,13 @@ public:
 
 			if (!fix_session_keepalive(m_session, &currentTimespec)) {
 				m_session->active = false;
-				return;
+				throw std::runtime_error("Session keep alive FAILED");
 			}
 		}
 
 		if (fix_session_time_update(m_session)) {
 			m_session->active = false;
-			return;
+			throw std::runtime_error("Session time update FAILED");
 		}
 
 		struct fix_message *msg = nullptr;
@@ -78,7 +78,7 @@ public:
 			}
 
 			m_session->active = false;
-			return;
+			throw std::runtime_error("Session FAILED");
 		}
 
 		switch (msg->type) {
