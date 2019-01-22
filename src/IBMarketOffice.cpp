@@ -51,7 +51,7 @@ IBMarketOffice::IBMarketOffice(
 
 	m_onErrorHandler = OnErrorHandler([&](int errorCode, const std::string &errorString) {
 		switch (errorCode) {
-			case 2014:
+			case 2104:
 			case 2106:
 				break;
 			default:
