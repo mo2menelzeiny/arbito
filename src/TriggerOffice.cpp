@@ -24,10 +24,10 @@ TriggerOffice::TriggerOffice(
     m_currentOrder(DIFF_NONE),
     m_isOrderDelayed(false),
     m_lastOrderTime(time(nullptr)),
-    m_marketEventPoller(m_inRingBuffer->newPoller()),
-    m_marketDataA{.bid = -99, .offer = 99},
-    m_marketDataB{.bid = -99, .offer = 99},
-    m_marketDataBTrunc{.bid = -99, .offer = 99} {
+    m_priceEventPoller(m_inRingBuffer->newPoller()),
+    m_priceA{.bid = -99, .offer = 99},
+    m_priceB{.bid = -99, .offer = 99},
+    m_priceBTrunc{.bid = -99, .offer = 99} {
 
 	// TODO: temporary to keep state
 	m_ordersCount = stoi(getenv("ORDERS_COUNT"));
@@ -40,22 +40,22 @@ TriggerOffice::TriggerOffice(
 		m_currentDiff = DIFF_B;
 	}
 
-	m_marketEventHandler = [&](PriceEvent &event, int64_t seq, bool endOfBatch) -> bool {
+	m_priceEventHandler = [&](PriceEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		switch (event.broker) {
 			case LMAX:
-				m_marketDataA = event;
+				m_priceA = event;
 				break;
 
 			case IB:
 				sprintf(m_truncStrBuff, "%lf", event.bid);
 				m_truncStrBuff[6] = '0';
-				m_marketDataBTrunc.bid = stof(m_truncStrBuff);
+				m_priceBTrunc.bid = stof(m_truncStrBuff);
 
 				sprintf(m_truncStrBuff, "%lf", event.offer);
 				m_truncStrBuff[6] = '0';
-				m_marketDataBTrunc.offer = stof(m_truncStrBuff);;
+				m_priceBTrunc.offer = stof(m_truncStrBuff);;
 
-				m_marketDataB = event;
+				m_priceB = event;
 				break;
 
 			default:
@@ -67,11 +67,11 @@ TriggerOffice::TriggerOffice(
 }
 
 void TriggerOffice::initiate() {
-	m_inRingBuffer->addGatingSequences({m_marketEventPoller->sequence()});
-	m_consoleLogger->info("Business Office OK");
+	m_inRingBuffer->addGatingSequences({m_priceEventPoller->sequence()});
+	m_consoleLogger->info("Trigger Office OK");
 }
 
 void TriggerOffice::terminate() {
-	m_inRingBuffer->removeGatingSequence({m_marketEventPoller->sequence()});
+	m_inRingBuffer->removeGatingSequence({m_priceEventPoller->sequence()});
 }
 

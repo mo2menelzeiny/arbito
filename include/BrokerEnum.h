@@ -5,7 +5,6 @@
 enum BrokerEnum {
 	LMAX,
 	IB,
-	SWISSQUOTE,
 	NONE
 };
 

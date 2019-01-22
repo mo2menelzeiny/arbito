@@ -34,7 +34,7 @@ public:
 
 	inline void doWork() {
 		m_fixSession.poll(m_onMessageHandler);
-		m_businessEventPoller->poll(m_businessEventHandler);
+		m_orderEventPoller->poll(m_orderEventHandler);
 	}
 
 	void initiate();
@@ -56,8 +56,8 @@ private:
 	BrokerEnum m_brokerEnum;
 	char m_clOrdIdStrBuff[64];
 	char m_orderIdStrBuff[64];
-	std::shared_ptr<Disruptor::EventPoller<OrderEvent>> m_businessEventPoller;
-	std::function<bool(OrderEvent &, long, bool)> m_businessEventHandler;
+	std::shared_ptr<Disruptor::EventPoller<OrderEvent>> m_orderEventPoller;
+	std::function<bool(OrderEvent &, long, bool)> m_orderEventHandler;
 	OnMessageHandler m_onMessageHandler;
 };
 
