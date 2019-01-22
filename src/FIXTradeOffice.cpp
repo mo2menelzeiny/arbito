@@ -42,7 +42,9 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_CHAR_FIELD(Side, '2'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
-				FIX_CHAR_FIELD(OrdType, '1')
+				FIX_CHAR_FIELD(OrdType, '2'),
+				FIX_CHAR_FIELD(TimeInForce, '4'),
+				FIX_FLOAT_FIELD(Price, 0)
 		};
 		unsigned long size = ARRAY_SIZE(NOSSFields);
 		m_NOSSFields = (fix_field *) malloc(size * sizeof(fix_field));
@@ -56,7 +58,9 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_CHAR_FIELD(Side, '1'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
-				FIX_CHAR_FIELD(OrdType, '1')
+				FIX_CHAR_FIELD(OrdType, '2'),
+				FIX_CHAR_FIELD(TimeInForce, '4'),
+				FIX_FLOAT_FIELD(Price, 0)
 		};
 
 		size = ARRAY_SIZE(NOSBFields);
@@ -103,11 +107,12 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_CHAR_FIELD(Side, '2'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
-				FIX_CHAR_FIELD(OrdType, '1'),
+				FIX_CHAR_FIELD(OrdType, '2'),
 				FIX_STRING_FIELD(Account, "U2707646"),
 				FIX_INT_FIELD(CustomerOrFirm, 0),
 				FIX_STRING_FIELD(ExDestination, "SMART"),
-				FIX_CHAR_FIELD(TimeInForce, '4')
+				FIX_CHAR_FIELD(TimeInForce, '3'),
+				FIX_FLOAT_FIELD(Price, 0)
 		};
 		unsigned long size = ARRAY_SIZE(NOSSFields);
 		m_NOSSFields = (fix_field *) malloc(size * sizeof(fix_field));
@@ -122,11 +127,12 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_CHAR_FIELD(Side, '1'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
-				FIX_CHAR_FIELD(OrdType, '1'),
+				FIX_CHAR_FIELD(OrdType, '2'),
 				FIX_STRING_FIELD(Account, "U2707646"),
 				FIX_INT_FIELD(CustomerOrFirm, 0),
 				FIX_STRING_FIELD(ExDestination, "SMART"),
-				FIX_CHAR_FIELD(TimeInForce, '4')
+				FIX_CHAR_FIELD(TimeInForce, '3'),
+				FIX_FLOAT_FIELD(Price, 0)
 		};
 
 		size = ARRAY_SIZE(NOSBFields);
