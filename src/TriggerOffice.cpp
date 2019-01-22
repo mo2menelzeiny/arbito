@@ -1,9 +1,9 @@
 
-#include <BusinessOffice.h>
+#include <TriggerOffice.h>
 
-BusinessOffice::BusinessOffice(
-		std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> &inRingBuffer,
-		std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &outRingBuffer,
+TriggerOffice::TriggerOffice(
+		std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> &inRingBuffer,
+		std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &outRingBuffer,
 		int orderDelaySec,
 		int maxOrders,
 		double diffOpen,
@@ -40,7 +40,7 @@ BusinessOffice::BusinessOffice(
 		m_currentDiff = DIFF_B;
 	}
 
-	m_marketEventHandler = [&](MarketEvent &event, int64_t seq, bool endOfBatch) -> bool {
+	m_marketEventHandler = [&](PriceEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		switch (event.broker) {
 			case LMAX:
 				m_marketDataA = event;
@@ -66,12 +66,12 @@ BusinessOffice::BusinessOffice(
 	};
 }
 
-void BusinessOffice::initiate() {
+void TriggerOffice::initiate() {
 	m_inRingBuffer->addGatingSequences({m_marketEventPoller->sequence()});
 	m_consoleLogger->info("Business Office OK");
 }
 
-void BusinessOffice::terminate() {
+void TriggerOffice::terminate() {
 	m_inRingBuffer->removeGatingSequence({m_marketEventPoller->sequence()});
 }
 

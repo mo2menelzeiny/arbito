@@ -12,12 +12,12 @@
 // Domain
 #include "FIXSession.h"
 #include "MongoDBDriver.h"
-#include "BusinessEvent.h"
+#include "OrderEvent.h"
 
 class FIXTradeOffice {
 public:
 	FIXTradeOffice(
-			std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &inRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &inRingBuffer,
 			const char *broker,
 			double quantity,
 			const char *host,
@@ -42,7 +42,7 @@ public:
 	void terminate();
 
 private:
-	std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_inRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> m_inRingBuffer;
 	const char *m_broker;
 	double m_quantity;
 	struct fix_field *m_NOSSFields;
@@ -56,8 +56,8 @@ private:
 	BrokerEnum m_brokerEnum;
 	char m_clOrdIdStrBuff[64];
 	char m_orderIdStrBuff[64];
-	std::shared_ptr<Disruptor::EventPoller<BusinessEvent>> m_businessEventPoller;
-	std::function<bool(BusinessEvent &, long, bool)> m_businessEventHandler;
+	std::shared_ptr<Disruptor::EventPoller<OrderEvent>> m_businessEventPoller;
+	std::function<bool(OrderEvent &, long, bool)> m_businessEventHandler;
 	OnMessageHandler m_onMessageHandler;
 };
 

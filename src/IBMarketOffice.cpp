@@ -2,7 +2,7 @@
 #include <IBMarketOffice.h>
 
 IBMarketOffice::IBMarketOffice(
-		std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> &outRingBuffer,
+		std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> &outRingBuffer,
 		const char *broker,
 		double quantity
 ) : m_outRingBuffer(outRingBuffer),

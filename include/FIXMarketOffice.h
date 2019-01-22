@@ -11,12 +11,12 @@
 
 // Domain
 #include "FIXSession.h"
-#include "MarketEvent.h"
+#include "PriceEvent.h"
 
 class FIXMarketOffice {
 public:
 	FIXMarketOffice(
-			std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> &outRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> &outRingBuffer,
 			const char *broker,
 			double quantity,
 			const char *host,
@@ -38,7 +38,7 @@ public:
 	void terminate();
 
 private:
-	std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> m_outRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> m_outRingBuffer;
 	const char *m_broker;
 	double m_quantity;
 	struct fix_field *m_MDRFields;

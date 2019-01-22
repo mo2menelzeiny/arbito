@@ -13,12 +13,12 @@
 #include "IBAPI/IBClient/IBClient.h"
 
 // Domain
-#include "MarketEvent.h"
+#include "PriceEvent.h"
 
 class IBMarketOffice {
 public:
 	IBMarketOffice(
-			std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> &outRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> &outRingBuffer,
 			const char *broker,
 			double quantity
 	);
@@ -36,7 +36,7 @@ public:
 	void terminate();
 
 private:
-	std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> m_outRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> m_outRingBuffer;
 	const char *m_broker;
 	double m_quantity;
 	std::shared_ptr<spdlog::logger> m_consoleLogger;

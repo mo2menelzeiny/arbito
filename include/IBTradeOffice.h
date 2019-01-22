@@ -14,13 +14,13 @@
 
 // Mongo
 #include "MongoDBDriver.h"
-#include "BusinessEvent.h"
+#include "OrderEvent.h"
 
 
 class IBTradeOffice {
 public:
 	IBTradeOffice(
-			std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &inRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &inRingBuffer,
 			int cpuset,
 			const char *broker,
 			double quantity,
@@ -36,7 +36,7 @@ private:
 	void work();
 
 private:
-	std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_inRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> m_inRingBuffer;
 	int m_cpuset;
 	const char *m_broker;
 	double m_quantity;

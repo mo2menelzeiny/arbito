@@ -2,7 +2,7 @@
 #include "IBTradeOffice.h"
 
 IBTradeOffice::IBTradeOffice(
-		std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &inRingBuffer,
+		std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &inRingBuffer,
 		int cpuset,
 		const char *broker,
 		double quantity,
@@ -72,7 +72,7 @@ void IBTradeOffice::work() {
 
 	m_inRingBuffer->addGatingSequences({businessPoller->sequence()});
 
-	auto businessHandler = [&](BusinessEvent &event, int64_t seq, bool endOfBatch) -> bool {
+	auto businessHandler = [&](OrderEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		if (event.buy == IB) {
 			ibClient.placeMarketOrder("BUY", m_quantity);
 		}
