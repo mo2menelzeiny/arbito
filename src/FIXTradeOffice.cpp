@@ -106,7 +106,8 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_CHAR_FIELD(OrdType, '1'),
 				FIX_STRING_FIELD(Account, "U2707646"),
 				FIX_INT_FIELD(CustomerOrFirm, 0),
-				FIX_STRING_FIELD(ExDestination, "SMART")
+				FIX_STRING_FIELD(ExDestination, "SMART"),
+				FIX_CHAR_FIELD(TimeInForce, '4')
 		};
 		unsigned long size = ARRAY_SIZE(NOSSFields);
 		m_NOSSFields = (fix_field *) malloc(size * sizeof(fix_field));
@@ -124,7 +125,8 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_CHAR_FIELD(OrdType, '1'),
 				FIX_STRING_FIELD(Account, "U2707646"),
 				FIX_INT_FIELD(CustomerOrFirm, 0),
-				FIX_STRING_FIELD(ExDestination, "SMART")
+				FIX_STRING_FIELD(ExDestination, "SMART"),
+				FIX_CHAR_FIELD(TimeInForce, '4')
 		};
 
 		size = ARRAY_SIZE(NOSBFields);
