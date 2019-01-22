@@ -2,15 +2,15 @@
 #ifndef ARBITO_IBMARKETOFFICE_H
 #define ARBITO_IBMARKETOFFICE_H
 
-// IB
-#include "IBAPI/IBClient/IBClient.h"
-
 //SPDLOG
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/daily_file_sink.h"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/daily_file_sink.h>
 
 // Disruptor
-#include "Disruptor/Disruptor.h"
+#include <Disruptor/Disruptor.h>
+
+// IB
+#include "IBAPI/IBClient/IBClient.h"
 
 // Domain
 #include "MarketEvent.h"
@@ -25,20 +25,15 @@ public:
 
 	inline void doWork() {
 		if (!m_ibClient->isConnected()) {
-			if (!m_ibClient->connect("127.0.0.1", 4002, 0)) {
-				char message[64];
-				sprintf(message, "[%s] Market Office Client FAILED" , m_broker);
-				throw std::runtime_error(message);
-			}
-
-			m_ibClient->subscribeToFeed();
-			m_consoleLogger->info("[{}] Market Office OK", m_broker);
+			throw std::runtime_error("API Client disconnected FAILED");
 		}
 
 		m_ibClient->processMessages();
 	}
 
-	void cleanup();
+	void initiate();
+
+	void terminate();
 
 private:
 	std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> m_outRingBuffer;

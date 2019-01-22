@@ -50,13 +50,16 @@ public:
 
 	template<typename F>
 	inline void poll(F &&onMessageHandler) {
-		struct timespec currentTimespec{};
-		clock_gettime(CLOCK_MONOTONIC, &currentTimespec);
+		if (!m_session->active) {
+			throw std::runtime_error("Session FAILED");
+		}
 
-		if ((currentTimespec.tv_sec - m_lastTimespec.tv_sec) > 0.1 * m_session->heartbtint) {
-			m_lastTimespec = currentTimespec;
+		clock_gettime(CLOCK_MONOTONIC, &m_currentTimespec);
 
-			if (!fix_session_keepalive(m_session, &currentTimespec)) {
+		if ((m_currentTimespec.tv_sec - m_lastTimespec.tv_sec) > 0.1 * m_session->heartbtint) {
+			m_lastTimespec = m_currentTimespec;
+
+			if (!fix_session_keepalive(m_session, &m_currentTimespec)) {
 				m_session->active = false;
 				throw std::runtime_error("Session keep alive FAILED");
 			}
@@ -78,7 +81,7 @@ public:
 			}
 
 			m_session->active = false;
-			throw std::runtime_error("Session FAILED");
+			throw std::runtime_error("Session unhandled FAILED");
 		}
 
 		switch (msg->type) {
@@ -104,6 +107,7 @@ private:
 	struct fix_session_cfg m_cfg;
 	struct fix_session *m_session = nullptr;
 	struct timespec m_lastTimespec{};
+	struct timespec m_currentTimespec{};
 };
 
 
