@@ -39,7 +39,11 @@ void IBTradeOffice::work() {
 	auto consoleLogger = spdlog::get("console");
 	auto systemLogger = spdlog::get("system");
 
-	auto onTickHandler = OnTickHandler([&](TickType tickType, double value) {
+	auto onTickHandler = OnTickHandler([&](int side, double price, int size) {
+		// do nothing
+	});
+
+	auto onErrorHandler = OnErrorHandler([&](int errorCode, const std::string &errorString) {
 		// do nothing
 	});
 
@@ -62,7 +66,7 @@ void IBTradeOffice::work() {
 		lastRecordedOrderId = orderId;
 	});
 
-	IBClient ibClient(onTickHandler, onOrderStatus);
+	IBClient ibClient(onTickHandler, onOrderStatus, onErrorHandler);
 
 	auto businessPoller = m_inRingBuffer->newPoller();
 

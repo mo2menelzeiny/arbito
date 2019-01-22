@@ -105,16 +105,18 @@ enum State {
 	ST_IDLE
 };
 
-typedef std::function<void(TickType field, double value)> OnTickHandler;
+typedef std::function<void(int side, double price, int size)> OnTickHandler;
 
 typedef std::function<void(OrderId orderId, const std::string &status, double avgFillPrice)> OnOrderStatusHandler;
+
+typedef std::function<void(int errorCode, const std::string &errorString)> OnErrorHandler;
 
 //! [ewrapperimpl]
 class IBClient : public EWrapper {
 //! [ewrapperimpl]
 public:
 
-	IBClient(OnTickHandler &onTickHandler, OnOrderStatusHandler &onOrderStatusHandler);
+	IBClient(OnTickHandler &onTickHandler, OnOrderStatusHandler &onOrderStatusHandler, OnErrorHandler &onErrorHandler);
 
 	~IBClient();
 
@@ -235,6 +237,7 @@ private:
 private:
 	OnTickHandler m_onTickHandler;
 	OnOrderStatusHandler m_onOrderStatus;
+	OnErrorHandler m_onErrorHandler;
 
 	//! [socket_declare]
 	EReaderOSSignal m_osSignal;

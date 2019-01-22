@@ -15,18 +15,15 @@ IBMarketOffice::IBMarketOffice(
     m_bidQty(0),
     m_offer(99),
     m_offerQty(0) {
-	m_onTickHandler = OnTickHandler([&](TickType tickType, double value) {
-		switch (tickType) {
-			case ASK:
-				m_offer = value;
+	m_onTickHandler = OnTickHandler([&](int side, double price, int size) {
+		switch (side) {
+			case 0:
+				m_offer = price;
+				m_offerQty = size;
 				break;
-			case BID:
-				m_bid = value;
-				break;
-			case BID_SIZE:
-				m_bidQty = value;
-			case ASK_SIZE:
-				m_offerQty = value;
+			case 1:
+				m_bid = price;
+				m_bidQty = size;
 				break;
 			default:
 				break;
@@ -52,7 +49,11 @@ IBMarketOffice::IBMarketOffice(
 		// do nothing
 	});
 
-	m_ibClient = new IBClient(m_onTickHandler, m_onOrderStatusHandler);
+	m_onErrorHandler = OnErrorHandler([&](int errorCode, const std::string &errorString) {
+		m_consoleLogger->error("[{}] Market Office FAILED {} {}", m_broker, errorCode, errorString);
+	});
+
+	m_ibClient = new IBClient(m_onTickHandler, m_onOrderStatusHandler, m_onErrorHandler);
 }
 
 void IBMarketOffice::initiate() {
