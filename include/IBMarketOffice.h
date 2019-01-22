@@ -49,6 +49,7 @@ private:
 	IBClient *m_ibClient;
 	OnTickHandler m_onTickHandler;
 	OnOrderStatusHandler m_onOrderStatusHandler;
+	OnErrorHandler m_onErrorHandler;
 };
 
 
