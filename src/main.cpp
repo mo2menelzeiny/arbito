@@ -16,33 +16,26 @@
 #include <IBTradeOffice.h>
 
 int main() {
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(3, &cpuset);
-	pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-	pthread_setname_np(pthread_self(), "arbito-core");
-
 	std::atomic_bool isRunning(true);
 
 	auto consoleLogger = spdlog::stdout_logger_st<spdlog::async_factory_nonblock>("console");
 	auto marketLogger = spdlog::daily_logger_st<spdlog::async_factory_nonblock>("system", "log");
 
-	auto marketDataRingBuffer = Disruptor::RingBuffer<MarketDataEvent>::createMultiProducer(
-			[]() { return MarketDataEvent(); },
-			8,
+	auto marketDataRingBuffer = Disruptor::RingBuffer<MarketEvent>::createMultiProducer(
+			[]() { return MarketEvent(); },
+			32,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
 	auto businessRingBuffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
 			[]() { return BusinessEvent(); },
-			8,
+			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
 	BusinessOffice businessOffice(
 			marketDataRingBuffer,
 			businessRingBuffer,
-			stoi(getenv("WINDOW_MS")),
 			stoi(getenv("ORDER_DELAY_SEC")),
 			stoi(getenv("MAX_ORDERS")),
 			stof(getenv("DIFF_OPEN")),
@@ -64,7 +57,7 @@ int main() {
 			getenv("MO_A_SENDER"),
 			getenv("MO_A_TARGET"),
 			stoi(getenv("HEARTBEAT")),
-			true
+			false
 	);
 
 	FIXTradeOffice tradeOfficeA(
@@ -78,7 +71,7 @@ int main() {
 			getenv("TO_A_SENDER"),
 			getenv("TO_A_TARGET"),
 			stoi(getenv("HEARTBEAT")),
-			true,
+			false,
 			getenv("MONGO_URI"),
 			getenv("MONGO_DB")
 	);
@@ -107,41 +100,130 @@ int main() {
 			getenv("MONGO_DB")
 	);
 
-	using namespace std::chrono;
-	long counter = 0, duration = 0, max = 0, total = 0;
-	time_point<system_clock> start, end;
-
 	try {
 
-		while (isRunning) {
-			start = system_clock::now();
+		while (true) {
+			auto businessThread = std::thread([&] {
+				cpu_set_t cpuset;
+				CPU_ZERO(&cpuset);
+				CPU_SET(1, &cpuset);
+				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+				pthread_setname_np(pthread_self(), "arbito-business");
 
-			marketOfficeA.doWork();
-			marketOfficeB.doWork();
-			businessOffice.doWork();
-			tradeOfficeA.doWork();
-			tradeOfficeB.doWork();
+				while (isRunning) {
+					businessOffice.doWork();
+				}
 
-			end = system_clock::now();
+				businessOffice.terminate();
+			});
 
-			duration = duration_cast<nanoseconds>(end - start).count();
-			total += duration;
-			++counter;
+			auto tradeThreadA = std::thread([&] {
+				cpu_set_t cpuset;
+				CPU_ZERO(&cpuset);
+				CPU_SET(2, &cpuset);
+				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+				pthread_setname_np(pthread_self(), "arbito-trade");
 
-			if (duration > max) {
-				max = duration;
+				try {
+
+					tradeOfficeA.initiate();
+
+					while (isRunning) {
+						tradeOfficeA.doWork();
+					}
+
+				} catch (std::exception &ex) {
+					consoleLogger->error("[{}] Trade Office {}", getenv("BROKER_A"), ex.what());
+					isRunning = false;
+				}
+
+				tradeOfficeA.terminate();
+			});
+
+			auto tradeThreadB = std::thread([&] {
+				cpu_set_t cpuset;
+				CPU_ZERO(&cpuset);
+				CPU_SET(3, &cpuset);
+				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+				pthread_setname_np(pthread_self(), "arbito-trade");
+
+				try {
+
+					tradeOfficeB.initiate();
+
+					while (isRunning) {
+						tradeOfficeB.doWork();
+					}
+
+				} catch (std::exception &ex) {
+					consoleLogger->error("[{}] Trade Office {}", getenv("BROKER_B"), ex.what());
+					isRunning = false;
+				}
+
+				tradeOfficeB.terminate();
+			});
+
+			auto marketThreadA = std::thread([&] {
+				cpu_set_t cpuset;
+				CPU_ZERO(&cpuset);
+				CPU_SET(4, &cpuset);
+				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+				pthread_setname_np(pthread_self(), "arbito-market");
+
+				try {
+
+					marketOfficeA.initiate();
+
+					while (isRunning) {
+						marketOfficeA.doWork();
+					}
+
+				} catch (std::exception &ex) {
+					consoleLogger->error("[{}] Market Office {}", getenv("BROKER_A"), ex.what());
+					isRunning = false;
+				}
+
+				marketOfficeA.terminate();
+			});
+
+			auto marketThreadB = std::thread([&] {
+				cpu_set_t cpuset;
+				CPU_ZERO(&cpuset);
+				CPU_SET(5, &cpuset);
+				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+				pthread_setname_np(pthread_self(), "arbito-market");
+
+				try {
+
+					marketOfficeB.initiate();
+
+					while (isRunning) {
+						marketOfficeB.doWork();
+					}
+
+				} catch (std::exception &ex) {
+					consoleLogger->error("[{}] Market Office {}", getenv("BROKER_B"), ex.what());
+					isRunning = false;
+				}
+
+				marketOfficeB.terminate();
+			});
+
+			while (isRunning) {
+				std::this_thread::sleep_for(milliseconds(10));
 			}
 
-			if (counter > 1000000) {
-				printf("max: %li avg: %li \n", max, total / counter);
-				max = 0;
-				counter = 0;
-				total = 0;
-			}
+			businessThread.join();
+			tradeThreadA.join();
+			tradeThreadB.join();
+			marketThreadA.join();
+			marketThreadB.join();
+
+			std::this_thread::sleep_for(seconds(30));
 		}
 
 	} catch (std::exception &ex) {
-		consoleLogger->error("{}", ex.what());
+		consoleLogger->error("MAIN {}", ex.what());
 	}
 
 	return EXIT_FAILURE;
