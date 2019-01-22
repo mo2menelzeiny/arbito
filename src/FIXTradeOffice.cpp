@@ -195,8 +195,8 @@ FIXTradeOffice::FIXTradeOffice(
 				}
 
 				if (execType == '8' || execType == 'H') {
-					char text[256];
-					msg_string(text, msg);
+					char text[512];
+					msg_string(text, msg, 512);
 					m_consoleLogger->error("[{}] Trade Office Order FAILED", m_broker, text);
 					m_systemLogger->error("[{}] Cancelled id: {}", m_broker, m_clOrdIdStrBuff);
 				}
@@ -205,8 +205,8 @@ FIXTradeOffice::FIXTradeOffice(
 				break;
 
 			default:
-				char text[256];
-				msg_string(text, msg);
+				char text[512];
+				msg_string(text, msg, 512);
 				m_consoleLogger->error("[{}] Trade Office Unhandled FAILED {}", m_broker, text);
 				break;
 		}

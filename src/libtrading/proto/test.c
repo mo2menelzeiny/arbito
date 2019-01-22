@@ -358,10 +358,9 @@ void fprintmsg_iov(FILE *stream, struct fix_message *msg)
 	return;
 }
 
-void msg_string(char *buf, struct fix_message *msg)
+void msg_string(char *buf, struct fix_message *msg, int size)
 {
 	struct fix_field *field;
-	int size = 256;
 	char delim = '|';
 	int len = 0;
 	int i;

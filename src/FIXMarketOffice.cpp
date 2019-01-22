@@ -106,8 +106,8 @@ FIXMarketOffice::FIXMarketOffice(
 				break;
 
 			default:
-				char text[256];
-				msg_string(text, msg);
+				char text[512];
+				msg_string(text, msg, 512);
 				m_consoleLogger->error("[{}] Market Office Unhandled FAILED {}", m_broker, text);
 				break;
 		}
