@@ -50,7 +50,14 @@ IBMarketOffice::IBMarketOffice(
 	});
 
 	m_onErrorHandler = OnErrorHandler([&](int errorCode, const std::string &errorString) {
-		m_consoleLogger->error("[{}] Market Office FAILED {} {}", m_broker, errorCode, errorString);
+		switch (errorCode) {
+			case 2014:
+			case 2106:
+				break;
+			default:
+				m_consoleLogger->error("[{}] Market Office FAILED {} {}", m_broker, errorCode, errorString);
+				break;
+		}
 	});
 
 	m_ibClient = new IBClient(m_onTickHandler, m_onOrderStatusHandler, m_onErrorHandler);
@@ -66,7 +73,7 @@ void IBMarketOffice::initiate() {
 }
 
 void IBMarketOffice::terminate() {
-	if(!m_ibClient->isConnected()) {
+	if (!m_ibClient->isConnected()) {
 		return;
 	}
 
