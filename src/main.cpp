@@ -9,7 +9,7 @@
 #include <spdlog/sinks/daily_file_sink.h>
 
 // Domain
-#include <BusinessOffice.h>
+#include <TriggerOffice.h>
 #include <FIXMarketOffice.h>
 #include <FIXTradeOffice.h>
 #include <IBMarketOffice.h>
@@ -21,21 +21,21 @@ int main() {
 	auto consoleLogger = spdlog::stdout_logger_st<spdlog::async_factory_nonblock>("console");
 	auto marketLogger = spdlog::daily_logger_st<spdlog::async_factory_nonblock>("system", "log");
 
-	auto marketDataRingBuffer = Disruptor::RingBuffer<MarketEvent>::createMultiProducer(
-			[]() { return MarketEvent(); },
+	auto pricesRingBuffer = Disruptor::RingBuffer<PriceEvent>::createMultiProducer(
+			[]() { return PriceEvent(); },
 			32,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
-	auto businessRingBuffer = Disruptor::RingBuffer<BusinessEvent>::createSingleProducer(
-			[]() { return BusinessEvent(); },
+	auto ordersRingBuffer = Disruptor::RingBuffer<OrderEvent>::createMultiProducer(
+			[]() { return OrderEvent(); },
 			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
-	BusinessOffice businessOffice(
-			marketDataRingBuffer,
-			businessRingBuffer,
+	TriggerOffice triggerOffice(
+			pricesRingBuffer,
+			ordersRingBuffer,
 			stoi(getenv("ORDER_DELAY_SEC")),
 			stoi(getenv("MAX_ORDERS")),
 			stof(getenv("DIFF_OPEN")),
@@ -47,7 +47,7 @@ int main() {
 	// BROKER A
 
 	FIXMarketOffice marketOfficeA(
-			marketDataRingBuffer,
+			pricesRingBuffer,
 			getenv("BROKER_A"),
 			stof(getenv("QTY_A")),
 			getenv("MO_A_HOST"),
@@ -61,7 +61,7 @@ int main() {
 	);
 
 	FIXTradeOffice tradeOfficeA(
-			businessRingBuffer,
+			ordersRingBuffer,
 			getenv("BROKER_A"),
 			stof(getenv("QTY_A")),
 			getenv("TO_A_HOST"),
@@ -79,13 +79,13 @@ int main() {
 	// BROKER B
 
 	IBMarketOffice marketOfficeB(
-			marketDataRingBuffer,
+			pricesRingBuffer,
 			getenv("BROKER_B"),
 			stof(getenv("QTY_B"))
 	);
 
 	FIXTradeOffice tradeOfficeB(
-			businessRingBuffer,
+			ordersRingBuffer,
 			getenv("BROKER_B"),
 			stof(getenv("QTY_B")),
 			getenv("TO_B_HOST"),
@@ -103,18 +103,18 @@ int main() {
 	try {
 
 		while (true) {
-			auto businessThread = std::thread([&] {
+			auto triggerThread = std::thread([&] {
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(1, &cpuset);
 				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-				pthread_setname_np(pthread_self(), "arbito-business");
+				pthread_setname_np(pthread_self(), "arbito-trigger");
 
 				while (isRunning) {
-					businessOffice.doWork();
+					triggerOffice.doWork();
 				}
 
-				businessOffice.terminate();
+				triggerOffice.terminate();
 			});
 
 			auto tradeThreadA = std::thread([&] {
@@ -213,7 +213,7 @@ int main() {
 				std::this_thread::sleep_for(milliseconds(10));
 			}
 
-			businessThread.join();
+			triggerThread.join();
 			tradeThreadA.join();
 			tradeThreadB.join();
 			marketThreadA.join();

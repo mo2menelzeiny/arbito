@@ -1,6 +1,6 @@
 
-#ifndef ARBITO_BUSINESSOFFICE_H
-#define ARBITO_BUSINESSOFFICE_H
+#ifndef ARBITO_TRIGGEROFFICE_H
+#define ARBITO_TRIGGEROFFICE_H
 
 // Disruptor
 #include <Disruptor/Disruptor.h>
@@ -10,19 +10,19 @@
 #include <spdlog/sinks/daily_file_sink.h>
 
 // Domain
-#include "BusinessEvent.h"
-#include "MarketEvent.h"
+#include "OrderEvent.h"
+#include "PriceEvent.h"
 #include "TriggerDifference.h"
 #include "MongoDBDriver.h"
 
 using namespace std;
 using namespace std::chrono;
 
-class BusinessOffice {
+class TriggerOffice {
 public:
-	BusinessOffice(
-			std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> &inRingBuffer,
-			std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &outRingBuffer,
+	TriggerOffice(
+			std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> &inRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &outRingBuffer,
 			int orderDelaySec,
 			int maxOrders,
 			double diffOpen,
@@ -190,8 +190,8 @@ public:
 	void terminate();
 
 private:
-	std::shared_ptr<Disruptor::RingBuffer<MarketEvent>> m_inRingBuffer;
-	std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> m_outRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> m_inRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> m_outRingBuffer;
 	int m_orderDelaySec;
 	int m_maxOrders;
 	double m_diffOpen;
@@ -199,11 +199,11 @@ private:
 	MongoDBDriver m_mongoDriver;
 	std::shared_ptr<spdlog::logger> m_consoleLogger;
 	std::shared_ptr<spdlog::logger> m_systemLogger;
-	std::shared_ptr<Disruptor::EventPoller<MarketEvent>> m_marketEventPoller;
-	std::function<bool(MarketEvent &, long, bool)> m_marketEventHandler;
-	MarketEvent m_marketDataA;
-	MarketEvent m_marketDataB;
-	MarketEvent m_marketDataBTrunc;
+	std::shared_ptr<Disruptor::EventPoller<PriceEvent>> m_marketEventPoller;
+	std::function<bool(PriceEvent &, long, bool)> m_marketEventHandler;
+	PriceEvent m_marketDataA;
+	PriceEvent m_marketDataB;
+	PriceEvent m_marketDataBTrunc;
 	int m_ordersCount;
 	TriggerDifference m_currentDiff;
 	TriggerDifference m_currentOrder;
@@ -215,4 +215,4 @@ private:
 };
 
 
-#endif //ARBITO_BUSINESSOFFICE_H
+#endif //ARBITO_TRIGGEROFFICE_H

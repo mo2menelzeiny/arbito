@@ -2,7 +2,7 @@
 #include <FIXTradeOffice.h>
 
 FIXTradeOffice::FIXTradeOffice(
-		std::shared_ptr<Disruptor::RingBuffer<BusinessEvent>> &inRingBuffer,
+		std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &inRingBuffer,
 		const char *broker,
 		double quantity,
 		const char *host,
@@ -159,7 +159,7 @@ FIXTradeOffice::FIXTradeOffice(
 		m_brokerEnum = SWISSQUOTE;
 	}
 
-	m_businessEventHandler = [&](BusinessEvent &event, int64_t seq, bool endOfBatch) -> bool {
+	m_businessEventHandler = [&](OrderEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		sprintf(m_clOrdIdStrBuff, "%lu", event.id);
 
 		if (event.buy == m_brokerEnum) {
