@@ -28,11 +28,10 @@ FIXTradeOffice::FIXTradeOffice(
 		    heartbeat,
 		    sslEnabled
     ),
-    m_mongoDriver(
-		    dbUri,
-		    dbName,
-		    "coll_orders"
-    ) {
+    m_mongoDriver(dbUri, dbName, "coll_orders"),
+    m_consoleLogger(spdlog::get("console")),
+    m_systemLogger(spdlog::get("system")),
+    m_businessEventPoller(m_inRingBuffer->newPoller()) {
 	// NOSB = New Single Order Buy
 	// NOSS = New Single Order Sell
 	if (!strcmp(broker, "LMAX")) {
@@ -140,9 +139,6 @@ FIXTradeOffice::FIXTradeOffice(
 	m_NOSBFixMessage.type = FIX_MSG_TYPE_NEW_ORDER_SINGLE;
 	m_NOSBFixMessage.fields = m_NOSBFields;
 
-	m_consoleLogger = spdlog::get("console");
-	m_systemLogger = spdlog::get("system");
-
 	if (!strcmp(m_broker, "LMAX")) {
 		m_brokerEnum = LMAX;
 	}
@@ -154,9 +150,6 @@ FIXTradeOffice::FIXTradeOffice(
 	if (!strcmp(m_broker, "SWISSQUOTE")) {
 		m_brokerEnum = SWISSQUOTE;
 	}
-
-	m_businessEventPoller = m_inRingBuffer->newPoller();
-	m_inRingBuffer->addGatingSequences({m_businessEventPoller->sequence()});
 
 	m_businessEventHandler = [&](BusinessEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		sprintf(m_clOrdIdStrBuff, "%lu", event.id);
@@ -201,23 +194,32 @@ FIXTradeOffice::FIXTradeOffice(
 				}
 
 				if (execType == '8' || execType == 'H') {
+					char text[256];
+					msg_string(text, msg);
+					m_consoleLogger->error("[{}] Trade Office Order FAILED", m_broker, text);
 					m_systemLogger->error("[{}] Cancelled id: {}", m_broker, m_clOrdIdStrBuff);
-					m_consoleLogger->error("[{}] Trade Office Order FAILED", m_broker);
-					fprintmsg_iov(stdout, msg);
 				}
 			}
 
 				break;
 
 			default:
-				m_consoleLogger->error("[{}] Trade Office Unhandled FAILED", m_broker);
-				fprintmsg_iov(stdout, msg);
-
+				char text[256];
+				msg_string(text, msg);
+				m_consoleLogger->error("[{}] Trade Office Unhandled FAILED {}", m_broker, text);
 				break;
 		}
 	});
 }
 
-void FIXTradeOffice::cleanup() {
-	m_fixSession.terminate();
+void FIXTradeOffice::initiate() {
+	m_fixSession.initiate();
+	m_inRingBuffer->addGatingSequences({m_businessEventPoller->sequence()});
+	m_consoleLogger->info("[{}] Trade Office OK", m_broker);
 }
+
+void FIXTradeOffice::terminate() {
+	m_fixSession.terminate();
+	m_inRingBuffer->removeGatingSequence(m_businessEventPoller->sequence());
+}
+
