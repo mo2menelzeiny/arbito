@@ -43,6 +43,10 @@ BusinessOffice::BusinessOffice(
 	m_marketEventHandler = [&](MarketEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		switch (event.broker) {
 			case LMAX:
+				m_marketDataA = event;
+				break;
+
+			case IB:
 				sprintf(m_truncStrBuff, "%lf", event.bid);
 				m_truncStrBuff[6] = '0';
 				m_marketDataBTrunc.bid = stof(m_truncStrBuff);
@@ -51,10 +55,6 @@ BusinessOffice::BusinessOffice(
 				m_truncStrBuff[6] = '0';
 				m_marketDataBTrunc.offer = stof(m_truncStrBuff);;
 
-				m_marketDataA = event;
-				break;
-
-			case IB:
 				m_marketDataB = event;
 				break;
 
