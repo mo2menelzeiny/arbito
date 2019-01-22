@@ -31,7 +31,7 @@ FIXTradeOffice::FIXTradeOffice(
     m_mongoDriver(dbUri, dbName, "coll_orders"),
     m_consoleLogger(spdlog::get("console")),
     m_systemLogger(spdlog::get("system")),
-    m_businessEventPoller(m_inRingBuffer->newPoller()) {
+    m_orderEventPoller(m_inRingBuffer->newPoller()) {
 	// NOSB = New Single Order Buy
 	// NOSS = New Single Order Sell
 	if (!strcmp(broker, "LMAX")) {
@@ -61,35 +61,6 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_CHAR_FIELD(OrdType, '2'),
 				FIX_CHAR_FIELD(TimeInForce, '4'),
 				FIX_FLOAT_FIELD(Price, 0)
-		};
-
-		size = ARRAY_SIZE(NOSBFields);
-		m_NOSBFields = (fix_field *) malloc(size * sizeof(fix_field));
-		memcpy(m_NOSBFields, NOSBFields, size * sizeof(fix_field));
-		m_NOSBFixMessage.nr_fields = size;
-	}
-
-	if (!strcmp(broker, "SWISSQUOTE")) {
-		struct fix_field NOSSFields[] = {
-				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-SELL"),
-				FIX_STRING_FIELD(Symbol, "EUR/USD"),
-				FIX_CHAR_FIELD(Side, '2'),
-				FIX_STRING_FIELD(TransactTime, ""),
-				FIX_FLOAT_FIELD(OrderQty, quantity),
-				FIX_CHAR_FIELD(OrdType, '1'),
-		};
-		unsigned long size = ARRAY_SIZE(NOSSFields);
-		m_NOSSFields = (fix_field *) malloc(size * sizeof(fix_field));
-		memcpy(m_NOSSFields, NOSSFields, size * sizeof(fix_field));
-		m_NOSSFixMessage.nr_fields = size;
-
-		struct fix_field NOSBFields[] = {
-				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-BUY"),
-				FIX_STRING_FIELD(Symbol, "EUR/USD"),
-				FIX_CHAR_FIELD(Side, '1'),
-				FIX_STRING_FIELD(TransactTime, ""),
-				FIX_FLOAT_FIELD(OrderQty, quantity),
-				FIX_CHAR_FIELD(OrdType, '1'),
 		};
 
 		size = ARRAY_SIZE(NOSBFields);
@@ -155,11 +126,7 @@ FIXTradeOffice::FIXTradeOffice(
 		m_brokerEnum = IB;
 	}
 
-	if (!strcmp(m_broker, "SWISSQUOTE")) {
-		m_brokerEnum = SWISSQUOTE;
-	}
-
-	m_businessEventHandler = [&](OrderEvent &event, int64_t seq, bool endOfBatch) -> bool {
+	m_orderEventHandler = [&](OrderEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		sprintf(m_clOrdIdStrBuff, "%lu", event.id);
 
 		if (event.buy == m_brokerEnum) {
@@ -221,12 +188,12 @@ FIXTradeOffice::FIXTradeOffice(
 
 void FIXTradeOffice::initiate() {
 	m_fixSession.initiate();
-	m_inRingBuffer->addGatingSequences({m_businessEventPoller->sequence()});
+	m_inRingBuffer->addGatingSequences({m_orderEventPoller->sequence()});
 	m_consoleLogger->info("[{}] Trade Office OK", m_broker);
 }
 
 void FIXTradeOffice::terminate() {
 	m_fixSession.terminate();
-	m_inRingBuffer->removeGatingSequence(m_businessEventPoller->sequence());
+	m_inRingBuffer->removeGatingSequence(m_orderEventPoller->sequence());
 }
 

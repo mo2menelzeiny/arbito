@@ -32,7 +32,7 @@ public:
 	);
 
 	inline void doWork() {
-		m_marketEventPoller->poll(m_marketEventHandler);
+		m_priceEventPoller->poll(m_priceEventHandler);
 
 		if (m_isOrderDelayed && ((time(nullptr) - m_lastOrderTime) < m_orderDelaySec)) {
 			return;
@@ -42,8 +42,8 @@ public:
 
 		bool canOpen = m_ordersCount < m_maxOrders;
 
-		double diffA = m_marketDataA.bid - m_marketDataBTrunc.offer;
-		double diffB = m_marketDataBTrunc.bid - m_marketDataA.offer;
+		double diffA = m_priceA.bid - m_priceBTrunc.offer;
+		double diffB = m_priceBTrunc.bid - m_priceA.offer;
 
 		switch (m_currentDiff) {
 			case DIFF_A:
@@ -117,23 +117,23 @@ public:
 		switch (m_currentOrder) {
 			case DIFF_A:
 
-				(*m_outRingBuffer)[nextSequence].sell = m_marketDataA.broker;
-				(*m_outRingBuffer)[nextSequence].buy = m_marketDataB.broker;
+				(*m_outRingBuffer)[nextSequence].sell = m_priceA.broker;
+				(*m_outRingBuffer)[nextSequence].buy = m_priceB.broker;
 				m_outRingBuffer->publish(nextSequence);
 
 				m_systemLogger->info(
 						"{} bid A: {} sequence A: {} offer B: {} sequence B: {}",
 						orderType,
-						m_marketDataA.bid,
-						m_marketDataA.sequence,
-						m_marketDataB.offer,
-						m_marketDataB.sequence
+						m_priceA.bid,
+						m_priceA.sequence,
+						m_priceB.offer,
+						m_priceB.sequence
 				);
 
 				std::thread([mongoDriver = &m_mongoDriver,
 						            id = m_randomIdStrBuff,
-						            a = m_marketDataA,
-						            b = m_marketDataB,
+						            a = m_priceA,
+						            b = m_priceB,
 						            orderType] {
 					mongoDriver->record(id, a.bid, b.offer, orderType);
 				}).detach();
@@ -141,23 +141,23 @@ public:
 				break;
 
 			case DIFF_B:
-				(*m_outRingBuffer)[nextSequence].sell = m_marketDataB.broker;
-				(*m_outRingBuffer)[nextSequence].buy = m_marketDataA.broker;
+				(*m_outRingBuffer)[nextSequence].sell = m_priceB.broker;
+				(*m_outRingBuffer)[nextSequence].buy = m_priceA.broker;
 				m_outRingBuffer->publish(nextSequence);
 
 				m_systemLogger->info(
 						"{} bid B: {} sequence B: {} offer A: {} sequence A: {}",
 						orderType,
-						m_marketDataB.bid,
-						m_marketDataB.sequence,
-						m_marketDataA.offer,
-						m_marketDataA.sequence
+						m_priceB.bid,
+						m_priceB.sequence,
+						m_priceA.offer,
+						m_priceA.sequence
 				);
 
 				std::thread([mongoDriver = &m_mongoDriver,
 						            id = m_randomIdStrBuff,
-						            a = m_marketDataA,
-						            b = m_marketDataB,
+						            a = m_priceA,
+						            b = m_priceB,
 						            orderType] {
 					mongoDriver->record(id, b.bid, a.offer, orderType);
 				}).detach();
@@ -170,14 +170,14 @@ public:
 
 		m_currentOrder = DIFF_NONE;
 
-		m_marketDataA.bid = -99;
-		m_marketDataA.offer = 99;
+		m_priceA.bid = -99;
+		m_priceA.offer = 99;
 
-		m_marketDataB.bid = -99;
-		m_marketDataB.offer = 99;
+		m_priceB.bid = -99;
+		m_priceB.offer = 99;
 
-		m_marketDataBTrunc.bid = -99;
-		m_marketDataBTrunc.offer = 99;
+		m_priceBTrunc.bid = -99;
+		m_priceBTrunc.offer = 99;
 
 		m_lastOrderTime = time(nullptr);
 		m_isOrderDelayed = true;
@@ -199,11 +199,11 @@ private:
 	MongoDBDriver m_mongoDriver;
 	std::shared_ptr<spdlog::logger> m_consoleLogger;
 	std::shared_ptr<spdlog::logger> m_systemLogger;
-	std::shared_ptr<Disruptor::EventPoller<PriceEvent>> m_marketEventPoller;
-	std::function<bool(PriceEvent &, long, bool)> m_marketEventHandler;
-	PriceEvent m_marketDataA;
-	PriceEvent m_marketDataB;
-	PriceEvent m_marketDataBTrunc;
+	std::shared_ptr<Disruptor::EventPoller<PriceEvent>> m_priceEventPoller;
+	std::function<bool(PriceEvent &, long, bool)> m_priceEventHandler;
+	PriceEvent m_priceA;
+	PriceEvent m_priceB;
+	PriceEvent m_priceBTrunc;
 	int m_ordersCount;
 	TriggerDifference m_currentDiff;
 	TriggerDifference m_currentOrder;
