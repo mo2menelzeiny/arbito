@@ -51,7 +51,7 @@ public:
 
 		bool canOpen = m_ordersCount < m_maxOrders;
 
-		double diffA = m_priceA.bid - 1;
+		double diffA = m_priceA.bid - m_priceBTrunc.offer;
 		double diffB = m_priceBTrunc.bid - m_priceA.offer;
 
 		switch (m_currentDiff) {
