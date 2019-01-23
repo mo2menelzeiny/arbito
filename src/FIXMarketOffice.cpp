@@ -33,7 +33,7 @@ FIXMarketOffice::FIXMarketOffice(
     m_offerIdx(m_brokerEnum == Broker::LMAX ? 4 : 2),
     m_offerQtyIdx(m_offerIdx - 1) {
 
-	if (!strcmp(broker, "LMAX")) {
+	if (m_brokerEnum == Broker::LMAX) {
 		struct fix_field fields[] = {
 				FIX_STRING_FIELD(MDReqID, "MARKET-DATA-REQUEST"),
 				FIX_CHAR_FIELD(SubscriptionRequestType, '1'),
