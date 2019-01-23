@@ -20,8 +20,8 @@ TriggerOffice::TriggerOffice(
     m_idGenerator(std::random_device{}()),
     m_consoleLogger(spdlog::get("console")),
     m_systemLogger(spdlog::get("system")),
-    m_currentDiff(DIFF_NONE),
-    m_currentOrder(DIFF_NONE),
+    m_currentDiff(Difference::NONE),
+    m_currentOrder(Difference::NONE),
     m_isOrderDelayed(false),
     m_lastOrderTime(time(nullptr)),
     m_priceEventPoller(m_inRingBuffer->newPoller()),
@@ -32,13 +32,7 @@ TriggerOffice::TriggerOffice(
 	// TODO: temporary to keep state
 	m_ordersCount = stoi(getenv("ORDERS_COUNT"));
 
-	if (!strcmp(getenv("CURRENT_DIFF"), "DIFF_A")) {
-		m_currentDiff = DIFF_A;
-	}
-
-	if (!strcmp(getenv("CURRENT_DIFF"), "DIFF_B")) {
-		m_currentDiff = DIFF_B;
-	}
+	m_currentDiff = getDifference(getenv("CURRENT_DIFF"));
 
 	m_priceEventHandler = [&](PriceEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		switch (event.broker) {
