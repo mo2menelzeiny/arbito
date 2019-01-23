@@ -12,7 +12,7 @@
 // Domain
 #include "OrderEvent.h"
 #include "PriceEvent.h"
-#include "TriggerDifference.h"
+#include "Difference.h"
 #include "MongoDBDriver.h"
 
 using namespace std;
@@ -46,47 +46,47 @@ public:
 		double diffB = m_priceBTrunc.bid - m_priceA.offer;
 
 		switch (m_currentDiff) {
-			case DIFF_A:
+			case Difference::A:
 				if (canOpen && diffA >= m_diffOpen) {
-					m_currentOrder = DIFF_A;
+					m_currentOrder = Difference::A;
 					++m_ordersCount;
 					break;
 				}
 
 				if (diffB >= m_diffClose) {
-					m_currentOrder = DIFF_B;
+					m_currentOrder = Difference::B;
 					--m_ordersCount;
 					break;
 				}
 
 				break;
 
-			case DIFF_B:
+			case Difference::B:
 				if (canOpen && diffB >= m_diffOpen) {
-					m_currentOrder = DIFF_B;
+					m_currentOrder = Difference::B;
 					++m_ordersCount;
 					break;
 				}
 
 				if (diffA >= m_diffClose) {
-					m_currentOrder = DIFF_A;
+					m_currentOrder = Difference::A;
 					--m_ordersCount;
 					break;
 				}
 
 				break;
 
-			case DIFF_NONE:
+			case Difference::NONE:
 				if (diffA >= m_diffOpen) {
-					m_currentDiff = DIFF_A;
-					m_currentOrder = DIFF_A;
+					m_currentDiff = Difference::A;
+					m_currentOrder = Difference::A;
 					++m_ordersCount;
 					break;
 				}
 
 				if (diffB >= m_diffOpen) {
-					m_currentDiff = DIFF_B;
-					m_currentOrder = DIFF_B;
+					m_currentDiff = Difference::B;
+					m_currentOrder = Difference::B;
 					++m_ordersCount;
 					break;
 				}
@@ -98,21 +98,21 @@ public:
 
 		}
 
-		if (m_currentOrder == DIFF_NONE) {
+		if (m_currentOrder == Difference::NONE) {
 			return;
 		}
 
 		const char *orderType = m_currentOrder == m_currentDiff ? "OPEN" : "CLOSE";
 
 		if (m_ordersCount == 0) {
-			m_currentDiff = DIFF_NONE;
+			m_currentDiff = Difference::NONE;
 		}
 
 		auto randomId = m_idGenerator();
 		sprintf(m_randomIdStrBuff, "%lu", randomId);
 
 		switch (m_currentOrder) {
-			case DIFF_A: {
+			case Difference::A: {
 				auto nextSeqA = m_outRingBuffer->next();
 				(*m_outRingBuffer)[nextSeqA] = {
 						m_priceA.broker,
@@ -152,7 +152,7 @@ public:
 			}
 				break;
 
-			case DIFF_B: {
+			case Difference::B: {
 				auto nextSeqA = m_outRingBuffer->next();
 				(*m_outRingBuffer)[nextSeqA] = {
 						m_priceA.broker,
@@ -196,7 +196,7 @@ public:
 				break;
 		}
 
-		m_currentOrder = DIFF_NONE;
+		m_currentOrder = Difference::NONE;
 
 		m_priceA.bid = -99;
 		m_priceA.offer = 99;
@@ -233,8 +233,8 @@ private:
 	PriceEvent m_priceB;
 	PriceEvent m_priceBTrunc;
 	int m_ordersCount;
-	TriggerDifference m_currentDiff;
-	TriggerDifference m_currentOrder;
+	Difference m_currentDiff;
+	Difference m_currentOrder;
 	std::mt19937_64 m_idGenerator;
 	char m_randomIdStrBuff[64];
 	char m_truncStrBuff[9];
