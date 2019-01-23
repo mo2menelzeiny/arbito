@@ -1398,7 +1398,7 @@ void IBClient::tickSize(TickerId tickerId, TickType field, int size) {
 			m_onTickHandler(1, m_bid, m_bidQty);
 			break;
 		case ASK_SIZE:
-			m_bidQty = size;
+			m_offerQty = size;
 			m_onTickHandler(0, m_offer, m_offerQty);
 			break;
 		default:
