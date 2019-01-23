@@ -8,15 +8,12 @@ ControlOffice::ControlOffice(
     m_outRingBuffer(outRingBuffer),
     m_consoleLogger(spdlog::get("console")),
     m_systemLogger(spdlog::get("system")),
-    m_executionEventPoller(m_inRingBuffer->newPoller()),
-    m_idGenerator(std::random_device{}()) {
+    m_executionEventPoller(m_inRingBuffer->newPoller()) {
 
 	m_executionEventHandler = [&](ExecutionEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		if (event.isFilled) {
 			return false;
 		}
-
-		auto randomId = m_idGenerator();
 
 		auto nextSequence = m_outRingBuffer->next();
 		(*m_outRingBuffer)[nextSequence] = {
@@ -24,7 +21,7 @@ ControlOffice::ControlOffice(
 				OrderType::MARKET,
 				event.side == OrderSide::BUY ? OrderSide::SELL : OrderSide::BUY,
 				0,
-				randomId
+				99999
 		};
 		m_outRingBuffer->publish(nextSequence);
 

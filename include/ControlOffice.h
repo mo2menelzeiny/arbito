@@ -36,7 +36,6 @@ private:
 	std::function<bool(ExecutionEvent &, long, bool)> m_executionEventHandler;
 	std::shared_ptr<spdlog::logger> m_consoleLogger;
 	std::shared_ptr<spdlog::logger> m_systemLogger;
-	std::mt19937_64 m_idGenerator;
 };
 
 
