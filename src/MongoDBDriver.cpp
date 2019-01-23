@@ -51,7 +51,14 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 }
 
 
-void MongoDBDriver::record(const char *clOrdId, const char *orderId, char side, double fillPrice, const char *broker) {
+void MongoDBDriver::record(
+		const char *clOrdId,
+		const char *orderId,
+		char side,
+		double fillPrice,
+		const char *broker,
+		bool isFilled
+) {
 	bson_error_t error;
 
 	auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -59,11 +66,12 @@ void MongoDBDriver::record(const char *clOrdId, const char *orderId, char side, 
 
 	bson_t *insert = BCON_NEW (
 			"timestamp", BCON_DATE_TIME(nowMs),
+			"broker", BCON_UTF8(broker),
 			"clOrdId", BCON_UTF8(clOrdId),
-			"fillPrice", BCON_DOUBLE(fillPrice),
-			"side", BCON_UTF8(side == '1' ? "BUY" : "SELL"),
 			"orderId", BCON_UTF8(orderId),
-			"broker", BCON_UTF8(broker)
+			"side", BCON_UTF8(side == '1' ? "BUY" : "SELL"),
+			"fillPrice", BCON_DOUBLE(fillPrice),
+			"isFilled", BCON_BOOL(isFilled)
 	);
 
 	if (!mongoc_collection_insert_one(m_collection, insert, nullptr, nullptr, &error)) {

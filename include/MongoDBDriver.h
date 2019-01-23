@@ -19,8 +19,14 @@ public:
 
 	void record(const char *clOrdId, double bid, double offer, const char *orderType);
 
-	void record(const char *clOrdId, const char *orderId, char side, double fillPrice, const char *broker);
-
+	void record(
+			const char *clOrdId,
+			const char *orderId,
+			char side,
+			double fillPrice,
+			const char *broker,
+			bool isFilled
+	);
 
 
 private:
