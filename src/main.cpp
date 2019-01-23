@@ -165,29 +165,6 @@ int main() {
 				tradeOfficeA.terminate();
 			});
 
-			auto tradeThreadB = std::thread([&] {
-				cpu_set_t cpuset;
-				CPU_ZERO(&cpuset);
-				CPU_SET(3, &cpuset);
-				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-				pthread_setname_np(pthread_self(), "arbito-trade");
-
-				try {
-
-					tradeOfficeB.initiate();
-
-					while (isRunning) {
-						tradeOfficeB.doWork();
-					}
-
-				} catch (std::exception &ex) {
-					consoleLogger->error("[{}] Trade Office {}", getenv("BROKER_B"), ex.what());
-					isRunning = false;
-				}
-
-				tradeOfficeB.terminate();
-			});
-
 			auto marketThreadA = std::thread([&] {
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
@@ -209,6 +186,29 @@ int main() {
 				}
 
 				marketOfficeA.terminate();
+			});
+
+			auto tradeThreadB = std::thread([&] {
+				cpu_set_t cpuset;
+				CPU_ZERO(&cpuset);
+				CPU_SET(3, &cpuset);
+				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+				pthread_setname_np(pthread_self(), "arbito-trade");
+
+				try {
+
+					tradeOfficeB.initiate();
+
+					while (isRunning) {
+						tradeOfficeB.doWork();
+					}
+
+				} catch (std::exception &ex) {
+					consoleLogger->error("[{}] Trade Office {}", getenv("BROKER_B"), ex.what());
+					isRunning = false;
+				}
+
+				tradeOfficeB.terminate();
 			});
 
 			auto marketThreadB = std::thread([&] {
