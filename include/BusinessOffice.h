@@ -1,6 +1,8 @@
 
-#ifndef ARBITO_TRIGGEROFFICE_H
-#define ARBITO_TRIGGEROFFICE_H
+#ifndef ARBITO_BUSINESSOFFICE_H
+#define ARBITO_BUSINESSOFFICE_H
+
+#define CORRECTION_ID 99999
 
 // Disruptor
 #include <Disruptor/Disruptor.h>
@@ -12,17 +14,19 @@
 // Domain
 #include "OrderEvent.h"
 #include "PriceEvent.h"
+#include "ExecutionEvent.h"
 #include "Difference.h"
 #include "MongoDBDriver.h"
 
 using namespace std;
 using namespace std::chrono;
 
-class TriggerOffice {
+class BusinessOffice {
 public:
-	TriggerOffice(
-			std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> &inRingBuffer,
-			std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &outRingBuffer,
+	BusinessOffice(
+			std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> &priceRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<ExecutionEvent>> &executionRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &orderRingBuffer,
 			int orderDelaySec,
 			int maxOrders,
 			double diffOpen,
@@ -33,6 +37,7 @@ public:
 
 	inline void doWork() {
 		m_priceEventPoller->poll(m_priceEventHandler);
+		m_executionEventPoller->poll(m_executionEventHandler);
 
 		if (m_isOrderDelayed && ((time(nullptr) - m_lastOrderTime) < m_orderDelaySec)) {
 			return;
@@ -40,22 +45,24 @@ public:
 
 		m_isOrderDelayed = false;
 
+		if (m_ordersCount % 2 != 0) {
+			return;
+		}
+
 		bool canOpen = m_ordersCount < m_maxOrders;
 
-		double diffA = m_priceA.bid - m_priceBTrunc.offer;
+		double diffA = m_priceA.bid - 1;
 		double diffB = m_priceBTrunc.bid - m_priceA.offer;
 
 		switch (m_currentDiff) {
 			case Difference::A:
 				if (canOpen && diffA >= m_diffOpen) {
 					m_currentOrder = Difference::A;
-					++m_ordersCount;
 					break;
 				}
 
 				if (diffB >= m_diffClose) {
 					m_currentOrder = Difference::B;
-					--m_ordersCount;
 					break;
 				}
 
@@ -64,13 +71,11 @@ public:
 			case Difference::B:
 				if (canOpen && diffB >= m_diffOpen) {
 					m_currentOrder = Difference::B;
-					++m_ordersCount;
 					break;
 				}
 
 				if (diffA >= m_diffClose) {
 					m_currentOrder = Difference::A;
-					--m_ordersCount;
 					break;
 				}
 
@@ -80,14 +85,12 @@ public:
 				if (diffA >= m_diffOpen) {
 					m_currentDiff = Difference::A;
 					m_currentOrder = Difference::A;
-					++m_ordersCount;
 					break;
 				}
 
 				if (diffB >= m_diffOpen) {
 					m_currentDiff = Difference::B;
 					m_currentOrder = Difference::B;
-					++m_ordersCount;
 					break;
 				}
 
@@ -98,14 +101,14 @@ public:
 
 		}
 
-		if (m_currentOrder == Difference::NONE) {
-			return;
-		}
-
 		const char *orderType = m_currentOrder == m_currentDiff ? "OPEN" : "CLOSE";
 
 		if (m_ordersCount == 0) {
 			m_currentDiff = Difference::NONE;
+		}
+
+		if (m_currentOrder == Difference::NONE) {
+			return;
 		}
 
 		auto randomId = m_idGenerator();
@@ -113,25 +116,25 @@ public:
 
 		switch (m_currentOrder) {
 			case Difference::A: {
-				auto nextSeqA = m_outRingBuffer->next();
-				(*m_outRingBuffer)[nextSeqA] = {
+				auto nextSeqA = m_orderRingBuffer->next();
+				(*m_orderRingBuffer)[nextSeqA] = {
 						m_priceA.broker,
-						OrderType::LIMIT,
+						OrderType::MARKET,
 						OrderSide::SELL,
 						m_priceA.bid,
 						randomId
 				};
-				m_outRingBuffer->publish(nextSeqA);
+				m_orderRingBuffer->publish(nextSeqA);
 
-				auto nextSeqB = m_outRingBuffer->next();
-				(*m_outRingBuffer)[nextSeqB] = {
+				auto nextSeqB = m_orderRingBuffer->next();
+				(*m_orderRingBuffer)[nextSeqB] = {
 						m_priceB.broker,
 						OrderType::LIMIT,
 						OrderSide::BUY,
 						m_priceB.offer,
 						randomId
 				};
-				m_outRingBuffer->publish(nextSeqB);
+				m_orderRingBuffer->publish(nextSeqB);
 
 				m_systemLogger->info(
 						"{} bid A: {} sequence A: {} offer B: {} sequence B: {}",
@@ -153,25 +156,25 @@ public:
 				break;
 
 			case Difference::B: {
-				auto nextSeqA = m_outRingBuffer->next();
-				(*m_outRingBuffer)[nextSeqA] = {
+				auto nextSeqA = m_orderRingBuffer->next();
+				(*m_orderRingBuffer)[nextSeqA] = {
 						m_priceA.broker,
-						OrderType::LIMIT,
+						OrderType::MARKET,
 						OrderSide::BUY,
 						m_priceA.offer,
 						randomId
 				};
-				m_outRingBuffer->publish(nextSeqA);
+				m_orderRingBuffer->publish(nextSeqA);
 
-				auto nextSeqB = m_outRingBuffer->next();
-				(*m_outRingBuffer)[nextSeqB] = {
+				auto nextSeqB = m_orderRingBuffer->next();
+				(*m_orderRingBuffer)[nextSeqB] = {
 						m_priceB.broker,
 						OrderType::LIMIT,
 						OrderSide::SELL,
 						m_priceB.bid,
 						randomId
 				};
-				m_outRingBuffer->publish(nextSeqB);
+				m_orderRingBuffer->publish(nextSeqB);
 
 				m_systemLogger->info(
 						"{} bid B: {} sequence B: {} offer A: {} sequence A: {}",
@@ -218,8 +221,9 @@ public:
 	void terminate();
 
 private:
-	std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> m_inRingBuffer;
-	std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> m_outRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> m_priceRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<ExecutionEvent>> m_executionRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> m_orderRingBuffer;
 	int m_orderDelaySec;
 	int m_maxOrders;
 	double m_diffOpen;
@@ -229,6 +233,8 @@ private:
 	std::shared_ptr<spdlog::logger> m_systemLogger;
 	std::shared_ptr<Disruptor::EventPoller<PriceEvent>> m_priceEventPoller;
 	std::function<bool(PriceEvent &, long, bool)> m_priceEventHandler;
+	std::shared_ptr<Disruptor::EventPoller<ExecutionEvent>> m_executionEventPoller;
+	std::function<bool(ExecutionEvent &, long, bool)> m_executionEventHandler;
 	PriceEvent m_priceA;
 	PriceEvent m_priceB;
 	PriceEvent m_priceBTrunc;
@@ -243,4 +249,4 @@ private:
 };
 
 
-#endif //ARBITO_TRIGGEROFFICE_H
+#endif //ARBITO_BUSINESSOFFICE_H
