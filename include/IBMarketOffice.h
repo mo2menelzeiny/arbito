@@ -37,7 +37,7 @@ public:
 
 private:
 	std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> m_outRingBuffer;
-	const char *m_broker;
+	const char *m_brokerStr;
 	double m_quantity;
 	std::shared_ptr<spdlog::logger> m_consoleLogger;
 	std::shared_ptr<spdlog::logger> m_systemLogger;

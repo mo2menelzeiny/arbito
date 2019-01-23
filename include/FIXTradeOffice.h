@@ -43,7 +43,7 @@ public:
 
 private:
 	std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> m_inRingBuffer;
-	const char *m_broker;
+	const char *m_brokerStr;
 	double m_quantity;
 	struct fix_field *m_NOSSFields;
 	struct fix_message m_NOSSFixMessage{};
@@ -53,7 +53,7 @@ private:
 	MongoDBDriver m_mongoDriver;
 	std::shared_ptr<spdlog::logger> m_consoleLogger;
 	std::shared_ptr<spdlog::logger> m_systemLogger;
-	BrokerEnum m_brokerEnum;
+	enum Broker m_brokerEnum;
 	char m_clOrdIdStrBuff[64];
 	char m_orderIdStrBuff[64];
 	std::shared_ptr<Disruptor::EventPoller<OrderEvent>> m_orderEventPoller;

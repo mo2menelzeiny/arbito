@@ -16,7 +16,8 @@ FIXTradeOffice::FIXTradeOffice(
 		const char *dbUri,
 		const char *dbName
 ) : m_inRingBuffer(inRingBuffer),
-    m_broker(broker),
+    m_brokerStr(broker),
+    m_brokerEnum(getBroker(broker)),
     m_quantity(quantity),
     m_fixSession(
 		    host,
@@ -118,32 +119,34 @@ FIXTradeOffice::FIXTradeOffice(
 	m_NOSBFixMessage.type = FIX_MSG_TYPE_NEW_ORDER_SINGLE;
 	m_NOSBFixMessage.fields = m_NOSBFields;
 
-	if (!strcmp(m_broker, "LMAX")) {
-		m_brokerEnum = LMAX;
-	}
-
-	if (!strcmp(m_broker, "IB")) {
-		m_brokerEnum = IB;
-	}
-
 	m_orderEventHandler = [&](OrderEvent &event, int64_t seq, bool endOfBatch) -> bool {
+		if(event.broker != m_brokerEnum) {
+			return false;
+		}
+
 		sprintf(m_clOrdIdStrBuff, "%lu", event.id);
 
-		if (event.buy == m_brokerEnum) {
+		if (event.order == OrderType::LIMIT && event.side == OrderSide::BUY) {
+
+		}
+
+		if (event.order == OrderType::LIMIT && event.side == OrderSide::SELL) {
+
+		}
+
+		if (event.order == OrderType::MARKET && event.side == OrderSide::BUY) {
 			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
 			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_NOSBFixMessage);
 		}
 
-		if (event.sell == m_brokerEnum) {
+		if (event.order == OrderType::MARKET && event.side == OrderSide::SELL) {
 			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
 			fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_NOSSFixMessage);
 		}
 
-		const char *side = event.buy == m_brokerEnum ? "BUY" : "SELL";
-
-		m_systemLogger->info("[{}] {} id: {}", m_broker, side, m_clOrdIdStrBuff);
+		m_systemLogger->info("[{}] {} id: {}", m_brokerStr, event.side == OrderSide::BUY ? "BUY" : "SELL", m_clOrdIdStrBuff);
 
 		return false;
 	};
@@ -160,9 +163,9 @@ FIXTradeOffice::FIXTradeOffice(
 					char side = fix_get_field(msg, Side)->string_value[0];
 					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
 
-					m_systemLogger->info("[{}] Filled Px: {} id: {}", m_broker, fillPrice, m_clOrdIdStrBuff);
+					m_systemLogger->info("[{}] Filled Px: {} id: {}", m_brokerStr, fillPrice, m_clOrdIdStrBuff);
 
-					std::thread([=, mongoDriver = &m_mongoDriver, broker = m_broker] {
+					std::thread([=, mongoDriver = &m_mongoDriver, broker = m_brokerStr] {
 						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, broker);
 					}).detach();
 				}
@@ -170,8 +173,8 @@ FIXTradeOffice::FIXTradeOffice(
 				if (execType == '8' || execType == 'H') {
 					char text[512];
 					msg_string(text, msg, 512);
-					m_consoleLogger->error("[{}] Trade Office Order FAILED {}", m_broker, text);
-					m_systemLogger->error("[{}] Cancelled id: {}", m_broker, m_clOrdIdStrBuff);
+					m_consoleLogger->error("[{}] Trade Office Order FAILED {}", m_brokerStr, text);
+					m_systemLogger->error("[{}] Cancelled id: {}", m_brokerStr, m_clOrdIdStrBuff);
 				}
 			}
 
@@ -180,7 +183,7 @@ FIXTradeOffice::FIXTradeOffice(
 			default:
 				char text[512];
 				msg_string(text, msg, 512);
-				m_consoleLogger->error("[{}] Trade Office Unhandled FAILED {}", m_broker, text);
+				m_consoleLogger->error("[{}] Trade Office Unhandled FAILED {}", m_brokerStr, text);
 				break;
 		}
 	});
@@ -189,7 +192,7 @@ FIXTradeOffice::FIXTradeOffice(
 void FIXTradeOffice::initiate() {
 	m_fixSession.initiate();
 	m_inRingBuffer->addGatingSequences({m_orderEventPoller->sequence()});
-	m_consoleLogger->info("[{}] Trade Office OK", m_broker);
+	m_consoleLogger->info("[{}] Trade Office OK", m_brokerStr);
 }
 
 void FIXTradeOffice::terminate() {

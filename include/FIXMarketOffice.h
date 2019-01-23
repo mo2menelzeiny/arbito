@@ -39,7 +39,7 @@ public:
 
 private:
 	std::shared_ptr<Disruptor::RingBuffer<PriceEvent>> m_outRingBuffer;
-	const char *m_broker;
+	const char *m_brokerStr;
 	double m_quantity;
 	struct fix_field *m_MDRFields;
 	struct fix_message m_MDRFixMessage{};
@@ -50,7 +50,7 @@ private:
 	OnMessageHandler m_onMessageHandler;
 	unsigned long m_offerIdx;
 	unsigned long m_offerQtyIdx;
-	BrokerEnum m_brokerEnum;
+	enum Broker m_brokerEnum;
 };
 
 

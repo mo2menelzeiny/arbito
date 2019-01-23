@@ -14,7 +14,8 @@ FIXMarketOffice::FIXMarketOffice(
 		int heartbeat,
 		bool sslEnabled
 ) : m_outRingBuffer(outRingBuffer),
-    m_broker(broker),
+    m_brokerStr(broker),
+    m_brokerEnum(getBroker(broker)),
     m_quantity(quantity),
     m_fixSession(
 		    host,
@@ -29,16 +30,8 @@ FIXMarketOffice::FIXMarketOffice(
     m_consoleLogger(spdlog::get("console")),
     m_systemLogger(spdlog::get("system")),
     m_sequence(0),
-    m_offerIdx(strcmp(m_broker, "LMAX") ? 4 : 2),
+    m_offerIdx(m_brokerEnum == Broker::LMAX ? 4 : 2),
     m_offerQtyIdx(m_offerIdx - 1) {
-
-	if (!strcmp(m_broker, "LMAX")) {
-		m_brokerEnum = LMAX;
-	}
-
-	if (!strcmp(m_broker, "SWISSQUOTE")) {
-		m_brokerEnum = SWISSQUOTE;
-	}
 
 	if (!strcmp(broker, "LMAX")) {
 		struct fix_field fields[] = {
@@ -59,27 +52,6 @@ FIXMarketOffice::FIXMarketOffice(
 		m_MDRFixMessage.nr_fields = size;
 	}
 
-	if (!strcmp(broker, "SWISSQUOTE")) {
-		struct fix_field fields[] = {
-				FIX_STRING_FIELD(MDReqID, "MARKET-DATA-REQUEST"),
-				FIX_CHAR_FIELD(SubscriptionRequestType, '1'),
-				FIX_INT_FIELD(MarketDepth, 1),
-				FIX_INT_FIELD(MDUpdateType, 0),
-				FIX_INT_FIELD(NoMDEntryTypes, 2),
-				FIX_CHAR_FIELD(MDEntryType, '0'),
-				FIX_CHAR_FIELD(MDEntryType, '1'),
-				FIX_INT_FIELD(NoRelatedSym, 1),
-				FIX_STRING_FIELD(Symbol, "EUR/USD")
-		};
-		unsigned long size = ARRAY_SIZE(fields);
-		m_MDRFields = (fix_field *) malloc(size * sizeof(fix_field));
-		memcpy(m_MDRFields, fields, size * sizeof(fix_field));
-		m_MDRFixMessage.nr_fields = size;
-	}
-
-	m_MDRFixMessage.type = FIX_MSG_TYPE_MARKET_DATA_REQUEST;
-	m_MDRFixMessage.fields = m_MDRFields;
-
 	m_onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
 		switch (msg->type) {
 			case FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
@@ -95,20 +67,17 @@ FIXMarketOffice::FIXMarketOffice(
 				++m_sequence;
 
 				auto nextSequence = m_outRingBuffer->next();
-				(*m_outRingBuffer)[nextSequence].bid = bid;
-				(*m_outRingBuffer)[nextSequence].offer = offer;
-				(*m_outRingBuffer)[nextSequence].sequence = m_sequence;
-				(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
+				(*m_outRingBuffer)[nextSequence] = {m_brokerEnum, bid, offer, m_sequence};
 				m_outRingBuffer->publish(nextSequence);
 
-				m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, m_sequence, bid, offer);
+				m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_brokerStr, m_sequence, bid, offer);
 			}
 				break;
 
 			default:
 				char text[512];
 				msg_string(text, msg, 512);
-				m_consoleLogger->error("[{}] Market Office Unhandled FAILED {}", m_broker, text);
+				m_consoleLogger->error("[{}] Market Office Unhandled FAILED {}", m_brokerStr, text);
 				break;
 		}
 	});
@@ -117,7 +86,7 @@ FIXMarketOffice::FIXMarketOffice(
 void FIXMarketOffice::initiate() {
 	m_fixSession.initiate();
 	m_fixSession.send(&m_MDRFixMessage);
-	m_consoleLogger->info("[{}] Market Office OK", m_broker);
+	m_consoleLogger->info("[{}] Market Office OK", m_brokerStr);
 }
 
 void FIXMarketOffice::terminate() {

@@ -25,9 +25,9 @@ TriggerOffice::TriggerOffice(
     m_isOrderDelayed(false),
     m_lastOrderTime(time(nullptr)),
     m_priceEventPoller(m_inRingBuffer->newPoller()),
-    m_priceA{.bid = -99, .offer = 99},
-    m_priceB{.bid = -99, .offer = 99},
-    m_priceBTrunc{.bid = -99, .offer = 99} {
+    m_priceA{Broker::NONE, -99, 99, 0},
+    m_priceB{Broker::NONE, -99, 99, 0},
+    m_priceBTrunc{Broker::NONE, -99, 99, 0} {
 
 	// TODO: temporary to keep state
 	m_ordersCount = stoi(getenv("ORDERS_COUNT"));
@@ -42,11 +42,11 @@ TriggerOffice::TriggerOffice(
 
 	m_priceEventHandler = [&](PriceEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		switch (event.broker) {
-			case LMAX:
+			case Broker::LMAX:
 				m_priceA = event;
 				break;
 
-			case IB:
+			case Broker::IB:
 				sprintf(m_truncStrBuff, "%lf", event.bid);
 				m_truncStrBuff[6] = '0';
 				m_priceBTrunc.bid = stof(m_truncStrBuff);
