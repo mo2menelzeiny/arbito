@@ -9,11 +9,10 @@
 #include <spdlog/sinks/daily_file_sink.h>
 
 // Domain
-#include <TriggerOffice.h>
+#include <BusinessOffice.h>
 #include <FIXMarketOffice.h>
 #include <FIXTradeOffice.h>
 #include <IBMarketOffice.h>
-#include <ControlOffice.h>
 
 int main() {
 	std::atomic_bool isRunning(true);
@@ -21,13 +20,13 @@ int main() {
 	auto consoleLogger = spdlog::stdout_logger_st<spdlog::async_factory_nonblock>("console");
 	auto marketLogger = spdlog::daily_logger_st<spdlog::async_factory_nonblock>("system", "log");
 
-	auto pricesRingBuffer = Disruptor::RingBuffer<PriceEvent>::createMultiProducer(
+	auto priceRingBuffer = Disruptor::RingBuffer<PriceEvent>::createMultiProducer(
 			[]() { return PriceEvent(); },
 			32,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
-	auto ordersRingBuffer = Disruptor::RingBuffer<OrderEvent>::createMultiProducer(
+	auto orderRingBuffer = Disruptor::RingBuffer<OrderEvent>::createMultiProducer(
 			[]() { return OrderEvent(); },
 			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
@@ -35,18 +34,14 @@ int main() {
 
 	auto executionRingBuffer = Disruptor::RingBuffer<ExecutionEvent>::createMultiProducer(
 			[]() { return ExecutionEvent(); },
-			8,
+			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
-	ControlOffice controlOffice(
+	BusinessOffice triggerOffice(
+			priceRingBuffer,
 			executionRingBuffer,
-			ordersRingBuffer
-	);
-
-	TriggerOffice triggerOffice(
-			pricesRingBuffer,
-			ordersRingBuffer,
+			orderRingBuffer,
 			stoi(getenv("ORDER_DELAY_SEC")),
 			stoi(getenv("MAX_ORDERS")),
 			stof(getenv("DIFF_OPEN")),
@@ -58,7 +53,7 @@ int main() {
 	// BROKER A
 
 	FIXMarketOffice marketOfficeA(
-			pricesRingBuffer,
+			priceRingBuffer,
 			getenv("BROKER_A"),
 			stof(getenv("QTY_A")),
 			getenv("MO_A_HOST"),
@@ -72,7 +67,7 @@ int main() {
 	);
 
 	FIXTradeOffice tradeOfficeA(
-			ordersRingBuffer,
+			orderRingBuffer,
 			executionRingBuffer,
 			getenv("BROKER_A"),
 			stof(getenv("QTY_A")),
@@ -91,13 +86,13 @@ int main() {
 	// BROKER B
 
 	IBMarketOffice marketOfficeB(
-			pricesRingBuffer,
+			priceRingBuffer,
 			getenv("BROKER_B"),
 			stof(getenv("QTY_B"))
 	);
 
 	FIXTradeOffice tradeOfficeB(
-			ordersRingBuffer,
+			orderRingBuffer,
 			executionRingBuffer,
 			getenv("BROKER_B"),
 			stof(getenv("QTY_B")),
@@ -116,30 +111,27 @@ int main() {
 	try {
 
 		while (true) {
-			auto coreThread = std::thread([&] {
+			auto businessThread = std::thread([&] {
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(1, &cpuset);
 				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-				pthread_setname_np(pthread_self(), "arbito-core");
+				pthread_setname_np(pthread_self(), "arbito-business");
 
 				try {
 
 					triggerOffice.initiate();
-					controlOffice.initiate();
 
 					while (isRunning) {
 						triggerOffice.doWork();
-						controlOffice.doWork();
 					}
 
 				} catch (std::exception &ex) {
-					consoleLogger->error("Core Offices {}", ex.what());
+					consoleLogger->error("Business Offices {}", ex.what());
 					isRunning = false;
 				}
 
 				triggerOffice.terminate();
-				controlOffice.terminate();
 			});
 
 			auto tradeThreadA = std::thread([&] {
@@ -238,7 +230,7 @@ int main() {
 				std::this_thread::sleep_for(milliseconds(10));
 			}
 
-			coreThread.join();
+			businessThread.join();
 			tradeThreadA.join();
 			tradeThreadB.join();
 			marketThreadA.join();
