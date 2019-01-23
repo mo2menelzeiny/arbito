@@ -52,6 +52,9 @@ FIXMarketOffice::FIXMarketOffice(
 		m_MDRFixMessage.nr_fields = size;
 	}
 
+	m_MDRFixMessage.type = FIX_MSG_TYPE_MARKET_DATA_REQUEST;
+	m_MDRFixMessage.fields = m_MDRFields;
+
 	m_onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
 		switch (msg->type) {
 			case FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
