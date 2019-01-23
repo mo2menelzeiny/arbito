@@ -59,7 +59,7 @@ IBMarketOffice::IBMarketOffice(
 				throw std::runtime_error(errorString);
 
 			default:
-				m_consoleLogger->info("[{}] {} - {}", m_brokerStr, errorCode, errorString);
+				m_consoleLogger->info("[{}] Market Office {} - {}", m_brokerStr, errorCode, errorString);
 				break;
 		}
 	});
