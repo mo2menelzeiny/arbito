@@ -189,7 +189,7 @@ FIXTradeOffice::FIXTradeOffice(
 					}).detach();
 				}
 
-				if (execType == '8' || execType == 'H') {
+				if (execType == '8' || execType == 'H' || execType == '4') {
 					auto nextSequence = m_outRingBuffer->next();
 					(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
 					(*m_outRingBuffer)[nextSequence].side = orderSide;
