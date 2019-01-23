@@ -33,50 +33,47 @@ FIXTradeOffice::FIXTradeOffice(
     m_consoleLogger(spdlog::get("console")),
     m_systemLogger(spdlog::get("system")),
     m_orderEventPoller(m_inRingBuffer->newPoller()) {
-	// NOSB = New Single Order Buy
-	// NOSS = New Single Order Sell
-	if (!strcmp(broker, "LMAX")) {
-		struct fix_field NOSSFields[] = {
+
+	if (m_brokerEnum == Broker::LMAX) {
+		struct fix_field limitOrderFields[] = {
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-SELL"),
 				FIX_STRING_FIELD(SecurityID, "4001"),
 				FIX_STRING_FIELD(SecurityIDSource, "8"),
-				FIX_CHAR_FIELD(Side, '2'),
+				FIX_CHAR_FIELD(Side, '0'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
 				FIX_CHAR_FIELD(OrdType, '2'),
 				FIX_CHAR_FIELD(TimeInForce, '4'),
 				FIX_FLOAT_FIELD(Price, 0)
 		};
-		unsigned long size = ARRAY_SIZE(NOSSFields);
-		m_NOSSFields = (fix_field *) malloc(size * sizeof(fix_field));
-		memcpy(m_NOSSFields, NOSSFields, size * sizeof(fix_field));
-		m_NOSSFixMessage.nr_fields = size;
+		unsigned long size = ARRAY_SIZE(limitOrderFields);
+		m_limitOrderFields = (fix_field *) malloc(size * sizeof(fix_field));
+		memcpy(m_limitOrderFields, limitOrderFields, size * sizeof(fix_field));
+		m_limitOrderMessage.nr_fields = size;
 
-		struct fix_field NOSBFields[] = {
+		struct fix_field marketOrderFields[] = {
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-BUY"),
 				FIX_STRING_FIELD(SecurityID, "4001"),
 				FIX_STRING_FIELD(SecurityIDSource, "8"),
-				FIX_CHAR_FIELD(Side, '1'),
+				FIX_CHAR_FIELD(Side, '0'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
-				FIX_CHAR_FIELD(OrdType, '2'),
-				FIX_CHAR_FIELD(TimeInForce, '4'),
-				FIX_FLOAT_FIELD(Price, 0)
+				FIX_CHAR_FIELD(OrdType, '1'),
 		};
 
-		size = ARRAY_SIZE(NOSBFields);
-		m_NOSBFields = (fix_field *) malloc(size * sizeof(fix_field));
-		memcpy(m_NOSBFields, NOSBFields, size * sizeof(fix_field));
-		m_NOSBFixMessage.nr_fields = size;
+		size = ARRAY_SIZE(marketOrderFields);
+		m_marketOrderFields = (fix_field *) malloc(size * sizeof(fix_field));
+		memcpy(m_marketOrderFields, marketOrderFields, size * sizeof(fix_field));
+		m_marketOrderMessage.nr_fields = size;
 	}
 
-	if (!strcmp(broker, "IB")) {
-		struct fix_field NOSSFields[] = {
+	if (m_brokerEnum == Broker::IB) {
+		struct fix_field limitOrderFields[] = {
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-SELL"),
 				FIX_STRING_FIELD(Symbol, "EUR"),
 				FIX_STRING_FIELD(Currency, "USD"),
 				FIX_STRING_FIELD(SecurityType, "CFD"),
-				FIX_CHAR_FIELD(Side, '2'),
+				FIX_CHAR_FIELD(Side, '0'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
 				FIX_CHAR_FIELD(OrdType, '2'),
@@ -86,67 +83,80 @@ FIXTradeOffice::FIXTradeOffice(
 				FIX_CHAR_FIELD(TimeInForce, '3'),
 				FIX_FLOAT_FIELD(Price, 0)
 		};
-		unsigned long size = ARRAY_SIZE(NOSSFields);
-		m_NOSSFields = (fix_field *) malloc(size * sizeof(fix_field));
-		memcpy(m_NOSSFields, NOSSFields, size * sizeof(fix_field));
-		m_NOSSFixMessage.nr_fields = size;
+		unsigned long size = ARRAY_SIZE(limitOrderFields);
+		m_limitOrderFields = (fix_field *) malloc(size * sizeof(fix_field));
+		memcpy(m_limitOrderFields, limitOrderFields, size * sizeof(fix_field));
+		m_limitOrderMessage.nr_fields = size;
 
-		struct fix_field NOSBFields[] = {
+		struct fix_field marketOrderFields[] = {
 				FIX_STRING_FIELD(ClOrdID, "NEW-ORDER-SINGLE-BUY"),
 				FIX_STRING_FIELD(Symbol, "EUR"),
 				FIX_STRING_FIELD(Currency, "USD"),
 				FIX_STRING_FIELD(SecurityType, "CFD"),
-				FIX_CHAR_FIELD(Side, '1'),
+				FIX_CHAR_FIELD(Side, '0'),
 				FIX_STRING_FIELD(TransactTime, ""),
 				FIX_FLOAT_FIELD(OrderQty, quantity),
-				FIX_CHAR_FIELD(OrdType, '2'),
+				FIX_CHAR_FIELD(OrdType, '1'),
 				FIX_STRING_FIELD(Account, "U2707646"),
 				FIX_INT_FIELD(CustomerOrFirm, 0),
-				FIX_STRING_FIELD(ExDestination, "SMART"),
-				FIX_CHAR_FIELD(TimeInForce, '3'),
-				FIX_FLOAT_FIELD(Price, 0)
+				FIX_STRING_FIELD(ExDestination, "SMART")
 		};
 
-		size = ARRAY_SIZE(NOSBFields);
-		m_NOSBFields = (fix_field *) malloc(size * sizeof(fix_field));
-		memcpy(m_NOSBFields, NOSBFields, size * sizeof(fix_field));
-		m_NOSBFixMessage.nr_fields = size;
+		size = ARRAY_SIZE(marketOrderFields);
+		m_marketOrderFields = (fix_field *) malloc(size * sizeof(fix_field));
+		memcpy(m_marketOrderFields, marketOrderFields, size * sizeof(fix_field));
+		m_marketOrderMessage.nr_fields = size;
 	}
 
-	m_NOSSFixMessage.type = FIX_MSG_TYPE_NEW_ORDER_SINGLE;
-	m_NOSSFixMessage.fields = m_NOSSFields;
+	m_limitOrderMessage.type = FIX_MSG_TYPE_NEW_ORDER_SINGLE;
+	m_limitOrderMessage.fields = m_limitOrderFields;
 
-	m_NOSBFixMessage.type = FIX_MSG_TYPE_NEW_ORDER_SINGLE;
-	m_NOSBFixMessage.fields = m_NOSBFields;
+	m_marketOrderMessage.type = FIX_MSG_TYPE_NEW_ORDER_SINGLE;
+	m_marketOrderMessage.fields = m_marketOrderFields;
 
 	m_orderEventHandler = [&](OrderEvent &event, int64_t seq, bool endOfBatch) -> bool {
-		if(event.broker != m_brokerEnum) {
+		if (event.broker != m_brokerEnum) {
 			return false;
 		}
 
 		sprintf(m_clOrdIdStrBuff, "%lu", event.id);
 
 		if (event.order == OrderType::LIMIT && event.side == OrderSide::BUY) {
-
+			fix_get_field(&m_limitOrderMessage, Side)->char_value = 49;
+			fix_get_field(&m_limitOrderMessage, Price)->float_value = event.price;
+			fix_get_field(&m_limitOrderMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
+			fix_get_field(&m_limitOrderMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_limitOrderMessage);
 		}
 
 		if (event.order == OrderType::LIMIT && event.side == OrderSide::SELL) {
-
+			fix_get_field(&m_limitOrderMessage, Side)->char_value = 50;
+			fix_get_field(&m_limitOrderMessage, Price)->float_value = event.price;
+			fix_get_field(&m_limitOrderMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
+			fix_get_field(&m_limitOrderMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_limitOrderMessage);
 		}
 
 		if (event.order == OrderType::MARKET && event.side == OrderSide::BUY) {
-			fix_get_field(&m_NOSBFixMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
-			fix_get_field(&m_NOSBFixMessage, TransactTime)->string_value = m_fixSession.strNow();
-			m_fixSession.send(&m_NOSBFixMessage);
+			fix_get_field(&m_marketOrderMessage, Side)->char_value = 49;
+			fix_get_field(&m_marketOrderMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
+			fix_get_field(&m_marketOrderMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_marketOrderMessage);
 		}
 
 		if (event.order == OrderType::MARKET && event.side == OrderSide::SELL) {
-			fix_get_field(&m_NOSSFixMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
-			fix_get_field(&m_NOSSFixMessage, TransactTime)->string_value = m_fixSession.strNow();
-			m_fixSession.send(&m_NOSSFixMessage);
+			fix_get_field(&m_marketOrderMessage, Side)->char_value = 50;
+			fix_get_field(&m_marketOrderMessage, ClOrdID)->string_value = m_clOrdIdStrBuff;
+			fix_get_field(&m_marketOrderMessage, TransactTime)->string_value = m_fixSession.strNow();
+			m_fixSession.send(&m_marketOrderMessage);
 		}
 
-		m_systemLogger->info("[{}] {} id: {}", m_brokerStr, event.side == OrderSide::BUY ? "BUY" : "SELL", m_clOrdIdStrBuff);
+		m_systemLogger->info(
+				"[{}] {} id: {}",
+				m_brokerStr,
+				event.side == OrderSide::BUY ? "BUY" : "SELL",
+				m_clOrdIdStrBuff
+		);
 
 		return false;
 	};

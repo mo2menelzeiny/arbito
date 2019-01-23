@@ -45,10 +45,10 @@ private:
 	std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> m_inRingBuffer;
 	const char *m_brokerStr;
 	double m_quantity;
-	struct fix_field *m_NOSSFields;
-	struct fix_message m_NOSSFixMessage{};
-	struct fix_field *m_NOSBFields;
-	struct fix_message m_NOSBFixMessage{};
+	struct fix_field *m_limitOrderFields;
+	struct fix_message m_limitOrderMessage{};
+	struct fix_field *m_marketOrderFields;
+	struct fix_message m_marketOrderMessage{};
 	FIXSession m_fixSession;
 	MongoDBDriver m_mongoDriver;
 	std::shared_ptr<spdlog::logger> m_consoleLogger;
