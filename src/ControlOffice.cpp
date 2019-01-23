@@ -25,7 +25,7 @@ ControlOffice::ControlOffice(
 		};
 		m_outRingBuffer->publish(nextSequence);
 
-		m_systemLogger->info("Corrected Failed Order id {}", 99999);
+		m_systemLogger->info("Corrected Failed Order id {}", event.id);
 
 		return false;
 	};
