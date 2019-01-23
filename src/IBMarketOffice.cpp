@@ -51,8 +51,14 @@ IBMarketOffice::IBMarketOffice(
 			case 2104:
 			case 2106:
 				break;
+
+			case 501:
+			case 502:
+			case 503:
+			case 504:
+				throw std::runtime_error(errorString);
+
 			default:
-				m_consoleLogger->error("[{}] Market Office FAILED {} {}", m_brokerStr, errorCode, errorString);
 				break;
 		}
 	});

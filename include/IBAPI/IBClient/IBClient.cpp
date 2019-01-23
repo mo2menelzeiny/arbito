@@ -1740,7 +1740,7 @@ void IBClient::tickSnapshotEnd(int reqId) {
 
 //! [marketdatatype]
 void IBClient::marketDataType(TickerId reqId, int marketDataType) {
-	printf("MarketDataType. ReqId: %ld, Type: %d\n", reqId, marketDataType);
+	// printf("MarketDataType. ReqId: %ld, Type: %d\n", reqId, marketDataType);
 }
 //! [marketdatatype]
 
@@ -1913,9 +1913,9 @@ void IBClient::mktDepthExchanges(const std::vector<DepthMktDataDescription> &dep
 //! [tickNews]
 void IBClient::tickNews(int tickerId, time_t timeStamp, const std::string &providerCode, const std::string &articleId,
                         const std::string &headline, const std::string &extraData) {
-	printf("News Tick. TickerId: %d, TimeStamp: %s, ProviderCode: %s, ArticleId: %s, Headline: %s, ExtraData: %s\n",
-	       tickerId, ctime(&(timeStamp /= 1000)), providerCode.c_str(), articleId.c_str(), headline.c_str(),
-	       extraData.c_str());
+//	printf("News Tick. TickerId: %d, TimeStamp: %s, ProviderCode: %s, ArticleId: %s, Headline: %s, ExtraData: %s\n",
+//	       tickerId, ctime(&(timeStamp /= 1000)), providerCode.c_str(), articleId.c_str(), headline.c_str(),
+//	       extraData.c_str());
 }
 //! [tickNews]
 
@@ -1932,8 +1932,8 @@ void IBClient::smartComponents(int reqId, const SmartComponentsMap &theMap) {
 
 //! [tickReqParams]
 void IBClient::tickReqParams(int tickerId, double minTick, const std::string &bboExchange, int snapshotPermissions) {
-	printf("tickerId: %d, minTick: %g, bboExchange: %s, snapshotPermissions: %u\n", tickerId, minTick,
-	       bboExchange.c_str(), snapshotPermissions);
+//	printf("tickerId: %d, minTick: %g, bboExchange: %s, snapshotPermissions: %u\n", tickerId, minTick,
+//	       bboExchange.c_str(), snapshotPermissions);
 
 	m_bboExchange = bboExchange;
 }
