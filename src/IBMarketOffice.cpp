@@ -48,17 +48,18 @@ IBMarketOffice::IBMarketOffice(
 
 	m_onErrorHandler = OnErrorHandler([&](int errorCode, const std::string &errorString) {
 		switch (errorCode) {
-			case 2104:
-			case 2106:
-				break;
-
 			case 501:
 			case 502:
 			case 503:
 			case 504:
+			case 1100:
+			case 1300:
+			case 2103:
+			case 2110:
 				throw std::runtime_error(errorString);
 
 			default:
+				m_consoleLogger->info("[{}] {} - {}", m_brokerStr, errorCode, errorString);
 				break;
 		}
 	});
