@@ -11,7 +11,7 @@ ControlOffice::ControlOffice(
     m_executionEventPoller(m_inRingBuffer->newPoller()) {
 
 	m_executionEventHandler = [&](ExecutionEvent &event, int64_t seq, bool endOfBatch) -> bool {
-		if (event.isFilled) {
+		if (event.isFilled && event.id = 99999) {
 			return false;
 		}
 

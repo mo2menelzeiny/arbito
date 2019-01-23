@@ -171,34 +171,42 @@ FIXTradeOffice::FIXTradeOffice(
 				char side = fix_get_field(msg, Side)->string_value[0];
 				enum OrderSide orderSide = side == '1' ? OrderSide::BUY : OrderSide::SELL;
 				double fillPrice = fix_get_field(msg, AvgPx)->float_value;
-				bool isFilled = false;
-
-				auto nextSequence = m_outRingBuffer->next();
-				(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
-				(*m_outRingBuffer)[nextSequence].side = orderSide;
-
 				fix_get_string(fix_get_field(msg, OrderID), m_orderIdStrBuff, 64);
 				fix_get_string(fix_get_field(msg, ClOrdID), m_clOrdIdStrBuff, 64);
 
 				if ((execType == '2' || execType == 'F') && ordStatus == '2') {
-					isFilled = true;
+					auto nextSequence = m_outRingBuffer->next();
+					(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
+					(*m_outRingBuffer)[nextSequence].side = orderSide;
+					(*m_outRingBuffer)[nextSequence].isFilled = true;
+					(*m_outRingBuffer)[nextSequence].id = stoul(m_clOrdIdStrBuff)
+					m_outRingBuffer->publish(nextSequence);
+
 					m_systemLogger->info("[{}] Order Filled Price: {}", m_brokerStr, fillPrice);
+
+					std::thread([=, mongoDriver = &m_mongoDriver] {
+						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, isFilled);
+					}).detach();
 				}
 
 				if (execType == '8' || execType == 'H') {
+					auto nextSequence = m_outRingBuffer->next();
+					(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
+					(*m_outRingBuffer)[nextSequence].side = orderSide;
+					(*m_outRingBuffer)[nextSequence].isFilled = false;
+					(*m_outRingBuffer)[nextSequence].id = stoul(m_clOrdIdStrBuff)
+					m_outRingBuffer->publish(nextSequence);
+
 					char text[512];
 					msg_string(text, msg, 512);
 					m_consoleLogger->error("[{}] Trade Office Order FAILED {}", m_brokerStr, text);
 
 					m_systemLogger->error("[{}] Order Rejected id: {} \n {}", m_brokerStr, m_clOrdIdStrBuff, text);
+
+					std::thread([=, mongoDriver = &m_mongoDriver] {
+						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, isFilled);
+					}).detach();
 				}
-
-				(*m_outRingBuffer)[nextSequence].isFilled = isFilled;
-				m_outRingBuffer->publish(nextSequence);
-
-				std::thread([=, mongoDriver = &m_mongoDriver] {
-					mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, isFilled);
-				}).detach();
 			}
 
 				break;
