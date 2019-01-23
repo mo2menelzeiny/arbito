@@ -13,11 +13,13 @@
 #include "FIXSession.h"
 #include "MongoDBDriver.h"
 #include "OrderEvent.h"
+#include "ExecutionEvent.h"
 
 class FIXTradeOffice {
 public:
 	FIXTradeOffice(
 			std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &inRingBuffer,
+			std::shared_ptr<Disruptor::RingBuffer<ExecutionEvent>> &outRingBuffer,
 			const char *broker,
 			double quantity,
 			const char *host,
@@ -43,6 +45,7 @@ public:
 
 private:
 	std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> m_inRingBuffer;
+	std::shared_ptr<Disruptor::RingBuffer<ExecutionEvent>> m_outRingBuffer;
 	const char *m_brokerStr;
 	double m_quantity;
 	struct fix_field *m_limitOrderFields;

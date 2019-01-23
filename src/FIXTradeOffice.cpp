@@ -3,6 +3,7 @@
 
 FIXTradeOffice::FIXTradeOffice(
 		std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> &inRingBuffer,
+		std::shared_ptr<Disruptor::RingBuffer<ExecutionEvent>> &outRingBuffer,
 		const char *broker,
 		double quantity,
 		const char *host,
@@ -16,6 +17,7 @@ FIXTradeOffice::FIXTradeOffice(
 		const char *dbUri,
 		const char *dbName
 ) : m_inRingBuffer(inRingBuffer),
+    m_outRingBuffer(outRingBuffer),
     m_brokerStr(broker),
     m_brokerEnum(getBroker(broker)),
     m_quantity(quantity),
@@ -164,28 +166,39 @@ FIXTradeOffice::FIXTradeOffice(
 	m_onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
 		switch (msg->type) {
 			case FIX_MSG_TYPE_EXECUTION_REPORT: {
-				char execType = fix_get_field(msg, ExecType)->string_value[0];
 				char ordStatus = fix_get_field(msg, OrdStatus)->string_value[0];
+				char execType = fix_get_field(msg, ExecType)->string_value[0];
+				char side = fix_get_field(msg, Side)->string_value[0];
+				enum OrderSide orderSide = side == '1' ? OrderSide::BUY : OrderSide::SELL;
+				double fillPrice = fix_get_field(msg, AvgPx)->float_value;
+				bool isFilled = false;
+
+				auto nextSequence = m_outRingBuffer->next();
+				(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
+				(*m_outRingBuffer)[nextSequence].side = orderSide;
+
+				fix_get_string(fix_get_field(msg, OrderID), m_orderIdStrBuff, 64);
+				fix_get_string(fix_get_field(msg, ClOrdID), m_clOrdIdStrBuff, 64);
 
 				if ((execType == '2' || execType == 'F') && ordStatus == '2') {
-					fix_get_string(fix_get_field(msg, OrderID), m_orderIdStrBuff, 64);
-					fix_get_string(fix_get_field(msg, ClOrdID), m_clOrdIdStrBuff, 64);
-					char side = fix_get_field(msg, Side)->string_value[0];
-					double fillPrice = fix_get_field(msg, AvgPx)->float_value;
-
-					m_systemLogger->info("[{}] Filled Px: {} id: {}", m_brokerStr, fillPrice, m_clOrdIdStrBuff);
-
-					std::thread([=, mongoDriver = &m_mongoDriver, broker = m_brokerStr] {
-						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, broker);
-					}).detach();
+					isFilled = true;
+					m_systemLogger->info("[{}] Order Filled Price: {}", m_brokerStr, fillPrice);
 				}
 
 				if (execType == '8' || execType == 'H') {
 					char text[512];
 					msg_string(text, msg, 512);
 					m_consoleLogger->error("[{}] Trade Office Order FAILED {}", m_brokerStr, text);
-					m_systemLogger->error("[{}] Cancelled id: {}", m_brokerStr, m_clOrdIdStrBuff);
+
+					m_systemLogger->error("[{}] Order Rejected id: {} \n {}", m_brokerStr, m_clOrdIdStrBuff, text);
 				}
+
+				(*m_outRingBuffer)[nextSequence].isFilled = isFilled;
+				m_outRingBuffer->publish(nextSequence);
+
+				std::thread([=, mongoDriver = &m_mongoDriver] {
+					mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, isFilled);
+				}).detach();
 			}
 
 				break;

@@ -13,6 +13,7 @@
 #include <FIXMarketOffice.h>
 #include <FIXTradeOffice.h>
 #include <IBMarketOffice.h>
+#include <ControlOffice.h>
 
 int main() {
 	std::atomic_bool isRunning(true);
@@ -30,6 +31,17 @@ int main() {
 			[]() { return OrderEvent(); },
 			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
+	);
+
+	auto executionRingBuffer = Disruptor::RingBuffer<ExecutionEvent>::createMultiProducer(
+			[]() { return ExecutionEvent(); },
+			8,
+			std::make_shared<Disruptor::BusySpinWaitStrategy>()
+	);
+
+	ControlOffice controlOffice(
+			executionRingBuffer,
+			ordersRingBuffer
 	);
 
 	TriggerOffice triggerOffice(
@@ -61,6 +73,7 @@ int main() {
 
 	FIXTradeOffice tradeOfficeA(
 			ordersRingBuffer,
+			executionRingBuffer,
 			getenv("BROKER_A"),
 			stof(getenv("QTY_A")),
 			getenv("TO_A_HOST"),
@@ -85,6 +98,7 @@ int main() {
 
 	FIXTradeOffice tradeOfficeB(
 			ordersRingBuffer,
+			executionRingBuffer,
 			getenv("BROKER_B"),
 			stof(getenv("QTY_B")),
 			getenv("TO_B_HOST"),
@@ -102,18 +116,30 @@ int main() {
 	try {
 
 		while (true) {
-			auto triggerThread = std::thread([&] {
+			auto coreThread = std::thread([&] {
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(1, &cpuset);
 				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
-				pthread_setname_np(pthread_self(), "arbito-trigger");
+				pthread_setname_np(pthread_self(), "arbito-core");
 
-				while (isRunning) {
-					triggerOffice.doWork();
+				try {
+
+					triggerOffice.initiate();
+					controlOffice.initiate();
+
+					while (isRunning) {
+						triggerOffice.doWork();
+						controlOffice.doWork();
+					}
+
+				} catch (std::exception &ex) {
+					consoleLogger->error("Core Offices {}", ex.what());
+					isRunning = false;
 				}
 
 				triggerOffice.terminate();
+				controlOffice.terminate();
 			});
 
 			auto tradeThreadA = std::thread([&] {
@@ -212,7 +238,7 @@ int main() {
 				std::this_thread::sleep_for(milliseconds(10));
 			}
 
-			triggerThread.join();
+			coreThread.join();
 			tradeThreadA.join();
 			tradeThreadB.join();
 			marketThreadA.join();
