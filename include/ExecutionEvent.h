@@ -8,6 +8,7 @@ struct ExecutionEvent {
 	enum Broker broker;
 	enum OrderSide side;
 	bool isFilled;
+	unsigned long id;
 };
 
 #endif //ARBITO_EXECUTIONEVENT_H
