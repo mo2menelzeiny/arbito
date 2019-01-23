@@ -111,15 +111,27 @@ public:
 		auto randomId = m_idGenerator();
 		sprintf(m_randomIdStrBuff, "%lu", randomId);
 
-		auto nextSequence = m_outRingBuffer->next();
-		(*m_outRingBuffer)[nextSequence].id = randomId;
-
 		switch (m_currentOrder) {
-			case DIFF_A:
+			case DIFF_A: {
+				auto nextSeqA = m_outRingBuffer->next();
+				(*m_outRingBuffer)[nextSeqA] = {
+						m_priceA.broker,
+						OrderType::LIMIT,
+						OrderSide::SELL,
+						m_priceA.bid,
+						randomId
+				};
+				m_outRingBuffer->publish(nextSeqA);
 
-				(*m_outRingBuffer)[nextSequence].sell = m_priceA.broker;
-				(*m_outRingBuffer)[nextSequence].buy = m_priceB.broker;
-				m_outRingBuffer->publish(nextSequence);
+				auto nextSeqB = m_outRingBuffer->next();
+				(*m_outRingBuffer)[nextSeqB] = {
+						m_priceB.broker,
+						OrderType::LIMIT,
+						OrderSide::BUY,
+						m_priceB.offer,
+						randomId
+				};
+				m_outRingBuffer->publish(nextSeqB);
 
 				m_systemLogger->info(
 						"{} bid A: {} sequence A: {} offer B: {} sequence B: {}",
@@ -132,18 +144,34 @@ public:
 
 				std::thread([mongoDriver = &m_mongoDriver,
 						            id = m_randomIdStrBuff,
-						            a = m_priceA,
-						            b = m_priceB,
+						            bid = m_priceA.bid,
+						            offer = m_priceB.offer,
 						            orderType] {
-					mongoDriver->record(id, a.bid, b.offer, orderType);
+					mongoDriver->record(id, bid, offer, orderType);
 				}).detach();
-
+			}
 				break;
 
-			case DIFF_B:
-				(*m_outRingBuffer)[nextSequence].sell = m_priceB.broker;
-				(*m_outRingBuffer)[nextSequence].buy = m_priceA.broker;
-				m_outRingBuffer->publish(nextSequence);
+			case DIFF_B: {
+				auto nextSeqA = m_outRingBuffer->next();
+				(*m_outRingBuffer)[nextSeqA] = {
+						m_priceA.broker,
+						OrderType::LIMIT,
+						OrderSide::BUY,
+						m_priceA.offer,
+						randomId
+				};
+				m_outRingBuffer->publish(nextSeqA);
+
+				auto nextSeqB = m_outRingBuffer->next();
+				(*m_outRingBuffer)[nextSeqB] = {
+						m_priceB.broker,
+						OrderType::LIMIT,
+						OrderSide::SELL,
+						m_priceB.bid,
+						randomId
+				};
+				m_outRingBuffer->publish(nextSeqB);
 
 				m_systemLogger->info(
 						"{} bid B: {} sequence B: {} offer A: {} sequence A: {}",
@@ -156,12 +184,12 @@ public:
 
 				std::thread([mongoDriver = &m_mongoDriver,
 						            id = m_randomIdStrBuff,
-						            a = m_priceA,
-						            b = m_priceB,
+						            bid = m_priceB.bid,
+						            offer = m_priceA.offer,
 						            orderType] {
-					mongoDriver->record(id, b.bid, a.offer, orderType);
+					mongoDriver->record(id, bid, offer, orderType);
 				}).detach();
-
+			}
 				break;
 
 			default:

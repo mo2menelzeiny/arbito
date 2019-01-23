@@ -6,7 +6,7 @@ IBMarketOffice::IBMarketOffice(
 		const char *broker,
 		double quantity
 ) : m_outRingBuffer(outRingBuffer),
-    m_broker(broker),
+    m_brokerStr(broker),
     m_quantity(quantity),
     m_consoleLogger(spdlog::get("console")),
     m_systemLogger(spdlog::get("system")),
@@ -36,13 +36,10 @@ IBMarketOffice::IBMarketOffice(
 		++m_sequence;
 
 		auto nextSequence = m_outRingBuffer->next();
-		(*m_outRingBuffer)[nextSequence].bid = m_bid;
-		(*m_outRingBuffer)[nextSequence].offer = m_offer;
-		(*m_outRingBuffer)[nextSequence].sequence = m_sequence;
-		(*m_outRingBuffer)[nextSequence].broker = IB;
+		(*m_outRingBuffer)[nextSequence] = {Broker::IB, m_bid, m_offer, m_sequence};
 		m_outRingBuffer->publish(nextSequence);
 
-		m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_broker, m_sequence, m_bid, m_offer);
+		m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_brokerStr, m_sequence, m_bid, m_offer);
 	});
 
 	m_onOrderStatusHandler = OnOrderStatusHandler([&](OrderId orderId, const std::string &status, double avgPrice) {
@@ -55,7 +52,7 @@ IBMarketOffice::IBMarketOffice(
 			case 2106:
 				break;
 			default:
-				m_consoleLogger->error("[{}] Market Office FAILED {} {}", m_broker, errorCode, errorString);
+				m_consoleLogger->error("[{}] Market Office FAILED {} {}", m_brokerStr, errorCode, errorString);
 				break;
 		}
 	});
@@ -69,7 +66,7 @@ void IBMarketOffice::initiate() {
 	}
 
 	m_ibClient->subscribeToFeed();
-	m_consoleLogger->info("[{}] Market Office OK", m_broker);
+	m_consoleLogger->info("[{}] Market Office OK", m_brokerStr);
 }
 
 void IBMarketOffice::terminate() {

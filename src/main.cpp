@@ -13,7 +13,6 @@
 #include <FIXMarketOffice.h>
 #include <FIXTradeOffice.h>
 #include <IBMarketOffice.h>
-#include <IBTradeOffice.h>
 
 int main() {
 	std::atomic_bool isRunning(true);
