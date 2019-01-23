@@ -185,7 +185,7 @@ FIXTradeOffice::FIXTradeOffice(
 					m_systemLogger->info("[{}] Order Filled Price: {}", m_brokerStr, fillPrice);
 
 					std::thread([=, mongoDriver = &m_mongoDriver] {
-						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, isFilled);
+						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, true);
 					}).detach();
 				}
 
@@ -204,7 +204,7 @@ FIXTradeOffice::FIXTradeOffice(
 					m_systemLogger->error("[{}] Order Rejected id: {} \n {}", m_brokerStr, m_clOrdIdStrBuff, text);
 
 					std::thread([=, mongoDriver = &m_mongoDriver] {
-						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, isFilled);
+						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, false);
 					}).detach();
 				}
 			}
