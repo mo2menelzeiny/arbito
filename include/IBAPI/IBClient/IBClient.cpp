@@ -1659,8 +1659,8 @@ void IBClient::updateMktDepthL2(TickerId id, int position, const std::string &ma
 //! [updatenewsbulletin]
 void IBClient::updateNewsBulletin(int msgId, int msgType, const std::string &newsMessage,
                                   const std::string &originExch) {
-	printf("News Bulletins. %d - Type: %d, Message: %s, Exchange of Origin: %s\n", msgId, msgType, newsMessage.c_str(),
-	       originExch.c_str());
+//	printf("News Bulletins. %d - Type: %d, Message: %s, Exchange of Origin: %s\n", msgId, msgType, newsMessage.c_str(),
+//	       originExch.c_str());
 }
 //! [updatenewsbulletin]
 
