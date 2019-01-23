@@ -179,7 +179,7 @@ FIXTradeOffice::FIXTradeOffice(
 					(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
 					(*m_outRingBuffer)[nextSequence].side = orderSide;
 					(*m_outRingBuffer)[nextSequence].isFilled = true;
-					(*m_outRingBuffer)[nextSequence].id = stoul(m_clOrdIdStrBuff)
+					(*m_outRingBuffer)[nextSequence].id = std::stoul(m_clOrdIdStrBuff)
 					m_outRingBuffer->publish(nextSequence);
 
 					m_systemLogger->info("[{}] Order Filled Price: {}", m_brokerStr, fillPrice);
@@ -194,7 +194,7 @@ FIXTradeOffice::FIXTradeOffice(
 					(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
 					(*m_outRingBuffer)[nextSequence].side = orderSide;
 					(*m_outRingBuffer)[nextSequence].isFilled = false;
-					(*m_outRingBuffer)[nextSequence].id = stoul(m_clOrdIdStrBuff)
+					(*m_outRingBuffer)[nextSequence].id = std::stoul(m_clOrdIdStrBuff)
 					m_outRingBuffer->publish(nextSequence);
 
 					char text[512];
