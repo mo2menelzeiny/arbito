@@ -235,6 +235,10 @@ private:
 	void printBondContractDetailsMsg(const ContractDetails &contractDetails);
 
 private:
+	double m_bid;
+	double m_offer;
+	int m_bidQty;
+	int m_offerQty;
 	OnTickHandler m_onTickHandler;
 	OnOrderStatusHandler m_onOrderStatus;
 	OnErrorHandler m_onErrorHandler;

@@ -50,6 +50,10 @@ IBClient::IBClient(
 ) : m_onTickHandler(onTickHandler),
     m_onOrderStatus(onOrderStatusHandler),
     m_onErrorHandler(onErrorHandler),
+    m_bid(-99),
+    m_offer(99),
+    m_offerQty(0),
+    m_bidQty(0),
     m_osSignal(0),
     m_pClient(new EClientSocket(this, &m_osSignal)),
     m_state(ST_CONNECT),
@@ -1371,13 +1375,35 @@ void IBClient::error(int id, int errorCode, const std::string &errorString) {
 void IBClient::tickPrice(TickerId tickerId, TickType field, double price, const TickAttrib &attribs) {
 	/*printf("Tick Price. Ticker Id: %ld, Field: %d, Price: %g, CanAutoExecute: %d, PastLimit: %d, PreOpen: %d\n",
 	       tickerId, (int) field, price, attribs.canAutoExecute, attribs.pastLimit, attribs.preOpen);*/
-	// m_onTickHandler(field, price);
+	switch (field) {
+		case BID:
+			m_bid = price;
+			m_onTickHandler(1, m_bid, m_bidQty);
+			break;
+		case ASK:
+			m_offer = price;
+			m_onTickHandler(0, m_offer, m_offerQty);
+			break;
+		default:
+			break;
+	}
 }
 //! [tickprice]
 
 //! [ticksize]
 void IBClient::tickSize(TickerId tickerId, TickType field, int size) {
-	// m_onTickHandler(field, size);
+	switch (field) {
+		case BID_SIZE:
+			m_bidQty = size;
+			m_onTickHandler(1, m_bid, m_bidQty);
+			break;
+		case ASK_SIZE:
+			m_bidQty = size;
+			m_onTickHandler(0, m_offer, m_offerQty);
+			break;
+		default:
+			break;
+	}
 }
 //! [ticksize]
 
