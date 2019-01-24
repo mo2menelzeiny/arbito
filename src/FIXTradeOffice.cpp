@@ -197,15 +197,19 @@ FIXTradeOffice::FIXTradeOffice(
 					(*m_outRingBuffer)[nextSequence].id = std::stoul(m_clOrdIdStrBuff);
 					m_outRingBuffer->publish(nextSequence);
 
-					char text[512];
-					msg_string(text, msg, 512);
-					m_consoleLogger->error("[{}] Trade Office Order FAILED {}", m_brokerStr, text);
-
-					m_systemLogger->error("[{}] Order Rejected id: {} \n {}", m_brokerStr, m_clOrdIdStrBuff, text);
-
 					std::thread([=, mongoDriver = &m_mongoDriver] {
 						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, false);
 					}).detach();
+				}
+
+				if (execType == '4') {
+					m_systemLogger->error("[{}] Order Canceled id: {}", m_brokerStr, m_clOrdIdStrBuff);
+				}
+
+				if (execType == '8' || execType == 'H') {
+					char text[512];
+					msg_string(text, msg, 512);
+					m_consoleLogger->error("[{}] Trade Office Order FAILED {}", m_brokerStr, text);
 				}
 			}
 
