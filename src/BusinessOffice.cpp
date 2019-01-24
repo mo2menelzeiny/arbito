@@ -17,6 +17,7 @@ BusinessOffice::BusinessOffice(
     m_priceEventPoller(m_priceRingBuffer->newPoller()),
     m_executionEventPoller(m_executionRingBuffer->newPoller()),
     m_orderDelaySec(orderDelaySec),
+    m_windowMs(stoi(getenv("WINDOW_MS"))),
     m_maxOrders(maxOrders),
     m_diffOpen(diffOpen),
     m_diffClose(diffClose),
@@ -31,7 +32,8 @@ BusinessOffice::BusinessOffice(
     m_priceB{Broker::NONE, -99, 99, 0},
     m_priceBTrunc{Broker::NONE, -99, 99, 0},
     m_ordersCount(std::stoi(getenv("ORDERS_COUNT"))),
-    m_currentDiff(getDifference(getenv("CURRENT_DIFF"))) {
+    m_currentDiff(getDifference(getenv("CURRENT_DIFF"))),
+    m_isExpiredB(true) {
 
 	m_priceEventHandler = [&](PriceEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		switch (event.broker) {
@@ -49,6 +51,9 @@ BusinessOffice::BusinessOffice(
 				m_priceBTrunc.offer = std::stof(m_truncStrBuff);;
 
 				m_priceB = event;
+
+				m_isExpiredB = false;
+				m_timestampB = m_timestampNow;
 				break;
 
 			default:

@@ -36,8 +36,18 @@ public:
 	);
 
 	inline void doWork() {
+		m_timestampNow = system_clock::now();
+
 		m_priceEventPoller->poll(m_priceEventHandler);
 		m_executionEventPoller->poll(m_executionEventHandler);
+
+		if (!m_isExpiredB && duration_cast<milliseconds>(m_timestampNow - m_timestampB).count() >= m_windowMs) {
+			m_isExpiredB = true;
+			m_priceB.bid = -99;
+			m_priceB.offer = 99;
+			m_priceBTrunc.bid = -99;
+			m_priceBTrunc.offer = 99;
+		}
 
 		if (m_isOrderDelayed && ((time(nullptr) - m_lastOrderTime) < m_orderDelaySec)) {
 			return;
@@ -225,6 +235,7 @@ private:
 	std::shared_ptr<Disruptor::RingBuffer<ExecutionEvent>> m_executionRingBuffer;
 	std::shared_ptr<Disruptor::RingBuffer<OrderEvent>> m_orderRingBuffer;
 	int m_orderDelaySec;
+	int m_windowMs;
 	int m_maxOrders;
 	double m_diffOpen;
 	double m_diffClose;
@@ -246,6 +257,9 @@ private:
 	char m_truncStrBuff[9];
 	bool m_isOrderDelayed;
 	time_t m_lastOrderTime;
+	bool m_isExpiredB;
+	time_point<system_clock> m_timestampB;
+	time_point<system_clock> m_timestampNow;
 };
 
 
