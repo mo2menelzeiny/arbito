@@ -23,14 +23,14 @@ MongoDBDriver::MongoDBDriver(
 		);
 		return;
 	}
-
-	m_client = mongoc_client_new(m_uri);
-	m_collection = mongoc_client_get_collection(m_client, m_DBName, collectionName);
 }
 
 
 void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const char *orderType) {
 	bson_error_t error;
+
+	mongoc_client_t *client = mongoc_client_new(m_uri);
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_DBName, m_collectionName);
 
 	auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>
 			(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -43,11 +43,13 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 			"offer", BCON_DOUBLE(offer)
 	);
 
-	if (!mongoc_collection_insert_one(m_collection, insert, nullptr, nullptr, &error)) {
+	if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
 		fprintf(stderr, "MongoDB %s\n", error.message);
 	}
 
 	bson_destroy(insert);
+	mongoc_client_destroy(client);
+	mongoc_collection_destroy(collection);
 }
 
 
@@ -60,6 +62,9 @@ void MongoDBDriver::record(
 		bool isFilled
 ) {
 	bson_error_t error;
+
+	mongoc_client_t *client = mongoc_client_new(m_uri);
+	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_DBName, m_collectionName);
 
 	auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>
 			(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -74,9 +79,11 @@ void MongoDBDriver::record(
 			"isFilled", BCON_BOOL(isFilled)
 	);
 
-	if (!mongoc_collection_insert_one(m_collection, insert, nullptr, nullptr, &error)) {
+	if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
 		fprintf(stderr, "MongoDB %s\n", error.message);
 	}
 
 	bson_destroy(insert);
+	mongoc_client_destroy(client);
+	mongoc_collection_destroy(collection);
 }

@@ -33,8 +33,6 @@ private:
 	const char *m_uri;
 	const char *m_DBName;
 	const char *m_collectionName;
-	mongoc_client_t *m_client;
-	mongoc_collection_t *m_collection;
 };
 
 
