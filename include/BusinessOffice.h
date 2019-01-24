@@ -254,7 +254,7 @@ private:
 	Difference m_currentOrder;
 	std::mt19937_64 m_idGenerator;
 	char m_randomIdStrBuff[64];
-	char m_truncStrBuff[9];
+	char m_truncStrBuff[16];
 	bool m_isOrderDelayed;
 	time_t m_lastOrderTime;
 	bool m_isExpiredB;
