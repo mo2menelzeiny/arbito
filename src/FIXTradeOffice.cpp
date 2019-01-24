@@ -203,7 +203,7 @@ FIXTradeOffice::FIXTradeOffice(
 				}
 
 				if (execType == '4') {
-					m_systemLogger->error("[{}] Order Canceled id: {}", m_brokerStr, m_clOrdIdStrBuff);
+					m_systemLogger->error("[{}] Trade Office Order Canceled id: {}", m_brokerStr, m_clOrdIdStrBuff);
 				}
 
 				if (execType == '8' || execType == 'H') {

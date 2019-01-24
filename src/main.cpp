@@ -17,8 +17,11 @@
 int main() {
 	std::atomic_bool isRunning(true);
 
-	auto consoleLogger = spdlog::stdout_logger_st<spdlog::async_factory_nonblock>("console");
-	auto marketLogger = spdlog::daily_logger_st<spdlog::async_factory_nonblock>("system", "log");
+	auto consoleLogger = spdlog::stdout_logger_mt("console");
+	auto marketLogger = spdlog::daily_logger_mt("system", "log");
+
+	consoleLogger->flush_on(spdlog::level::info);
+	marketLogger->flush_on(spdlog::level::info);
 
 	auto priceRingBuffer = Disruptor::RingBuffer<PriceEvent>::createMultiProducer(
 			[]() { return PriceEvent(); },
