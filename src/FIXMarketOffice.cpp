@@ -31,7 +31,11 @@ FIXMarketOffice::FIXMarketOffice(
     m_systemLogger(spdlog::get("system")),
     m_sequence(0),
     m_offerIdx(m_brokerEnum == Broker::LMAX ? 4 : 2),
-    m_offerQtyIdx(m_offerIdx - 1) {
+    m_offerQtyIdx(m_offerIdx - 1),
+    m_bid(-99),
+    m_bidQty(0),
+    m_offer(99),
+    m_offerQty(0) {
 
 	if (m_brokerEnum == Broker::LMAX) {
 		struct fix_field fields[] = {
@@ -66,6 +70,15 @@ FIXMarketOffice::FIXMarketOffice(
 				if (m_quantity > offerQty || m_quantity > bidQty) {
 					break;
 				}
+
+				if (m_offer == offer && m_bid == bid) {
+					break;
+				}
+
+				m_bid = bid;
+				m_offer = offer;
+				m_bidQty = bidQty;
+				m_offerQty = offerQty;
 
 				++m_sequence;
 

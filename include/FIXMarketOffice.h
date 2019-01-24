@@ -51,6 +51,10 @@ private:
 	unsigned long m_offerIdx;
 	unsigned long m_offerQtyIdx;
 	enum Broker m_brokerEnum;
+	double m_bid;
+	double m_bidQty;
+	double m_offer;
+	double m_offerQty;
 };
 
 
