@@ -56,9 +56,11 @@ BusinessOffice::BusinessOffice(
 		}
 
 		m_systemLogger->info(
-				"DiffA: {} DiffB: {} SeqA: {} SeqB: {}",
+				"DiffA: {} DiffB: {} DiffAT: {} DiffBT: {} SeqA: {} SeqB: {}",
 				(m_priceA.bid - m_priceB.offer) * 100000,
 				(m_priceB.bid - m_priceA.offer) * 100000,
+				(m_priceA.bid - m_priceBTrunc.offer) * 100000,
+				(m_priceBTrunc.bid - m_priceA.offer) * 100000,
 				m_priceA.sequence,
 				m_priceB.sequence
 		);
