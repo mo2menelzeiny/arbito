@@ -16,21 +16,30 @@ IBMarketOffice::IBMarketOffice(
     m_offer(99),
     m_offerQty(0) {
 	m_onTickHandler = OnTickHandler([&](int side, double price, int size) {
+		if (m_quantity > size) {
+			return;
+		}
+
 		switch (side) {
 			case 0:
+				if (m_offer == price) {
+					return;
+				}
+
 				m_offer = price;
 				m_offerQty = size;
+
 				break;
 			case 1:
+				if (m_bid == price) {
+					return;
+				}
+
 				m_bid = price;
 				m_bidQty = size;
 				break;
 			default:
 				break;
-		}
-
-		if (m_quantity > m_offerQty || m_quantity > m_bidQty) {
-			return;
 		}
 
 		++m_sequence;
