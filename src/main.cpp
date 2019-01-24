@@ -15,6 +15,10 @@
 #include <IBMarketOffice.h>
 
 int main() {
+	SSL_load_error_strings();
+	SSL_library_init();
+	OpenSSL_add_all_algorithms();
+
 	std::atomic_bool isRunning(true);
 
 	auto consoleLogger = spdlog::stdout_logger_mt("console");
@@ -111,6 +115,8 @@ int main() {
 	try {
 
 		while (true) {
+			consoleLogger->info("MAIN OK");
+
 			auto businessThread = std::thread([&] {
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
@@ -237,11 +243,15 @@ int main() {
 			marketThreadB.join();
 
 			std::this_thread::sleep_for(seconds(30));
+
+			consoleLogger->error("MAIN FAILED");
 		}
 
 	} catch (std::exception &ex) {
 		consoleLogger->error("MAIN {}", ex.what());
 	}
+
+	EVP_cleanup();
 
 	return EXIT_FAILURE;
 }

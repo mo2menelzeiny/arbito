@@ -50,10 +50,6 @@ void FIXSocket::initiate() {
 		return;
 	}
 
-	SSL_load_error_strings();
-	SSL_library_init();
-	OpenSSL_add_all_algorithms();
-
 	m_ssl_ctx = SSL_CTX_new(TLSv1_client_method());
 
 	SSL_CTX_set_options(m_ssl_ctx, SSL_OP_NO_SSLv3);
@@ -92,7 +88,4 @@ void FIXSocket::terminate() {
 
 	SSL_free(m_ssl);
 	m_ssl = nullptr;
-
-	ERR_free_strings();
-	EVP_cleanup();
 }
