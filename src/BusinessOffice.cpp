@@ -85,7 +85,7 @@ BusinessOffice::BusinessOffice(
 		}
 
 		if (event.id == CORRECTION_ID) {
-			m_consoleLogger->error("Correction FAILED");
+			m_consoleLogger->error("Business Office Correction FAILED");
 			return false;
 		}
 
@@ -98,9 +98,6 @@ BusinessOffice::BusinessOffice(
 				CORRECTION_ID
 		};
 		m_orderRingBuffer->publish(nextSequence);
-
-		m_systemLogger->info("Corrected Order id {}", event.id);
-		m_consoleLogger->info("Corrected Order id {}", event.id);
 
 		return false;
 	};
