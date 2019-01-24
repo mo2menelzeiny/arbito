@@ -88,14 +88,14 @@ BusinessOffice::BusinessOffice(
 		(*m_orderRingBuffer)[nextSequence] = {
 				event.broker == Broker::IB ? Broker::LMAX : Broker::IB,
 				OrderType::MARKET,
-				event.side == OrderSide::BUY ? OrderSide::SELL : OrderSide::BUY,
+				event.side,
 				0,
 				CORRECTION_ID
 		};
 		m_orderRingBuffer->publish(nextSequence);
 
-		m_systemLogger->info("Corrected Failed Order id {}", event.id);
-		m_consoleLogger->info("Corrected Failed Order id {}", event.id);
+		m_systemLogger->info("Corrected Order id {}", event.id);
+		m_consoleLogger->info("Corrected Order id {}", event.id);
 
 		return false;
 	};
