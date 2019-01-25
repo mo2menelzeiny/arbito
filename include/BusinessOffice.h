@@ -36,18 +36,23 @@ public:
 	);
 
 	inline void doWork() {
-		/*m_timestampNow = system_clock::now();*/
+		m_timestampNow = system_clock::now();
 
 		m_priceEventPoller->poll(m_priceEventHandler);
 		m_executionEventPoller->poll(m_executionEventHandler);
 
-		/*if (!m_isExpiredB && duration_cast<milliseconds>(m_timestampNow - m_timestampB).count() >= m_windowMs) {
+		if(m_isExpiredB) {
+			return;
+		}
+
+		if (!m_isExpiredB && duration_cast<milliseconds>(m_timestampNow - m_timestampB).count() >= m_windowMs) {
 			m_isExpiredB = true;
 			m_priceB.bid = -99;
 			m_priceB.offer = 99;
 			m_priceBTrunc.bid = -99;
 			m_priceBTrunc.offer = 99;
-		}*/
+			return;
+		}
 
 		if (m_isOrderDelayed && ((time(nullptr) - m_lastOrderTime) < m_orderDelaySec)) {
 			return;

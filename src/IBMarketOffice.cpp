@@ -23,6 +23,11 @@ IBMarketOffice::IBMarketOffice(
 		switch (side) {
 			case 0:
 				if (m_offer == price) {
+					auto nextSequence = m_outRingBuffer->next();
+					(*m_outRingBuffer)[nextSequence] = {Broker::IB, m_bid, m_offer, m_sequence};
+					m_outRingBuffer->publish(nextSequence);
+
+					m_systemLogger->info("[{}][{}]", m_brokerStr, m_sequence);
 					return;
 				}
 
@@ -32,6 +37,11 @@ IBMarketOffice::IBMarketOffice(
 				break;
 			case 1:
 				if (m_bid == price) {
+					auto nextSequence = m_outRingBuffer->next();
+					(*m_outRingBuffer)[nextSequence] = {Broker::IB, m_bid, m_offer, m_sequence};
+					m_outRingBuffer->publish(nextSequence);
+
+					m_systemLogger->info("[{}][{}]", m_brokerStr, m_sequence);
 					return;
 				}
 

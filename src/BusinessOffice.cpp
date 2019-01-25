@@ -52,8 +52,8 @@ BusinessOffice::BusinessOffice(
 
 				m_priceB = event;
 
-				/*m_isExpiredB = false;
-				m_timestampB = m_timestampNow;*/
+				m_isExpiredB = false;
+				m_timestampB = m_timestampNow;
 				break;
 
 			default:
