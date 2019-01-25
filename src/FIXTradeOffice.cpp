@@ -171,21 +171,22 @@ FIXTradeOffice::FIXTradeOffice(
 				char side = fix_get_field(msg, Side)->string_value[0];
 				enum OrderSide orderSide = side == '1' ? OrderSide::BUY : OrderSide::SELL;
 				double fillPrice = fix_get_field(msg, AvgPx)->float_value;
-				fix_get_string(fix_get_field(msg, OrderID), m_orderIdStrBuff, 64);
-				fix_get_string(fix_get_field(msg, ClOrdID), m_clOrdIdStrBuff, 64);
+				char orderIdStrBuff[64], clOrdIdStrBuff[64];
+				fix_get_string(fix_get_field(msg, OrderID), orderIdStrBuff, 64);
+				fix_get_string(fix_get_field(msg, ClOrdID), clOrdIdStrBuff, 64);
 
 				if ((execType == '2' || execType == 'F') && ordStatus == '2') {
 					auto nextSequence = m_outRingBuffer->next();
 					(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
 					(*m_outRingBuffer)[nextSequence].side = orderSide;
 					(*m_outRingBuffer)[nextSequence].isFilled = true;
-					(*m_outRingBuffer)[nextSequence].id = std::stoul(m_clOrdIdStrBuff);
+					(*m_outRingBuffer)[nextSequence].id = std::stoul(clOrdIdStrBuff);
 					m_outRingBuffer->publish(nextSequence);
 
 					m_systemLogger->info("[{}] Order Filled Price: {}", m_brokerStr, fillPrice);
 
 					std::thread([=, mongoDriver = &m_mongoDriver] {
-						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, true);
+						mongoDriver->record(clOrdIdStrBuff, orderIdStrBuff, side, fillPrice, m_brokerStr, true);
 					}).detach();
 				}
 
@@ -194,16 +195,16 @@ FIXTradeOffice::FIXTradeOffice(
 					(*m_outRingBuffer)[nextSequence].broker = m_brokerEnum;
 					(*m_outRingBuffer)[nextSequence].side = orderSide;
 					(*m_outRingBuffer)[nextSequence].isFilled = false;
-					(*m_outRingBuffer)[nextSequence].id = std::stoul(m_clOrdIdStrBuff);
+					(*m_outRingBuffer)[nextSequence].id = std::stoul(clOrdIdStrBuff);
 					m_outRingBuffer->publish(nextSequence);
 
 					std::thread([=, mongoDriver = &m_mongoDriver] {
-						mongoDriver->record(m_clOrdIdStrBuff, m_orderIdStrBuff, side, fillPrice, m_brokerStr, false);
+						mongoDriver->record(clOrdIdStrBuff, orderIdStrBuff, side, fillPrice, m_brokerStr, false);
 					}).detach();
 				}
 
 				if (execType == '4') {
-					m_systemLogger->error("[{}] Trade Office Order Canceled id: {}", m_brokerStr, m_clOrdIdStrBuff);
+					m_systemLogger->error("[{}] Trade Office Order Canceled id: {}", m_brokerStr, clOrdIdStrBuff);
 				}
 
 				if (execType == '8' || execType == 'H') {
