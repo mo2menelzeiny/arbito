@@ -8,6 +8,9 @@
 // C
 #include <chrono>
 
+// SPDLOG
+#include <spdlog/spdlog.h>
+
 class MongoDBDriver {
 
 public:

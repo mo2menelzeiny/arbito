@@ -44,7 +44,8 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 	);
 
 	if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
-		fprintf(stderr, "MongoDB %s\n", error.message);
+		auto consoleLogger = spdlog::get("console");
+		consoleLogger->error("MongoDBDriver {}", error.message);
 	}
 
 	bson_destroy(insert);
@@ -80,7 +81,8 @@ void MongoDBDriver::record(
 	);
 
 	if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
-		fprintf(stderr, "MongoDB %s\n", error.message);
+		auto consoleLogger = spdlog::get("console");
+		consoleLogger->error("MongoDBDriver {}", error.message);
 	}
 
 	bson_destroy(insert);
