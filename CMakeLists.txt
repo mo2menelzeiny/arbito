@@ -13,7 +13,6 @@ find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(ZLIB REQUIRED)
 find_package(libmongoc-1.0 1.7 REQUIRED)
 
-find_library(SSL_LIB ssl)
 find_library(DISRUPTOR_LIBRARIES Disruptor)
 
 file(GLOB HEADERS
@@ -52,7 +51,6 @@ target_include_directories(arbito PRIVATE "${MONGOC_INCLUDE_DIRS}")
 target_link_libraries(arbito
         ${CMAKE_THREAD_LIBS_INIT}
         ${Boost_LIBRARIES}
-        ${SSL_LIB}
         ${OPENSSL_LIBRARIES}
         ${ZLIB_LIBRARIES}
         ${DISRUPTOR_LIBRARIES}
