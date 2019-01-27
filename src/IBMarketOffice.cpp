@@ -15,6 +15,26 @@ IBMarketOffice::IBMarketOffice(
     m_bidQty(0),
     m_offer(99),
     m_offerQty(0) {
+	m_onTickByTickHandler = OnTickByTickHandler([&](double bidPrice, double askPrice, int bidSize, int askSize) {
+		if (m_quantity > askSize || m_quantity > bidSize) {
+			return;
+		}
+
+		m_offer = askPrice;
+		m_offerQty = askSize;
+
+		m_bid = bidPrice;
+		m_bidQty = bidSize;
+
+		++m_sequence;
+
+		auto nextSequence = m_outRingBuffer->next();
+		(*m_outRingBuffer)[nextSequence] = {Broker::IB, m_bid, m_offer, m_sequence};
+		m_outRingBuffer->publish(nextSequence);
+
+		m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_brokerStr, m_sequence, m_bid, m_offer);
+	});
+
 	m_onTickHandler = OnTickHandler([&](int side, double price, int size) {
 		if (m_quantity > size) {
 			return;
@@ -84,7 +104,7 @@ IBMarketOffice::IBMarketOffice(
 		}
 	});
 
-	m_ibClient = new IBClient(m_onTickHandler, m_onOrderStatusHandler, m_onErrorHandler);
+	m_ibClient = new IBClient(m_onTickByTickHandler, m_onTickHandler, m_onOrderStatusHandler, m_onErrorHandler);
 }
 
 void IBMarketOffice::initiate() {

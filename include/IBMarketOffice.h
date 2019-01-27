@@ -47,6 +47,7 @@ private:
 	double m_offer;
 	double m_offerQty;
 	IBClient *m_ibClient;
+	OnTickByTickHandler m_onTickByTickHandler;
 	OnTickHandler m_onTickHandler;
 	OnOrderStatusHandler m_onOrderStatusHandler;
 	OnErrorHandler m_onErrorHandler;

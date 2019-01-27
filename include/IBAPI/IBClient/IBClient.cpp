@@ -44,10 +44,12 @@ const int SLEEP_BETWEEN_PINGS = 30; // seconds
 // member funcs
 //! [socket_init]
 IBClient::IBClient(
+		OnTickByTickHandler &onTickByTickHandler,
 		OnTickHandler &onTickHandler,
 		OnOrderStatusHandler &onOrderStatusHandler,
 		OnErrorHandler &onErrorHandler
-) : m_onTickHandler(onTickHandler),
+) : m_onTickByTickHandler(onTickByTickHandler),
+    m_onTickHandler(onTickHandler),
     m_onOrderStatus(onOrderStatusHandler),
     m_onErrorHandler(onErrorHandler),
     m_bid(-99),
@@ -2097,8 +2099,9 @@ void IBClient::tickByTickAllLast(int reqId, int tickType, time_t time, double pr
 //! [tickbytickbidask]
 void IBClient::tickByTickBidAsk(int reqId, time_t time, double bidPrice, double askPrice, int bidSize, int askSize,
                                 const TickAttrib &attribs) {
-	printf("Tick-By-Tick. ReqId: %d, TickType: BidAsk, Time: %s, BidPrice: %g, AskPrice: %g, BidSize: %d, AskSize: %d, BidPastLow: %d, AskPastHigh: %d\n",
-	       reqId, ctime(&time), bidPrice, askPrice, bidSize, askSize, attribs.bidPastLow, attribs.askPastHigh);
+	/*printf("Tick-By-Tick. ReqId: %d, TickType: BidAsk, Time: %s, BidPrice: %g, AskPrice: %g, BidSize: %d, AskSize: %d, BidPastLow: %d, AskPastHigh: %d\n",
+	       reqId, ctime(&time), bidPrice, askPrice, bidSize, askSize, attribs.bidPastLow, attribs.askPastHigh);*/
+	m_onTickByTickHandler(bidPrice, askPrice, bidSize, askSize);
 }
 //! [tickbytickbidask]
 
@@ -2130,6 +2133,7 @@ void IBClient::subscribeToFeed() {
 	contract.currency = "USD";
 	contract.exchange = "IDEALPRO";
 
-	m_pClient->reqMktDepth(1001, contract, 1, TagValueListSPtr());
+//	m_pClient->reqMktDepth(1001, contract, 1, TagValueListSPtr());
 //	m_pClient->reqMktData(1001, contract, "", false, false, TagValueListSPtr());
+	m_pClient->reqTickByTickData(1001, contract, "BidAsk", 0, false);
 }
