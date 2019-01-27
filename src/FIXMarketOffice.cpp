@@ -71,15 +71,6 @@ FIXMarketOffice::FIXMarketOffice(
 					break;
 				}
 
-				if (m_offer == offer && m_bid == bid) {
-					auto nextSequence = m_outRingBuffer->next();
-					(*m_outRingBuffer)[nextSequence] = {m_brokerEnum, bid, offer, m_sequence};
-					m_outRingBuffer->publish(nextSequence);
-
-					m_systemLogger->info("[{}][{}]", m_brokerStr, m_sequence);
-					break;
-				}
-
 				m_bid = bid;
 				m_offer = offer;
 				m_bidQty = bidQty;
