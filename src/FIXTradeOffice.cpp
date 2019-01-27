@@ -160,7 +160,7 @@ FIXTradeOffice::FIXTradeOffice(
 				m_clOrdIdStrBuff
 		);
 
-		return false;
+		return true;
 	};
 
 	m_onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {

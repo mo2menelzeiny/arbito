@@ -52,15 +52,15 @@ BusinessOffice::BusinessOffice(
 
 				m_priceB = event;
 
-				m_isExpiredB = false;
-				m_timestampB = m_timestampNow;
+				/*m_isExpiredB = false;
+				m_timestampB = m_timestampNow;*/
 				break;
 
 			default:
 				break;
 		}
 
-		/*m_systemLogger->info(
+		m_systemLogger->info(
 				"DiffA: {} DiffB: {} DiffAT: {} DiffBT: {} SeqA: {} SeqB: {}",
 				(m_priceA.bid - m_priceB.offer) * 100000,
 				(m_priceB.bid - m_priceA.offer) * 100000,
@@ -68,9 +68,9 @@ BusinessOffice::BusinessOffice(
 				(m_priceBTrunc.bid - m_priceA.offer) * 100000,
 				m_priceA.sequence,
 				m_priceB.sequence
-		);*/
+		);
 
-		return false;
+		return true;
 	};
 
 	m_executionEventHandler = [&](ExecutionEvent &event, int64_t seq, bool endOfBatch) -> bool {
@@ -99,7 +99,7 @@ BusinessOffice::BusinessOffice(
 		};
 		m_orderRingBuffer->publish(nextSequence);
 
-		return false;
+		return true;
 	};
 }
 

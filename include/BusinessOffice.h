@@ -41,7 +41,7 @@ public:
 		m_priceEventPoller->poll(m_priceEventHandler);
 		m_executionEventPoller->poll(m_executionEventHandler);
 
-		if(m_isExpiredB) {
+		/*if(m_isExpiredB) {
 			return;
 		}
 
@@ -52,7 +52,7 @@ public:
 			m_priceBTrunc.bid = -99;
 			m_priceBTrunc.offer = 99;
 			return;
-		}
+		}*/
 
 		if (m_isOrderDelayed && ((time(nullptr) - m_lastOrderTime) < m_orderDelaySec)) {
 			return;
