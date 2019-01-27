@@ -18,6 +18,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <thread>
+#include <cstring>
 
 class FIXSocket {
 public:
