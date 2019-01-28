@@ -60,7 +60,7 @@ BusinessOffice::BusinessOffice(
 				break;
 		}
 
-		m_systemLogger->info(
+		/*m_systemLogger->info(
 				"DiffA: {} DiffB: {} DiffAT: {} DiffBT: {} SeqA: {} SeqB: {}",
 				(m_priceA.bid - m_priceB.offer) * 100000,
 				(m_priceB.bid - m_priceA.offer) * 100000,
@@ -68,7 +68,7 @@ BusinessOffice::BusinessOffice(
 				(m_priceBTrunc.bid - m_priceA.offer) * 100000,
 				m_priceA.sequence,
 				m_priceB.sequence
-		);
+		);*/
 
 		return true;
 	};
