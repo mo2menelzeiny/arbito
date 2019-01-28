@@ -76,17 +76,17 @@ BusinessOffice::BusinessOffice(
 	m_executionEventHandler = [&](ExecutionEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		if (event.isFilled && event.id != CORRECTION_ID) {
 			++m_ordersCount;
-			return false;
+			return true;
 		}
 
 		if (event.isFilled && event.id == CORRECTION_ID) {
 			--m_ordersCount;
-			return false;
+			return true;
 		}
 
 		if (event.id == CORRECTION_ID) {
 			m_consoleLogger->error("Business Office Correction FAILED");
-			return false;
+			return true;
 		}
 
 		auto nextSequence = m_orderRingBuffer->next();
