@@ -1,7 +1,0 @@
-cmake
-pkg-config
-unzip
-libboost-all-dev
-libssl-dev
-libbson-dev
-libmongoc-dev
