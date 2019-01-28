@@ -5,10 +5,3 @@ libboost-all-dev
 libssl-dev
 libbson-dev
 libmongoc-dev
-libtool
-libpthread-stubs0-dev
-libz-dev
-libxml2-dev
-libglib2.0-dev
-libncurses5-dev
-libevent-dev
