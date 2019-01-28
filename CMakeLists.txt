@@ -7,12 +7,17 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(include)
 
+# Core dependecies
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system thread chrono)
-find_package(libmongoc-1.0 REQUIRED)
 
+# MongoDB C driver
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(MONGOC REQUIRED libmongoc-1.0)
+
+# Disruptor-cpp
+find_package(Boost REQUIRED COMPONENTS system thread chrono)
+find_package(ZLIB REQUIRED)
 find_library(DISRUPTOR_LIBRARIES Disruptor)
 
 file(GLOB SPDLOG
@@ -47,32 +52,29 @@ file(GLOB TESTS
 add_executable(arbito-tests
         ${TESTS})
 
-target_include_directories(arbito-tests PRIVATE "${MONGOC_INCLUDE_DIRS}")
-target_compile_definitions(arbito-tests PRIVATE "${MONGOC_DEFINITIONS}")
-
 add_executable(arbito
         ${HEADERS}
         ${SOURCES}
         ${SPDLOG}
         ${IBAPI})
 
+target_include_directories(arbito-tests PRIVATE "${MONGOC_INCLUDE_DIRS}")
 target_include_directories(arbito PRIVATE "${MONGOC_INCLUDE_DIRS}")
-target_compile_definitions(arbito PRIVATE "${MONGOC_DEFINITIONS}")
 
 target_link_libraries(arbito-tests
         ${CMAKE_THREAD_LIBS_INIT}
         ${OPENSSL_LIBRARIES}
+        ${MONGOC_LIBRARIES}
         ${Boost_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${DISRUPTOR_LIBRARIES}
-        ${MONGOC_LIBRARIES})
+        ${DISRUPTOR_LIBRARIES})
 
 target_link_libraries(arbito
         ${CMAKE_THREAD_LIBS_INIT}
         ${OPENSSL_LIBRARIES}
+        ${MONGOC_LIBRARIES}
         ${Boost_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${DISRUPTOR_LIBRARIES}
-        ${MONGOC_LIBRARIES})
+        ${DISRUPTOR_LIBRARIES})
 
 FILE(COPY resources DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

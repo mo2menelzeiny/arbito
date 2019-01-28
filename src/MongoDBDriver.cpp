@@ -12,17 +12,14 @@ MongoDBDriver::MongoDBDriver(
 
 	mongoc_init();
 
-	auto mongoCUri = mongoc_uri_new_with_error(m_uri, &error);
+	auto mongoCUri = mongoc_uri_new(m_uri);
 
 	if (!mongoCUri) {
-		fprintf(stderr,
-		        "MongoDB failed to parse URI: %s\n"
-		        "error message:       %s\n",
-		        m_uri,
-		        error.message
-		);
-		return;
+		auto consoleLogger = spdlog::get("console");
+		consoleLogger->error("MongoDBDriver Failed to parse URI {} {}", m_uri, error.message);
 	}
+
+	mongoc_uri_destroy(mongoCUri);
 }
 
 
@@ -43,7 +40,7 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 			"offer", BCON_DOUBLE(offer)
 	);
 
-	if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
+	if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, insert, nullptr, &error)) {
 		auto consoleLogger = spdlog::get("console");
 		consoleLogger->error("MongoDBDriver {}", error.message);
 	}
@@ -80,7 +77,7 @@ void MongoDBDriver::record(
 			"isFilled", BCON_BOOL(isFilled)
 	);
 
-	if (!mongoc_collection_insert_one(collection, insert, nullptr, nullptr, &error)) {
+	if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, insert, nullptr, &error)) {
 		auto consoleLogger = spdlog::get("console");
 		consoleLogger->error("MongoDBDriver {}", error.message);
 	}
