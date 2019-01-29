@@ -54,6 +54,23 @@ public:
 			return;
 		}*/
 
+		if (m_canLogPrices) {
+			++m_sequence;
+
+			m_systemLogger->info(
+					"[{}] Bid/Ask A:{}/{} SeqA:{} Bid/Ask B:{}/{} SeqB:{} DiffA/DiffB:{}/{} DiffAT/DiffBT:{}/{}",
+					m_sequence,
+					m_priceA.bid, m_priceA.offer, m_priceA.sequence,
+					m_priceB.bid, m_priceB.offer, m_priceB.sequence,
+					(m_priceA.bid - m_priceB.offer) * 100000,
+					(m_priceB.bid - m_priceA.offer) * 100000,
+					(m_priceA.bid - m_priceBTrunc.offer) * 100000,
+					(m_priceBTrunc.bid - m_priceA.offer) * 100000
+			);
+
+			m_canLogPrices = false;
+		}
+
 		if (m_isOrderDelayed && ((time(nullptr) - m_lastOrderTime) < m_orderDelaySec)) {
 			return;
 		}
@@ -265,6 +282,8 @@ private:
 	bool m_isExpiredB;
 	time_point<system_clock> m_timestampB;
 	time_point<system_clock> m_timestampNow;
+	bool m_canLogPrices;
+	long m_sequence;
 };
 
 

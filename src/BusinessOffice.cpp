@@ -33,7 +33,9 @@ BusinessOffice::BusinessOffice(
     m_priceBTrunc{Broker::NONE, -99, 99, 0},
     m_ordersCount(std::stoi(getenv("ORDERS_COUNT"))),
     m_currentDiff(getDifference(getenv("CURRENT_DIFF"))),
-    m_isExpiredB(true) {
+    m_isExpiredB(true),
+    m_canLogPrices(false),
+    m_sequence(0) {
 
 	m_priceEventHandler = [&](PriceEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		switch (event.broker) {
@@ -59,6 +61,8 @@ BusinessOffice::BusinessOffice(
 			default:
 				break;
 		}
+
+		m_canLogPrices = true;
 
 		/*m_systemLogger->info(
 				"DiffA: {} DiffB: {} DiffAT: {} DiffBT: {} SeqA: {} SeqB: {}",

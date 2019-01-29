@@ -82,7 +82,7 @@ FIXMarketOffice::FIXMarketOffice(
 				(*m_outRingBuffer)[nextSequence] = {m_brokerEnum, bid, offer, m_sequence};
 				m_outRingBuffer->publish(nextSequence);
 
-				m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_brokerStr, m_sequence, bid, offer);
+				/*m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_brokerStr, m_sequence, bid, offer);*/
 			}
 				break;
 

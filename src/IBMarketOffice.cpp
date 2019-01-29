@@ -60,7 +60,7 @@ IBMarketOffice::IBMarketOffice(
 		(*m_outRingBuffer)[nextSequence] = {Broker::IB, m_bid, m_offer, m_sequence};
 		m_outRingBuffer->publish(nextSequence);
 
-		m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_brokerStr, m_sequence, m_bid, m_offer);
+		/*m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_brokerStr, m_sequence, m_bid, m_offer);*/
 	});
 
 	m_onOrderStatusHandler = OnOrderStatusHandler([&](OrderId orderId, const std::string &status, double avgPrice) {
