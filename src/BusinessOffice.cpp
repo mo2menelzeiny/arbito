@@ -44,15 +44,14 @@ BusinessOffice::BusinessOffice(
 				break;
 
 			case Broker::IB:
-				sprintf(m_truncStrBuff, "%lf", event.bid);
+				m_priceB = event;
+				/*sprintf(m_truncStrBuff, "%lf", event.bid);
 				m_truncStrBuff[6] = '0';
 				m_priceBTrunc.bid = std::stof(m_truncStrBuff);
 
 				sprintf(m_truncStrBuff, "%lf", event.offer);
 				m_truncStrBuff[6] = '0';
-				m_priceBTrunc.offer = std::stof(m_truncStrBuff);;
-
-				m_priceB = event;
+				m_priceBTrunc.offer = std::stof(m_truncStrBuff);*/
 
 				/*m_isExpiredB = false;
 				m_timestampB = m_timestampNow;*/

@@ -58,14 +58,12 @@ public:
 			++m_sequence;
 
 			m_systemLogger->info(
-					"[{}] Bid/Ask A:{}/{} SeqA:{} Bid/Ask B:{}/{} SeqB:{} DiffA/DiffB:{}/{} DiffAT/DiffBT:{}/{}",
+					"[{}] Bid/Ask A:{}/{} SeqA:{} Bid/Ask B:{}/{} SeqB:{} DiffA/DiffB:{}/{}",
 					m_sequence,
 					m_priceA.bid, m_priceA.offer, m_priceA.sequence,
 					m_priceB.bid, m_priceB.offer, m_priceB.sequence,
 					(m_priceA.bid - m_priceB.offer) * 100000,
-					(m_priceB.bid - m_priceA.offer) * 100000,
-					(m_priceA.bid - m_priceBTrunc.offer) * 100000,
-					(m_priceBTrunc.bid - m_priceA.offer) * 100000
+					(m_priceB.bid - m_priceA.offer) * 100000
 			);
 
 			m_canLogPrices = false;
@@ -83,8 +81,8 @@ public:
 
 		bool canOpen = m_ordersCount < m_maxOrders;
 
-		double diffA = m_priceA.bid - m_priceBTrunc.offer;
-		double diffB = m_priceBTrunc.bid - m_priceA.offer;
+		double diffA = m_priceA.bid - m_priceB.offer;
+		double diffB = m_priceB.bid - m_priceA.offer;
 
 		switch (m_currentDiff) {
 			case Difference::A:
