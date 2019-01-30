@@ -41,3 +41,5 @@ WORKDIR /usr/arbito/build
 
 RUN cmake .. -DCMAKE_BUILD_TYPE=Release\
  && cmake --build . --target arbito -- -j 2
+
+CMD  ["bin/arbito"]
