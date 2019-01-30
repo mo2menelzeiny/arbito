@@ -31,7 +31,7 @@ IBMarketOffice::IBMarketOffice(
 		(*m_outRingBuffer)[nextSequence] = {Broker::IB, m_bid, m_offer, m_sequence};
 		m_outRingBuffer->publish(nextSequence);
 
-		m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_brokerStr, m_sequence, m_bid, m_offer);
+		/*m_systemLogger->info("[{}][{}] bid: {} offer: {}", m_brokerStr, m_sequence, m_bid, m_offer);*/
 	});
 
 	m_onTickHandler = OnTickHandler([&](int side, double price, int size) {
