@@ -12,8 +12,7 @@ find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 # MongoDB C driver
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(MONGOC REQUIRED libmongoc-1.0)
+find_package(libmongoc-1.0 REQUIRED)
 
 # Disruptor-cpp
 find_package(Boost REQUIRED COMPONENTS system thread chrono)
@@ -50,7 +49,9 @@ file(GLOB TESTS
         tests/*.cpp)
 
 add_executable(arbito-tests
-        ${TESTS})
+        ${TESTS}
+        include/MongoDBDriver.h
+        src/MongoDBDriver.cpp)
 
 add_executable(arbito
         ${HEADERS}

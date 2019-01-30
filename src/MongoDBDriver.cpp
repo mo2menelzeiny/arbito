@@ -8,15 +8,13 @@ MongoDBDriver::MongoDBDriver(
 ) : m_uri(uri),
     m_DBName(dbName),
     m_collectionName(collectionName) {
-	bson_error_t error;
 
 	mongoc_init();
 
 	auto mongoCUri = mongoc_uri_new(m_uri);
 
 	if (!mongoCUri) {
-		auto consoleLogger = spdlog::get("console");
-		consoleLogger->error("MongoDBDriver Failed to parse URI {} {}", m_uri, error.message);
+		throw std::runtime_error("MongoDBDriver Failed to parse URI");
 	}
 
 	mongoc_uri_destroy(mongoCUri);
@@ -27,6 +25,7 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 	bson_error_t error;
 
 	mongoc_client_t *client = mongoc_client_new(m_uri);
+	mongoc_client_set_ssl_opts(client, mongoc_ssl_opt_get_default());
 	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_DBName, m_collectionName);
 
 	auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -41,8 +40,7 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 	);
 
 	if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, insert, nullptr, &error)) {
-		auto consoleLogger = spdlog::get("console");
-		consoleLogger->error("MongoDBDriver {}", error.message);
+		throw std::runtime_error(error.message);
 	}
 
 	bson_destroy(insert);
@@ -60,8 +58,8 @@ void MongoDBDriver::record(
 		bool isFilled
 ) {
 	bson_error_t error;
-
 	mongoc_client_t *client = mongoc_client_new(m_uri);
+	mongoc_client_set_ssl_opts(client, mongoc_ssl_opt_get_default());
 	mongoc_collection_t *collection = mongoc_client_get_collection(client, m_DBName, m_collectionName);
 
 	auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -78,8 +76,7 @@ void MongoDBDriver::record(
 	);
 
 	if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, insert, nullptr, &error)) {
-		auto consoleLogger = spdlog::get("console");
-		consoleLogger->error("MongoDBDriver {}", error.message);
+		throw std::runtime_error(error.message);
 	}
 
 	bson_destroy(insert);
