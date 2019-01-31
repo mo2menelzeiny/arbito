@@ -75,6 +75,10 @@ public:
 
 		m_isOrderDelayed = false;
 
+		if (m_ordersCount == 0) {
+			m_currentDiff = Difference::NONE;
+		}
+
 		if (m_ordersCount % 2 != 0) {
 			return;
 		}
@@ -137,10 +141,6 @@ public:
 			default:
 				break;
 
-		}
-
-		if (m_ordersCount == 0) {
-			m_currentDiff = Difference::NONE;
 		}
 
 		if (m_currentOrder == Difference::NONE) {
