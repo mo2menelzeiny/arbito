@@ -84,15 +84,19 @@ public:
 		double diffA = m_priceA.bid - m_priceB.offer;
 		double diffB = m_priceB.bid - m_priceA.offer;
 
+		char orderType[16];
+
 		switch (m_currentDiff) {
 			case Difference::A:
 				if (canOpen && diffA >= m_diffOpen) {
 					m_currentOrder = Difference::A;
+					sprintf(orderType, "%s", "OPEN");
 					break;
 				}
 
 				if (diffB >= m_diffClose) {
 					m_currentOrder = Difference::B;
+					sprintf(orderType, "%s", "CLOSE");
 					break;
 				}
 
@@ -101,11 +105,13 @@ public:
 			case Difference::B:
 				if (canOpen && diffB >= m_diffOpen) {
 					m_currentOrder = Difference::B;
+					sprintf(orderType, "%s", "OPEN");
 					break;
 				}
 
 				if (diffA >= m_diffClose) {
 					m_currentOrder = Difference::A;
+					sprintf(orderType, "%s", "CLOSE");
 					break;
 				}
 
@@ -115,12 +121,14 @@ public:
 				if (diffA >= m_diffOpen) {
 					m_currentDiff = Difference::A;
 					m_currentOrder = Difference::A;
+					sprintf(orderType, "%s", "OPEN");
 					break;
 				}
 
 				if (diffB >= m_diffOpen) {
 					m_currentDiff = Difference::B;
 					m_currentOrder = Difference::B;
+					sprintf(orderType, "%s", "OPEN");
 					break;
 				}
 
@@ -130,8 +138,6 @@ public:
 				break;
 
 		}
-
-		const char *orderType = m_currentOrder == m_currentDiff ? "OPEN" : "CLOSE";
 
 		if (m_ordersCount == 0) {
 			m_currentDiff = Difference::NONE;
@@ -179,8 +185,8 @@ public:
 						            id = m_randomIdStrBuff,
 						            bid = m_priceA.bid,
 						            offer = m_priceB.offer,
-						            orderType] {
-					mongoDriver->record(id, bid, offer, orderType);
+						            type = orderType] {
+					mongoDriver->record(id, bid, offer, type);
 				}).detach();
 			}
 				break;
@@ -219,8 +225,8 @@ public:
 						            id = m_randomIdStrBuff,
 						            bid = m_priceB.bid,
 						            offer = m_priceA.offer,
-						            orderType] {
-					mongoDriver->record(id, bid, offer, orderType);
+						            type = orderType] {
+					mongoDriver->record(id, bid, offer, type);
 				}).detach();
 			}
 				break;
