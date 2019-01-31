@@ -165,7 +165,7 @@ public:
 				auto nextSeqB = m_orderRingBuffer->next();
 				(*m_orderRingBuffer)[nextSeqB] = {
 						m_priceB.broker,
-						OrderType::LIMIT,
+						OrderType::MARKET,
 						OrderSide::BUY,
 						m_priceB.offer,
 						randomId
@@ -205,7 +205,7 @@ public:
 				auto nextSeqB = m_orderRingBuffer->next();
 				(*m_orderRingBuffer)[nextSeqB] = {
 						m_priceB.broker,
-						OrderType::LIMIT,
+						OrderType::MARKET,
 						OrderSide::SELL,
 						m_priceB.bid,
 						randomId
