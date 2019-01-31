@@ -84,6 +84,7 @@ BusinessOffice::BusinessOffice(
 
 		if (event.isFilled && event.id == CORRECTION_ID) {
 			--m_ordersCount;
+			m_consoleLogger->error("FAILED");
 			return true;
 		}
 

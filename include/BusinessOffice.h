@@ -58,8 +58,8 @@ public:
 			++m_sequence;
 
 			m_systemLogger->info(
-					"[{}] Bid/Ask A:{}/{} SeqA:{} Bid/Ask B:{}/{} SeqB:{} DiffA/DiffB:{}/{}",
-					m_sequence,
+					"[{}][{}] Bid/Ask A:{}/{} SeqA:{} Bid/Ask B:{}/{} SeqB:{} DiffA/DiffB:{}/{}",
+					m_sequence, m_ordersCount,
 					m_priceA.bid, m_priceA.offer, m_priceA.sequence,
 					m_priceB.bid, m_priceB.offer, m_priceB.sequence,
 					(m_priceA.bid - m_priceB.offer) * 100000,
