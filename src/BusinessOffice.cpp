@@ -21,7 +21,7 @@ BusinessOffice::BusinessOffice(
     m_maxOrders(maxOrders),
     m_diffOpen(diffOpen),
     m_diffClose(diffClose),
-    m_mongoDriver(dbUri, dbName, "coll_triggers"),
+    m_mongoDriver(dbUri, dbName, "triggers"),
     m_idGenerator(std::random_device{}()),
     m_consoleLogger(spdlog::get("console")),
     m_systemLogger(spdlog::get("system")),

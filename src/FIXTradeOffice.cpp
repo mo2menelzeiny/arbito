@@ -31,7 +31,7 @@ FIXTradeOffice::FIXTradeOffice(
 		    heartbeat,
 		    sslEnabled
     ),
-    m_mongoDriver(dbUri, dbName, "coll_orders"),
+    m_mongoDriver(dbUri, dbName, "orders"),
     m_consoleLogger(spdlog::get("console")),
     m_systemLogger(spdlog::get("system")),
     m_orderEventPoller(m_inRingBuffer->newPoller()) {
