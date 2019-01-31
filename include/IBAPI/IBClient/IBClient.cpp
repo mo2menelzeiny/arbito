@@ -2133,7 +2133,7 @@ void IBClient::subscribeToFeed() {
 	contract.currency = "USD";
 	contract.exchange = "IDEALPRO";
 
+	m_pClient->reqMktData(1001, contract, "", false, false, TagValueListSPtr());
 //	m_pClient->reqMktDepth(1001, contract, 1, TagValueListSPtr());
-//	m_pClient->reqMktData(1001, contract, "", false, false, TagValueListSPtr());
-	m_pClient->reqTickByTickData(1001, contract, "BidAsk", 0, false);
+//	m_pClient->reqTickByTickData(1001, contract, "BidAsk", 0, false);
 }
