@@ -49,7 +49,9 @@ file(GLOB SOURCES
 
 file(GLOB TESTS
         tests/*.h
-        tests/*.cpp)
+        tests/*.cpp
+        tests/unit/*.cpp
+        tests/integration/*.cpp)
 
 add_executable(arbito-tests
         ${TESTS}
