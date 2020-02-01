@@ -19,6 +19,9 @@ find_package(Boost REQUIRED COMPONENTS system thread chrono)
 find_package(ZLIB REQUIRED)
 find_library(DISRUPTOR_LIBRARIES Disruptor)
 
+# C NATS
+find_package(cnats REQUIRED)
+
 file(GLOB SPDLOG
         include/spdlog/*.h
         include/spdlog/details/*.h
@@ -68,7 +71,8 @@ target_link_libraries(arbito-tests
         ${MONGOC_LIBRARIES}
         ${Boost_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${DISRUPTOR_LIBRARIES})
+        ${DISRUPTOR_LIBRARIES}
+        cnats::nats)
 
 target_link_libraries(arbito
         ${CMAKE_THREAD_LIBS_INIT}
@@ -76,6 +80,7 @@ target_link_libraries(arbito
         ${MONGOC_LIBRARIES}
         ${Boost_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${DISRUPTOR_LIBRARIES})
+        ${DISRUPTOR_LIBRARIES}
+        cnats::nats)
 
 FILE(COPY resources DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

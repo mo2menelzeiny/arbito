@@ -1,6 +1,6 @@
 FROM ubuntu:xenial
 
-RUN apt-get -y update && apt-get install -y
+RUN apt-get -y update && apt-get -y install
 
 RUN apt-get -y install\
  wget\
@@ -33,6 +33,18 @@ RUN wget https://github.com/mongodb/mongo-c-driver/releases/download/1.13.1/mong
  && cd cmake-build\
  && cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DCMAKE_INSTALL_PREFIX:PATH=/usr/local\
  -DENABLE_TESTS=OFF -DENABLE_EXAMPLES=OFF\
+ && cmake --build . --target install -- -j 2
+
+WORKDIR /usr/arbito/externals
+
+RUN wget https://github.com/nats-io/nats.c/archive/master.zip\
+ && unzip master.zip\
+ && rm master.zip\
+ && cd nats.c-master\
+ && mkdir cmake-build\
+ && cd cmake-build\
+ && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr/local\
+ -DNATS_BUILD_STREAMING=OFF -DNATS_BUILD_WITH_TLS=OFF\
  && cmake --build . --target install -- -j 2
 
 COPY . /usr/arbito
