@@ -7,6 +7,8 @@ services:
       context: .
     ports:
       - "8910:8910"
+    links:
+      - nats
 
   nats:
     image: nats
