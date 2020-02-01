@@ -4,6 +4,9 @@
 
 #define CORRECTION_ID 99699
 
+// C
+#include <random>
+
 // Disruptor
 #include <Disruptor/Disruptor.h>
 
