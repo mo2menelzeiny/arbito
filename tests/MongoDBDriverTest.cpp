@@ -1,5 +1,5 @@
 
-#include "tests.h"
+#include "catch2/catch.hpp"
 #include <MongoDBDriver.h>
 #include <thread>
 
