@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+
+  nats-websocket-gw:
+    build:
+      context: .
+    ports:
+      - "8910:8910"
+
+  nats:
+    image: nats

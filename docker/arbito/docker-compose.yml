@@ -1,0 +1,8 @@
+version: "3"
+
+services:
+
+  arbito:
+    build:
+      context: ../..
+      dockerfile: docker/arbito/Dockerfile
