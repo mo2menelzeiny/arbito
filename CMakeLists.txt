@@ -55,8 +55,8 @@ file(GLOB TESTS
 
 add_executable(arbito-tests
         ${TESTS}
-        include/MongoDBDriver.h
-        src/MongoDBDriver.cpp)
+        src/MongoDBDriver.cpp
+        src/StreamOffice.cpp)
 
 add_executable(arbito
         ${HEADERS}

@@ -117,7 +117,7 @@ int main() {
 		while (true) {
 			consoleLogger->info("MAIN OK");
 
-			auto businessThread = std::thread([&] {
+			/*auto businessThread = std::thread([&] {
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(1, &cpuset);
@@ -138,9 +138,9 @@ int main() {
 				}
 
 				triggerOffice.terminate();
-			});
+			});*/
 
-			auto tradeThreadA = std::thread([&] {
+			/*auto tradeThreadA = std::thread([&] {
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(2, &cpuset);
@@ -161,7 +161,7 @@ int main() {
 				}
 
 				tradeOfficeA.terminate();
-			});
+			});*/
 
 			auto marketThreadA = std::thread([&] {
 				cpu_set_t cpuset;
@@ -173,7 +173,7 @@ int main() {
 				try {
 
 					marketOfficeA.initiate();
-
+`
 					while (isRunning) {
 						marketOfficeA.doWork();
 					}
@@ -186,7 +186,7 @@ int main() {
 				marketOfficeA.terminate();
 			});
 
-			auto tradeThreadB = std::thread([&] {
+			/*auto tradeThreadB = std::thread([&] {
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(3, &cpuset);
@@ -207,9 +207,9 @@ int main() {
 				}
 
 				tradeOfficeB.terminate();
-			});
+			});*/
 
-			auto marketThreadB = std::thread([&] {
+			/*auto marketThreadB = std::thread([&] {
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(5, &cpuset);
@@ -230,17 +230,17 @@ int main() {
 				}
 
 				marketOfficeB.terminate();
-			});
+			});*/
 
 			while (isRunning) {
 				std::this_thread::sleep_for(milliseconds(10));
 			}
 
-			businessThread.join();
-			tradeThreadA.join();
-			tradeThreadB.join();
+			/*businessThread.join();*/
+			/*tradeThreadA.join();*/
+			/*tradeThreadB.join();*/
 			marketThreadA.join();
-			marketThreadB.join();
+			/*marketThreadB.join();*/
 
 			std::this_thread::sleep_for(seconds(30));
 

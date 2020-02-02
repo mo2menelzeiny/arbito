@@ -7,7 +7,7 @@ const char *uri = "mongodb+srv://beeks-nj:atlas_6852@arbito-htwdm.mongodb.net/?r
 
 const char *db = "arbito_local";
 
-TEST_CASE("Initialize and validate URI", "[Mongodb driver]") {
+TEST_CASE("Initialize and validate URI", "[MongoDBDriver][integration]") {
 
 	try {
 		MongoDBDriver(uri, db, "orders");
@@ -16,7 +16,7 @@ TEST_CASE("Initialize and validate URI", "[Mongodb driver]") {
 	}
 }
 
-TEST_CASE("Record trigger", "[Mongodb driver]") {
+TEST_CASE("Record trigger", "[MongoDBDriver][integration]") {
 
 	try {
 		MongoDBDriver mongoDBDriver(uri, db, "triggers");
@@ -26,7 +26,7 @@ TEST_CASE("Record trigger", "[Mongodb driver]") {
 	}
 }
 
-TEST_CASE("Record order", "[Mongodb driver]") {
+TEST_CASE("Record order", "[MongoDBDriver][integration]") {
 
 	try {
 		MongoDBDriver mongoDBDriver(uri, db, "orders");
@@ -36,7 +36,7 @@ TEST_CASE("Record order", "[Mongodb driver]") {
 	}
 }
 
-TEST_CASE("Thread safe record", "[Mongodb driver]") {
+TEST_CASE("Thread safe record", "[MongoDBDriver][integration]") {
 
 	auto record = [=] {
 		try {
