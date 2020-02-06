@@ -48,8 +48,7 @@ TEST_CASE("TEST NATSSession initiation", "[NATSSession][unit]") {
 				create_fn,
 				setSendAsap_fn,
 				setURL_fn,
-				connect_fn,
-				natsOptions_Destroy
+				connect_fn
 		);
 	}
 
@@ -64,8 +63,7 @@ TEST_CASE("TEST NATSSession initiation", "[NATSSession][unit]") {
 						err_fn,
 						setSendAsap_fn,
 						setURL_fn,
-						connect_fn,
-						natsOptions_Destroy
+						connect_fn
 				)
 		);
 	}
@@ -81,8 +79,7 @@ TEST_CASE("TEST NATSSession initiation", "[NATSSession][unit]") {
 						create_fn,
 						err_fn,
 						setURL_fn,
-						connect_fn,
-						natsOptions_Destroy
+						connect_fn
 				)
 		);
 	}
@@ -98,8 +95,7 @@ TEST_CASE("TEST NATSSession initiation", "[NATSSession][unit]") {
 						create_fn,
 						setSendAsap_fn,
 						err_fn,
-						connect_fn,
-						natsOptions_Destroy
+						connect_fn
 				)
 		);
 	}
@@ -115,8 +111,7 @@ TEST_CASE("TEST NATSSession initiation", "[NATSSession][unit]") {
 						create_fn,
 						setSendAsap_fn,
 						setURL_fn,
-						err_fn,
-						natsOptions_Destroy
+						err_fn
 				)
 		);
 	}
@@ -128,10 +123,7 @@ TEST_CASE("TEST NATSSession termination", "[NATSSession][unit]") {
 		auto close_fn = [](natsConnection *) {};
 		auto destroy_fn = [](natsConnection *) {};
 		NATSSession natsSession;
-		natsSession.terminate(
-				close_fn,
-				destroy_fn
-		);
+		natsSession.terminate();
 	}
 }
 

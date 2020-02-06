@@ -15,8 +15,7 @@ void NATSSession::initiate(
 		natsStatus (*create_opts_fn)(natsOptions **),
 		natsStatus (*setAsap_opts_fn)(natsOptions *, bool),
 		natsStatus (*seturl_opts_fn)(natsOptions *, const char *),
-		natsStatus (*connect_fn)(natsConnection **, natsOptions *),
-		void (*destroy_opts_fn)(natsOptions *)
+		natsStatus (*connect_fn)(natsConnection **, natsOptions *)
 ) {
 	natsOptions *opts = nullptr;
 
@@ -39,15 +38,12 @@ void NATSSession::initiate(
 		throw std::runtime_error("NATS Session connect Failed");
 	}
 
-	destroy_opts_fn(opts);
+	natsOptions_Destroy(opts);
 }
 
-void NATSSession::terminate(
-		void (*conn_close_fn)(natsConnection *),
-		void (*conn_destroy_fn)(natsConnection *)
-) {
-	conn_close_fn(m_nc);
-	conn_destroy_fn(m_nc);
+void NATSSession::terminate() {
+	natsConnection_Close(m_nc);
+	natsConnection_Destroy(m_nc);
 }
 
 void NATSSession::publishString(

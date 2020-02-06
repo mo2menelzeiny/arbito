@@ -11,18 +11,15 @@ public:
 
 	NATSSession(const char *host, const char *username, const char *password);
 
+	// TODO: pass all nats specific deps to constructor to mutate in tests
 	void initiate(
 			natsStatus (*create_opts_fn)(natsOptions **),
 			natsStatus (*setAsap_opts_fn)(natsOptions *, bool),
 			natsStatus (*seturl_opts_fn)(natsOptions *, const char *),
-			natsStatus (*connect_fn)(natsConnection **, natsOptions *),
-			void (*destroy_opts_fn)(natsOptions *)
+			natsStatus (*connect_fn)(natsConnection **, natsOptions *)
 	);
 
-	void terminate(
-			void (*conn_close_fn)(natsConnection *),
-			void (*conn_destroy_fn)(natsConnection *)
-	);
+	void terminate();
 
 	void publishString(
 			natsStatus (*pub_fn)(natsConnection *, const char *subj, const char *str),
