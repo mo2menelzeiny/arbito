@@ -5,6 +5,8 @@ services:
   nats-websocket-gw:
     build:
       context: .
+    env_file:
+      - ../../.env
     ports:
       - "8910:8910"
     links:
@@ -12,3 +14,9 @@ services:
 
   nats:
     image: nats
+    ports:
+     - "4222:4222"
+    env_file:
+      - ../../.env
+    # export NATS_USER and NATS_PASS in the shell
+    command: ["--user", "${NATS_USER}", "--pass", "${NATS_PASS}"]

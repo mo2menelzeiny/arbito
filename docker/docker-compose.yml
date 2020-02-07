@@ -1,0 +1,29 @@
+version: "3"
+
+services:
+
+  arbito:
+    build:
+      context: ..
+      dockerfile: docker/arbito/Dockerfile
+    env_file:
+      - ../.env
+    links:
+      - nats
+
+  nats-websocket-gw:
+    build:
+      context: ./nats-websocket-gw
+    env_file:
+      - ../.env
+    ports:
+      - "8910:8910"
+    links:
+      - nats
+
+  nats:
+    image: nats
+    env_file:
+      - ../.env
+    # export NATS_USER and NATS_PASS in the shell
+    command: ["--user", "${NATS_USER}", "--pass", "${NATS_PASS}"]

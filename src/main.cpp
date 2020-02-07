@@ -13,6 +13,7 @@
 #include <FIXMarketOffice.h>
 #include <FIXTradeOffice.h>
 #include <IBMarketOffice.h>
+#include <StreamOffice.h>
 
 int main() {
 	SSL_load_error_strings();
@@ -30,7 +31,7 @@ int main() {
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);
 
-	auto orderRingBuffer = Disruptor::RingBuffer<OrderEvent>::createMultiProducer(
+	/*auto orderRingBuffer = Disruptor::RingBuffer<OrderEvent>::createMultiProducer(
 			[]() { return OrderEvent(); },
 			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
@@ -40,9 +41,16 @@ int main() {
 			[]() { return ExecutionEvent(); },
 			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
+	);*/
+
+	StreamOffice streamOffice(
+			priceRingBuffer,
+			getenv("NATS_HOST"),
+			getenv("NATS_USER"),
+			getenv("NATS_PASS")
 	);
 
-	BusinessOffice triggerOffice(
+	/*BusinessOffice triggerOffice(
 			priceRingBuffer,
 			executionRingBuffer,
 			orderRingBuffer,
@@ -52,7 +60,7 @@ int main() {
 			stof(getenv("DIFF_CLOSE")),
 			getenv("MONGO_URI"),
 			getenv("MONGO_DB")
-	);
+	);*/
 
 	// BROKER A
 
@@ -70,7 +78,8 @@ int main() {
 			true
 	);
 
-	FIXTradeOffice tradeOfficeA(
+
+	/*FIXTradeOffice tradeOfficeA(
 			orderRingBuffer,
 			executionRingBuffer,
 			getenv("BROKER_A"),
@@ -85,11 +94,11 @@ int main() {
 			true,
 			getenv("MONGO_URI"),
 			getenv("MONGO_DB")
-	);
+	);*/
 
 	// BROKER B
 
-	IBMarketOffice marketOfficeB(
+	/*IBMarketOffice marketOfficeB(
 			priceRingBuffer,
 			getenv("BROKER_B"),
 			stof(getenv("QTY_B"))
@@ -110,7 +119,7 @@ int main() {
 			false,
 			getenv("MONGO_URI"),
 			getenv("MONGO_DB")
-	);
+	);*/
 
 	try {
 
@@ -164,16 +173,16 @@ int main() {
 			});*/
 
 			auto marketThreadA = std::thread([&] {
-				cpu_set_t cpuset;
+				/*cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(4, &cpuset);
-				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);*/
 				pthread_setname_np(pthread_self(), "arbito-market");
 
 				try {
 
 					marketOfficeA.initiate();
-`
+
 					while (isRunning) {
 						marketOfficeA.doWork();
 					}
@@ -232,6 +241,23 @@ int main() {
 				marketOfficeB.terminate();
 			});*/
 
+			auto streamThread = std::thread([&] {
+				pthread_setname_np(pthread_self(), "arbito-stream");
+
+				try {
+					streamOffice.initiate();
+
+					while (isRunning) {
+						streamOffice.doWork();
+					}
+				} catch (std::exception &ex) {
+					consoleLogger->error("Stream Office {}", ex.what());
+					isRunning = false;
+				}
+
+				streamOffice.terminate();
+			});
+
 			while (isRunning) {
 				std::this_thread::sleep_for(milliseconds(10));
 			}
@@ -241,8 +267,9 @@ int main() {
 			/*tradeThreadB.join();*/
 			marketThreadA.join();
 			/*marketThreadB.join();*/
+			streamThread.join();
 
-			std::this_thread::sleep_for(seconds(30));
+			std::this_thread::sleep_for(seconds(10));
 
 			consoleLogger->error("MAIN FAILED");
 		}

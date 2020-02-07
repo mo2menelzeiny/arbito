@@ -2,8 +2,12 @@
 #ifndef ARBITO_NATSSESSION_H
 #define ARBITO_NATSSESSION_H
 
+// NATS
 #include <nats/nats.h>
+
+// C
 #include <stdexcept>
+#include <cstring>
 
 class NATSSession {
 public:

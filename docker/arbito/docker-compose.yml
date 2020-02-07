@@ -6,3 +6,5 @@ services:
     build:
       context: ../..
       dockerfile: docker/arbito/Dockerfile
+    env_file:
+      - ../../.env

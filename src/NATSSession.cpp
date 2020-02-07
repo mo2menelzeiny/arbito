@@ -1,7 +1,7 @@
 
 #include "NATSSession.h"
 
-NATSSession::NATSSession() : m_host("nats://localhost:4222"), m_username(""), m_password(""), m_nc(nullptr) {}
+NATSSession::NATSSession() : m_host("localhost"), m_username(""), m_password(""), m_nc(nullptr) {}
 
 NATSSession::NATSSession(const char *host, const char *username, const char *password)
 		: m_host(host),
@@ -19,12 +19,19 @@ void NATSSession::initiate(
 ) {
 	natsOptions *opts = nullptr;
 
-
 	if (create_opts_fn(&opts) != NATS_OK) {
 		throw std::runtime_error("NATS Session Create options Failed");
 	}
 
-	if (seturl_opts_fn(opts, m_host) != NATS_OK) {
+	std::string host = "nats://localhost:4222";
+
+	if (strcmp(m_username, "") != 0 && strcmp(m_password, "") != 0) {
+		host = "nats://"
+		       + std::string(m_username) + ":" + std::string(m_password)
+		       + "@" + std::string(m_host) + ":4222";
+	}
+
+	if (seturl_opts_fn(opts, host.c_str()) != NATS_OK) {
 		throw std::runtime_error("NATS Session set url options Failed");
 	}
 
