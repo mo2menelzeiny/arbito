@@ -172,11 +172,11 @@ int main() {
 				tradeOfficeA.terminate();
 			});*/
 
-			auto marketThreadA = std::thread([&] {
-				/*cpu_set_t cpuset;
+			/*auto marketThreadA = std::thread([&] {
+				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(4, &cpuset);
-				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);*/
+				pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 				pthread_setname_np(pthread_self(), "arbito-market");
 
 				try {
@@ -193,7 +193,7 @@ int main() {
 				}
 
 				marketOfficeA.terminate();
-			});
+			});*/
 
 			/*auto tradeThreadB = std::thread([&] {
 				cpu_set_t cpuset;
@@ -241,7 +241,7 @@ int main() {
 				marketOfficeB.terminate();
 			});*/
 
-			auto streamThread = std::thread([&] {
+			/*auto streamThread = std::thread([&] {
 				pthread_setname_np(pthread_self(), "arbito-stream");
 
 				try {
@@ -256,6 +256,27 @@ int main() {
 				}
 
 				streamOffice.terminate();
+			});*/
+
+			auto mainThread = std::thread([&] {
+				pthread_setname_np(pthread_self(), "arbito-main");
+
+				try {
+					marketOfficeA.initiate();
+					streamOffice.initiate();
+
+					while (isRunning) {
+						marketOfficeA.doWork();
+						streamOffice.doWork();
+					}
+
+				} catch (std::exception &ex) {
+					consoleLogger->error("Main Thread {}", ex.what());
+					isRunning = false;
+				}
+
+				marketOfficeA.terminate();
+				streamOffice.terminate();
 			});
 
 			while (isRunning) {
@@ -265,9 +286,10 @@ int main() {
 			/*businessThread.join();*/
 			/*tradeThreadA.join();*/
 			/*tradeThreadB.join();*/
-			marketThreadA.join();
+			/*marketThreadA.join();*/
 			/*marketThreadB.join();*/
-			streamThread.join();
+			/*streamThread.join();*/
+			mainThread.join();
 
 			std::this_thread::sleep_for(seconds(10));
 
