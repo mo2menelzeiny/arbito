@@ -75,7 +75,7 @@ int main() {
 			getenv("MO_A_SENDER"),
 			getenv("MO_A_TARGET"),
 			stoi(getenv("HEARTBEAT")),
-			true
+			strcmp(getenv("SSL_A"), "1") == 0
 	);
 
 
