@@ -54,6 +54,23 @@ FIXMarketOffice::FIXMarketOffice(
 		m_MDRFields = (fix_field *) malloc(size * sizeof(fix_field));
 		memcpy(m_MDRFields, fields, size * sizeof(fix_field));
 		m_MDRFixMessage.nr_fields = size;
+	} else if (m_brokerEnum == Broker::FASTMATCH) {
+		struct fix_field fields[] = {
+				FIX_STRING_FIELD(MDReqID, "MARKET-DATA-REQUEST"),
+				FIX_CHAR_FIELD(SubscriptionRequestType, '1'),
+				FIX_INT_FIELD(MarketDepth, 1),
+				FIX_INT_FIELD(MDUpdateType, 0),
+				FIX_CHAR_FIELD(AggregatedBook, 'N'),
+				FIX_INT_FIELD(NoMDEntryTypes, 2),
+				FIX_CHAR_FIELD(MDEntryType, '0'),
+				FIX_CHAR_FIELD(MDEntryType, '1'),
+				FIX_INT_FIELD(NoRelatedSym, 1),
+				FIX_STRING_FIELD(Symbol, "EUR/USD")
+		};
+		unsigned long size = ARRAY_SIZE(fields);
+		m_MDRFields = (fix_field *) malloc(size * sizeof(fix_field));
+		memcpy(m_MDRFields, fields, size * sizeof(fix_field));
+		m_MDRFixMessage.nr_fields = size;
 	}
 
 	m_MDRFixMessage.type = FIX_MSG_TYPE_MARKET_DATA_REQUEST;

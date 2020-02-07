@@ -407,6 +407,8 @@ static enum fix_type fix_tag_type(int tag) {
 			return FIX_TYPE_INT;
 		case MDUpdateType:
 			return FIX_TYPE_INT;
+		case AggregatedBook:
+			return FIX_TYPE_CHAR;
 		case NoMDEntryTypes:
 			return FIX_TYPE_INT;
 		case NoMDEntries:

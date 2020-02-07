@@ -11,6 +11,10 @@ Broker getBroker(const char *broker) {
 		return Broker::LMAX;
 	}
 
+	if(!strcmp(broker, "FASTMATCH")) {
+		return Broker::FASTMATCH;
+	}
+
 	return Broker::NONE;
 }
 
@@ -25,5 +29,7 @@ void getBroker(char *buffer, enum Broker broker) {
 		case Broker::IB:
 			sprintf(buffer, "IB");
 			break;
+		case Broker::FASTMATCH:
+			sprintf(buffer, "FASTMATCH");
 	}
 }

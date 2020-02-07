@@ -163,6 +163,7 @@ enum fix_tag {
 	SubscriptionRequestType = 263,
 	MarketDepth = 264,
 	MDUpdateType = 265,
+	AggregatedBook = 266,
 	NoMDEntryTypes = 267,
 	NoMDEntries = 268,
 	MDEntryType = 269,

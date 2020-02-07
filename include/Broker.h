@@ -5,7 +5,8 @@
 enum class Broker {
 	NONE,
 	LMAX,
-	IB
+	IB,
+	FASTMATCH
 };
 
 Broker getBroker(const char *broker);
