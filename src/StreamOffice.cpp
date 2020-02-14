@@ -44,10 +44,13 @@ void StreamOffice::initiate() {
 		}
 
 		std::string json = "{\"bid\":" + std::to_string(event.bid)
-		                   + ", \"ask\":" + std::to_string(event.offer)
+		                   + ", \"ask\":" + std::to_string(event.ask)
+		                   + ", \"mid\":" + std::to_string(event.mid)
 		                   + "}";
 
 		m_natsSession.publishString(natsConnection_PublishString, channel.c_str(), json.c_str());
+
+		return true;
 	};
 
 	m_priceRingBuffer->addGatingSequences({m_priceEventPoller->sequence()});

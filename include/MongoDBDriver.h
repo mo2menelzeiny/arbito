@@ -20,7 +20,7 @@ public:
 			const char *collectionName
 	);
 
-	void record(const char *clOrdId, double bid, double offer, const char *orderType);
+	void record(const char *clOrdId, double bid, double ask, const char *orderType);
 
 	void record(
 			const char *clOrdId,

@@ -49,9 +49,9 @@ BusinessOffice::BusinessOffice(
 				m_truncStrBuff[6] = '0';
 				m_priceBTrunc.bid = std::stof(m_truncStrBuff);
 
-				sprintf(m_truncStrBuff, "%lf", event.offer);
+				sprintf(m_truncStrBuff, "%lf", event.ask);
 				m_truncStrBuff[6] = '0';
-				m_priceBTrunc.offer = std::stof(m_truncStrBuff);*/
+				m_priceBTrunc.ask = std::stof(m_truncStrBuff);*/
 
 				/*m_isExpiredB = false;
 				m_timestampB = m_timestampNow;*/
@@ -65,10 +65,10 @@ BusinessOffice::BusinessOffice(
 
 		/*m_systemLogger->info(
 				"DiffA: {} DiffB: {} DiffAT: {} DiffBT: {} SeqA: {} SeqB: {}",
-				(m_priceA.bid - m_priceB.offer) * 100000,
-				(m_priceB.bid - m_priceA.offer) * 100000,
-				(m_priceA.bid - m_priceBTrunc.offer) * 100000,
-				(m_priceBTrunc.bid - m_priceA.offer) * 100000,
+				(m_priceA.bid - m_priceB.ask) * 100000,
+				(m_priceB.bid - m_priceA.ask) * 100000,
+				(m_priceA.bid - m_priceBTrunc.ask) * 100000,
+				(m_priceBTrunc.bid - m_priceA.ask) * 100000,
 				m_priceA.sequence,
 				m_priceB.sequence
 		);*/

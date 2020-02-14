@@ -21,7 +21,7 @@ MongoDBDriver::MongoDBDriver(
 }
 
 
-void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const char *orderType) {
+void MongoDBDriver::record(const char *clOrdId, double bid, double ask, const char *orderType) {
 	bson_error_t error;
 
 	mongoc_client_t *client = mongoc_client_new(m_uri);
@@ -36,7 +36,7 @@ void MongoDBDriver::record(const char *clOrdId, double bid, double offer, const 
 			"clOrdId", BCON_UTF8(clOrdId),
 			"orderType", BCON_UTF8(orderType),
 			"bid", BCON_DOUBLE(bid),
-			"offer", BCON_DOUBLE(offer)
+			"ask", BCON_DOUBLE(ask)
 	);
 
 	if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, insert, nullptr, &error)) {

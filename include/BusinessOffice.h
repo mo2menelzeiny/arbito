@@ -51,9 +51,9 @@ public:
 		if (!m_isExpiredB && duration_cast<milliseconds>(m_timestampNow - m_timestampB).count() >= m_windowMs) {
 			m_isExpiredB = true;
 			m_priceB.bid = -99;
-			m_priceB.offer = 99;
+			m_priceB.ask = 99;
 			m_priceBTrunc.bid = -99;
-			m_priceBTrunc.offer = 99;
+			m_priceBTrunc.ask = 99;
 			return;
 		}*/
 
@@ -63,10 +63,10 @@ public:
 			m_systemLogger->info(
 					"[{}][{}] Bid/Ask A:{}/{} SeqA:{} Bid/Ask B:{}/{} SeqB:{} DiffA/DiffB:{}/{}",
 					m_sequence, m_ordersCount,
-					m_priceA.bid, m_priceA.offer, m_priceA.sequence,
-					m_priceB.bid, m_priceB.offer, m_priceB.sequence,
-					(m_priceA.bid - m_priceB.offer) * 100000,
-					(m_priceB.bid - m_priceA.offer) * 100000
+					m_priceA.bid, m_priceA.ask, m_priceA.sequence,
+					m_priceB.bid, m_priceB.ask, m_priceB.sequence,
+					(m_priceA.bid - m_priceB.ask) * 100000,
+					(m_priceB.bid - m_priceA.ask) * 100000
 			);
 
 			m_canLogPrices = false;
@@ -88,8 +88,8 @@ public:
 
 		bool canOpen = m_ordersCount < m_maxOrders;
 
-		double diffA = m_priceA.bid - m_priceB.offer;
-		double diffB = m_priceB.bid - m_priceA.offer;
+		double diffA = m_priceA.bid - m_priceB.ask;
+		double diffB = m_priceB.bid - m_priceA.ask;
 
 		char orderType[16];
 
@@ -170,24 +170,24 @@ public:
 						m_priceB.broker,
 						OrderType::MARKET,
 						OrderSide::BUY,
-						m_priceB.offer,
+						m_priceB.ask,
 						randomId
 				};
 				m_orderRingBuffer->publish(nextSeqB);
 
 				m_systemLogger->info(
-						"{} bid A: {} sequence A: {} offer B: {} sequence B: {}",
+						"{} bid A: {} sequence A: {} ask B: {} sequence B: {}",
 						orderType,
 						m_priceA.bid,
 						m_priceA.sequence,
-						m_priceB.offer,
+						m_priceB.ask,
 						m_priceB.sequence
 				);
 
 				std::thread([mongoDriver = &m_mongoDriver,
 						            id = m_randomIdStrBuff,
 						            bid = m_priceA.bid,
-						            offer = m_priceB.offer,
+						            offer = m_priceB.ask,
 						            type = orderType] {
 					mongoDriver->record(id, bid, offer, type);
 				}).detach();
@@ -200,7 +200,7 @@ public:
 						m_priceA.broker,
 						OrderType::MARKET,
 						OrderSide::BUY,
-						m_priceA.offer,
+						m_priceA.ask,
 						randomId
 				};
 				m_orderRingBuffer->publish(nextSeqA);
@@ -216,18 +216,18 @@ public:
 				m_orderRingBuffer->publish(nextSeqB);
 
 				m_systemLogger->info(
-						"{} bid B: {} sequence B: {} offer A: {} sequence A: {}",
+						"{} bid B: {} sequence B: {} ask A: {} sequence A: {}",
 						orderType,
 						m_priceB.bid,
 						m_priceB.sequence,
-						m_priceA.offer,
+						m_priceA.ask,
 						m_priceA.sequence
 				);
 
 				std::thread([mongoDriver = &m_mongoDriver,
 						            id = m_randomIdStrBuff,
 						            bid = m_priceB.bid,
-						            offer = m_priceA.offer,
+						            offer = m_priceA.ask,
 						            type = orderType] {
 					mongoDriver->record(id, bid, offer, type);
 				}).detach();
@@ -241,13 +241,13 @@ public:
 		m_currentOrder = Difference::NONE;
 
 		m_priceA.bid = -99;
-		m_priceA.offer = 99;
+		m_priceA.ask = 99;
 
 		m_priceB.bid = -99;
-		m_priceB.offer = 99;
+		m_priceB.ask = 99;
 
 		m_priceBTrunc.bid = -99;
-		m_priceBTrunc.offer = 99;
+		m_priceBTrunc.ask = 99;
 
 		m_lastOrderTime = time(nullptr);
 		m_isOrderDelayed = true;
