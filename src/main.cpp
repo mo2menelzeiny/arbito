@@ -12,7 +12,6 @@
 #include <BusinessOffice.h>
 #include <FIXMarketOffice.h>
 #include <FIXTradeOffice.h>
-#include <IBMarketOffice.h>
 #include <StreamOffice.h>
 
 int main() {

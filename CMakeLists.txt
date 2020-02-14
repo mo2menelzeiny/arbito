@@ -29,12 +29,6 @@ file(GLOB SPDLOG
         include/spdlog/fmt/*.h
         include/spdlog/sinks/*.h)
 
-file(GLOB IBAPI
-        include/IBAPI/client/*.h
-        include/IBAPI/IBClient/*.h
-        include/IBAPI/client/*.cpp
-        include/IBAPI/IBClient/*.cpp)
-
 file(GLOB HEADERS
         include/*.h
         include/libtrading/*.h
@@ -63,8 +57,7 @@ add_executable(arbito-tests
 add_executable(arbito
         ${HEADERS}
         ${SOURCES}
-        ${SPDLOG}
-        ${IBAPI})
+        ${SPDLOG})
 
 target_include_directories(arbito-tests PRIVATE "${MONGOC_INCLUDE_DIRS}")
 target_include_directories(arbito PRIVATE "${MONGOC_INCLUDE_DIRS}")
