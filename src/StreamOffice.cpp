@@ -36,6 +36,9 @@ void StreamOffice::initiate() {
 			case Broker::IB:
 				channel += ".IB";
 				break;
+			case Broker::FASTMATCH:
+				channel += ".FASTMATCH";
+				break;
 			default:
 				break;
 		}
