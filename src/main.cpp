@@ -13,6 +13,7 @@
 #include <FIXMarketOffice.h>
 #include <FIXTradeOffice.h>
 #include <StreamOffice.h>
+#include <LimitOffice.h>
 
 int main() {
 	SSL_load_error_strings();
@@ -41,6 +42,19 @@ int main() {
 			16,
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);*/
+
+	LimitOffice limitOffice(
+			priceRingBuffer,
+			getenv("BROKER_A"),
+			getenv("TO_A_HOST"),
+			stoi(getenv("TO_A_PORT")),
+			getenv("TO_A_USERNAME"),
+			getenv("TO_A_PASSWORD"),
+			getenv("TO_A_SENDER"),
+			getenv("TO_A_TARGET"),
+			stoi(getenv("HEARTBEAT")),
+			strcmp(getenv("SSL_A"), "1") == 0
+	);
 
 	StreamOffice streamOffice(
 			priceRingBuffer,
@@ -262,11 +276,13 @@ int main() {
 
 				try {
 					marketOfficeA.initiate();
-					streamOffice.initiate();
+					// streamOffice.initiate();
+					limitOffice.initiate();
 
 					while (isRunning) {
 						marketOfficeA.doWork();
-						streamOffice.doWork();
+						// streamOffice.doWork();
+						limitOffice.doWork();
 					}
 
 				} catch (std::exception &ex) {
@@ -275,7 +291,8 @@ int main() {
 				}
 
 				marketOfficeA.terminate();
-				streamOffice.terminate();
+				limitOffice.terminate();
+				//streamOffice.terminate();
 			});
 
 			while (isRunning) {
