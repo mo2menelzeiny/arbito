@@ -106,26 +106,26 @@ LimitOffice::LimitOffice(
 	m_priceHandler = [&](PriceEvent &event, int64_t seq, bool endOfBatch) -> bool {
 		// place first order only once
 		if (!m_orderPlaced && event.sequence > 10) {
-			fix_get_field(&m_limitOrderMessage, Price)->float_value = event.bid + 0.00001;
+			fix_get_field(&m_limitOrderMessage, Price)->float_value = event.bid - 0.00001;
 			fix_get_field(&m_limitOrderMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_limitOrderMessage);
 			m_orderPlaced = true;
 			m_lastPrice = event.bid;
 			m_systemLogger->info("[{}] {} {} {} {}", m_brokerStr,
-			                     "CURRENT BID:", event.bid,
-			                     "BUY ON", event.bid + 0.00001);
+			                     "BUY LIMIT CURRENT BID:", event.bid,
+			                     "ON", event.bid - 0.00001);
 		}
 
 		// frequently update
 		if (m_canUpdate && m_lastPrice != event.bid) {
-			fix_get_field(&m_replaceOrderMessage, Price)->float_value = event.bid + 0.00001;
+			fix_get_field(&m_replaceOrderMessage, Price)->float_value = event.bid - 0.00001;
 			fix_get_field(&m_replaceOrderMessage, TransactTime)->string_value = m_fixSession.strNow();
 			m_fixSession.send(&m_replaceOrderMessage);
 			m_lastPrice = event.bid;
 			m_canUpdate = false;
 			m_systemLogger->info("[{}] {} {} {} {}", m_brokerStr,
-			                     "CURRENT BID:", event.bid,
-			                     "UPDATE ON", event.bid + 0.00001);
+			                     "UPDATE LIMIT CURRENT BID:", event.bid,
+			                     "ON", event.bid - 0.00001);
 		}
 
 		return true;
