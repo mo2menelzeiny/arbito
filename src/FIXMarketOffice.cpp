@@ -30,11 +30,10 @@ FIXMarketOffice::FIXMarketOffice(
     m_consoleLogger(spdlog::get("console")),
     m_systemLogger(spdlog::get("system")),
     m_sequence(0),
-    m_mid(0),
     m_bid(-99),
     m_bidQty(0),
     m_ask(99),
-    m_offerQty(0) {
+    m_askQty(0) {
 
 	if (m_brokerEnum == Broker::LMAX) {
 		int mdr_idx;
@@ -61,7 +60,6 @@ FIXMarketOffice::FIXMarketOffice(
 		m_MDRFixMessages[mdr_idx].fields = m_MDRFixFields[mdr_idx];
 
 	} else if (m_brokerEnum == Broker::FASTMATCH) {
-
 		int mdr_idx;
 		unsigned long size;
 
@@ -69,13 +67,12 @@ FIXMarketOffice::FIXMarketOffice(
 		struct fix_field fields0[] = {
 				FIX_STRING_FIELD(MDReqID, "MDR-0"),
 				FIX_CHAR_FIELD(SubscriptionRequestType, '1'),
-				FIX_INT_FIELD(MarketDepth, 1),
+				FIX_INT_FIELD(MarketDepth, 0),
 				FIX_INT_FIELD(MDUpdateType, 1),
 				FIX_CHAR_FIELD(AggregatedBook, 'N'),
-				FIX_INT_FIELD(NoMDEntryTypes, 3),
+				FIX_INT_FIELD(NoMDEntryTypes, 2),
 				FIX_CHAR_FIELD(MDEntryType, '0'),
 				FIX_CHAR_FIELD(MDEntryType, '1'),
-				FIX_CHAR_FIELD(MDEntryType, 'H'),
 				FIX_INT_FIELD(NoRelatedSym, 1),
 				FIX_STRING_FIELD(Symbol, "EUR/USD")
 		};
@@ -90,17 +87,25 @@ FIXMarketOffice::FIXMarketOffice(
 	m_onMessageHandler = OnMessageHandler([&](struct fix_message *msg) {
 		switch (msg->type) {
 			case FIX_MSG_TYPE_MARKET_DATA_SNAPSHOT_FULL_REFRESH: {
-
+				// dynamically parse the message for prices
 				for (int i = 0; i < msg->nr_fields; i++) {
 					if (msg->fields[i].tag == MDEntryType) {
 						if (msg->fields[i].string_value[0] == '0') { // BID
-							m_bid = msg->fields[i + 2].float_value;
-							m_bidQty = msg->fields[i + 3].float_value;
+							for (int j = i; j < msg->nr_fields; ++j) {
+								if (msg->fields[j].tag == MDEntryPx) {
+									m_bid = msg->fields[j].float_value;
+									m_bidQty = msg->fields[j + 1].float_value;
+									break;
+								}
+							}
 						} else if (msg->fields[i].string_value[0] == '1') { // ASK
-							m_ask = msg->fields[i + 2].float_value;
-							m_offerQty = msg->fields[i + 3].float_value;
-						} else if (msg->fields[i].string_value[0] == 'H') { // MID
-							m_mid = msg->fields[i + 2].float_value;
+							for (int j = i; j < msg->nr_fields; ++j) {
+								if (msg->fields[j].tag == MDEntryPx) {
+									m_ask = msg->fields[j].float_value;
+									m_askQty = msg->fields[j + 1].float_value;
+									break;
+								}
+							}
 						}
 					}
 				}
@@ -108,11 +113,11 @@ FIXMarketOffice::FIXMarketOffice(
 				++m_sequence;
 
 				auto nextSequence = m_outRingBuffer->next();
-				(*m_outRingBuffer)[nextSequence] = {m_brokerEnum, m_bid, m_ask, m_mid, m_sequence};
+				(*m_outRingBuffer)[nextSequence] = {m_brokerEnum, m_bid, m_ask, m_sequence};
 				m_outRingBuffer->publish(nextSequence);
 
-				m_systemLogger->info("[{}][{}] bid: {} ask: {} mid: {}",
-						m_brokerStr, m_sequence, m_bid, m_ask, m_mid);
+				m_systemLogger->info("[{}][{}] bid: {} ask: {}",
+				                     m_brokerStr, m_sequence, m_bid, m_ask);
 
 				/*char text[512];
 				msg_string(text, msg, 512);
@@ -121,7 +126,7 @@ FIXMarketOffice::FIXMarketOffice(
 				break;
 
 			case FIX_MSG_TYPE_MARKET_DATA_INCREMENTAL_REFRESH: {
-
+				// hard coded as it's only supported by one broker so far
 				for (int i = 0; i < msg->nr_fields; i++) {
 					if (msg->fields[i].tag == MDUpdateAction && msg->fields[i].string_value[0] == '0') { // NEW
 						if (msg->fields[i + 2].string_value[0] == '0') { // BID
@@ -129,9 +134,7 @@ FIXMarketOffice::FIXMarketOffice(
 							m_bidQty = msg->fields[i + 5].float_value;
 						} else if (msg->fields[i + 2].string_value[0] == '1') { // ASK
 							m_ask = msg->fields[i + 4].float_value;
-							m_offerQty = msg->fields[i + 5].float_value;
-						} else if (msg->fields[i + 2].string_value[0] == 'H') { // MID
-							m_mid = msg->fields[i + 4].float_value;
+							m_askQty = msg->fields[i + 5].float_value;
 						}
 					}
 				}
@@ -139,11 +142,11 @@ FIXMarketOffice::FIXMarketOffice(
 				++m_sequence;
 
 				auto nextSequence = m_outRingBuffer->next();
-				(*m_outRingBuffer)[nextSequence] = {m_brokerEnum, m_bid, m_ask, m_mid, m_sequence};
+				(*m_outRingBuffer)[nextSequence] = {m_brokerEnum, m_bid, m_ask, m_sequence};
 				m_outRingBuffer->publish(nextSequence);
 
-				m_systemLogger->info("[{}][{}] bid: {} ask: {} mid: {}",
-				                     m_brokerStr, m_sequence, m_bid, m_ask, m_mid);
+				m_systemLogger->info("[{}][{}] bid: {} ask: {}",
+				                     m_brokerStr, m_sequence, m_bid, m_ask);
 
 				/*char text[512];
 				msg_string(text, msg, 512);

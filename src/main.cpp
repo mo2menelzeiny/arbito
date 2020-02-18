@@ -43,19 +43,6 @@ int main() {
 			std::make_shared<Disruptor::BusySpinWaitStrategy>()
 	);*/
 
-	LimitOffice limitOffice(
-			priceRingBuffer,
-			getenv("BROKER_A"),
-			getenv("TO_A_HOST"),
-			stoi(getenv("TO_A_PORT")),
-			getenv("TO_A_USERNAME"),
-			getenv("TO_A_PASSWORD"),
-			getenv("TO_A_SENDER"),
-			getenv("TO_A_TARGET"),
-			stoi(getenv("HEARTBEAT")),
-			strcmp(getenv("SSL_A"), "1") == 0
-	);
-
 	StreamOffice streamOffice(
 			priceRingBuffer,
 			getenv("NATS_HOST"),
@@ -111,28 +98,19 @@ int main() {
 
 	// BROKER B
 
-	/*IBMarketOffice marketOfficeB(
+	FIXMarketOffice marketOfficeB(
 			priceRingBuffer,
 			getenv("BROKER_B"),
-			stof(getenv("QTY_B"))
-	);
-
-	FIXTradeOffice tradeOfficeB(
-			orderRingBuffer,
-			executionRingBuffer,
-			getenv("BROKER_B"),
 			stof(getenv("QTY_B")),
-			getenv("TO_B_HOST"),
-			stoi(getenv("TO_B_PORT")),
-			getenv("TO_B_USERNAME"),
-			getenv("TO_B_PASSWORD"),
-			getenv("TO_B_SENDER"),
-			getenv("TO_B_TARGET"),
+			getenv("MO_B_HOST"),
+			stoi(getenv("MO_B_PORT")),
+			getenv("MO_B_USERNAME"),
+			getenv("MO_B_PASSWORD"),
+			getenv("MO_B_SENDER"),
+			getenv("MO_B_TARGET"),
 			stoi(getenv("HEARTBEAT")),
-			false,
-			getenv("MONGO_URI"),
-			getenv("MONGO_DB")
-	);*/
+			strcmp(getenv("SSL_B"), "1") == 0
+	);
 
 	try {
 
@@ -276,13 +254,13 @@ int main() {
 
 				try {
 					marketOfficeA.initiate();
-					// streamOffice.initiate();
-					limitOffice.initiate();
+					marketOfficeB.initiate();
+					streamOffice.initiate();
 
 					while (isRunning) {
 						marketOfficeA.doWork();
-						// streamOffice.doWork();
-						limitOffice.doWork();
+						marketOfficeB.doWork();
+						streamOffice.doWork();
 					}
 
 				} catch (std::exception &ex) {
@@ -291,8 +269,8 @@ int main() {
 				}
 
 				marketOfficeA.terminate();
-				limitOffice.terminate();
-				//streamOffice.terminate();
+				marketOfficeB.terminate();
+				streamOffice.terminate();
 			});
 
 			while (isRunning) {

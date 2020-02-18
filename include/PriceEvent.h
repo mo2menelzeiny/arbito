@@ -8,7 +8,6 @@ struct PriceEvent {
 	enum Broker broker;
 	double bid;
 	double ask;
-	double mid;
 	long sequence;
 };
 
